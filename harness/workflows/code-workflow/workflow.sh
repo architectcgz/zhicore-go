@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCAFFOLD_VERSION="2026-06-06.3"
+SCAFFOLD_VERSION="2026-06-06.4"
 
 usage() {
   cat <<'EOF' >&2
@@ -408,7 +408,7 @@ set -euo pipefail
 usage() {
   cat <<'EOH' >&2
 Usage:
-  bash scripts/archive-task-artifacts.sh [--task-slug <slug>] [--plan <path>] [--task <path> ...] [--dry-run]
+  bash harness/workflow-plugins/code-workflow/archive_task_artifacts.sh [--task-slug <slug>] [--plan <path>] [--task <path> ...] [--dry-run]
 
 Description:
   Archive the completed implementation plan and any matching docs/tasks artifacts for a task.
@@ -877,12 +877,16 @@ IMPLEMENTATION_PLAN_SKELETON="$(with_managed_header markdown "$IMPLEMENTATION_PL
 write_file "$repo_root/scripts/check-task-intake.sh" "$CHECK_TASK_INTAKE"
 write_file "$repo_root/scripts/start-implementation.sh" "$START_IMPLEMENTATION"
 write_file "$repo_root/scripts/check-startup-gate.sh" "$CHECK_STARTUP_GATE_SH"
-write_file "$repo_root/scripts/archive-task-artifacts.sh" "$ARCHIVE_TASK_ARTIFACTS"
+write_file "$repo_root/harness/workflow-plugins/code-workflow/archive_task_artifacts.sh" "$ARCHIVE_TASK_ARTIFACTS"
 write_file "$repo_root/harness/checks/check_startup_gate.py" "$CHECK_STARTUP_GATE_PY"
 write_file "$repo_root/harness/templates/implementation-plan-skeleton.md" "$IMPLEMENTATION_PLAN_SKELETON"
 append_gitignore_line "/.harness/session-gates/"
 
 if [[ "$check_mode" -eq 1 ]]; then
+  if [[ -f "$repo_root/scripts/archive-task-artifacts.sh" ]]; then
+    echo "FAIL: legacy archive entry must be removed: $repo_root/scripts/archive-task-artifacts.sh" >&2
+    check_fail=1
+  fi
   if [[ -d "$repo_root/.harness/session-gates" ]]; then
     echo "PASS: .harness/session-gates directory exists"
   else
@@ -903,8 +907,9 @@ else
     "$repo_root/scripts/check-task-intake.sh" \
     "$repo_root/scripts/start-implementation.sh" \
     "$repo_root/scripts/check-startup-gate.sh" \
-    "$repo_root/scripts/archive-task-artifacts.sh" \
+    "$repo_root/harness/workflow-plugins/code-workflow/archive_task_artifacts.sh" \
     "$repo_root/harness/checks/check_startup_gate.py"
+  rm -f "$repo_root/scripts/archive-task-artifacts.sh"
   mkdir -p "$repo_root/.harness/session-gates"
   echo "PASS: code-workflow package installed in $repo_root"
 fi

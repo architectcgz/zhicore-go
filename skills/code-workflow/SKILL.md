@@ -83,14 +83,14 @@ This scaffold provides the generic common pieces:
 - `scripts/check-task-intake.sh`
 - `scripts/start-implementation.sh`
 - `scripts/check-startup-gate.sh`
-- `scripts/archive-task-artifacts.sh`
+- `harness/workflow-plugins/code-workflow/archive_task_artifacts.sh`
 - `harness/checks/check_startup_gate.py`
 - `harness/templates/implementation-plan-skeleton.md`
 - `/.harness/session-gates/` ignore rule
 
 Generated managed files carry a `Managed by code-workflow package` version header so shared upgrades and drift checks have a stable mechanical target.
 
-Use `bash scripts/archive-task-artifacts.sh` when a task slice is complete, its conclusions have already been absorbed into the owning docs or code comments, and the active implementation plan should leave `docs/plan/impl-plan/`.
+Use `bash harness/workflow-plugins/code-workflow/archive_task_artifacts.sh` when a task slice is complete, its conclusions have already been absorbed into the owning docs or code comments, and the active implementation plan should leave `docs/plan/impl-plan/`.
 
 The archive script should:
 

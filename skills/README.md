@@ -25,7 +25,7 @@
   - 共享脚本入口：`bash ~/workspace/projects/scripts/start-workflow.sh <topic-or-slug>`
   - 共享安装器：`bash ~/.agents/harness/workflow-installer.sh <repo-root> code-workflow`
   - 共享基线校验：`bash ~/.agents/harness/workflow-sync-check.sh <repo-root> code-workflow`
-  - 完成归档入口：`bash scripts/archive-task-artifacts.sh [--task-slug <slug>]`
+  - 完成归档入口：`bash harness/workflow-plugins/code-workflow/archive_task_artifacts.sh [--task-slug <slug>]`
 
 - `harness-workflow`
   - 负责共享 workflow package 的选择、安装、升级和漂移校验。
