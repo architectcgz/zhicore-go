@@ -1,0 +1,4 @@
+interface:
+  display_name: "Todo"
+  short_description: "Create checkbox-based todo notes with shared harness path and archive rules"
+  default_prompt: "Use $todo to create a todo note in the canonical project todo path, or in ~/workspace/projects/todo/ when outside a project, with reminder-compatible Markdown checkboxes and archive-ready naming."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Leader"
+  short_description: "Coordinate analysis, implementation, review, validation, documentation sync, and fix loops to converge on PR-ready work"
+  default_prompt: "Use $leader in multi-agent orchestration mode to analyze the task, drive the full pipeline including documentation sync, and stop only at PR-ready or a proven blocker."

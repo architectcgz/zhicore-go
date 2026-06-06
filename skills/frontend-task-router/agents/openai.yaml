@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Task Router"
+  short_description: "Route broad frontend asks to exact impeccable and Codex skills"
+  default_prompt: "Use $frontend-task-router to route requests like 前端优化, 页面打磨, 样式统一, redesign, responsive fixes, or UX cleanup to the exact skills that should handle them."

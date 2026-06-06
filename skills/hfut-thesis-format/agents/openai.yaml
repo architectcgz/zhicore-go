@@ -1,0 +1,7 @@
+interface:
+  display_name: "HFUT Thesis Format"
+  short_description: "Create and fix HFUT thesis LaTeX projects"
+  default_prompt: "Use $hfut-thesis-format to create or check a HFUT thesis project based on the shinyypig/hfut-thesis template."
+
+policy:
+  allow_implicit_invocation: true

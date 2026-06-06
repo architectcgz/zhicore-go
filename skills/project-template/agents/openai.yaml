@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Template"
+  short_description: "Coordinate project initialization and AGENTS.md routing"
+  default_prompt: "Coordinate repository initialization and create or update the project-level AGENTS.md. Route documentation scaffolding to documentation-architecture and harness scaffolding to harness-engineering. Ensure AGENTS.md includes a project-specific testing prompt, requires the relevant script-based verification check after tests, and wires that check into check-consistency, hooks, or CI when the repository already has mechanical guardrails."

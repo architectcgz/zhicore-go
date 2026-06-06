@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fix Agent"
+  short_description: "Apply minimal fixes for explicit review or validation failures"
+  default_prompt: "Use $fix-agent to fix the reported blocking issues with the smallest safe diff and prepare for re-review."

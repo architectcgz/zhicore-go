@@ -825,8 +825,10 @@ This file stores current-task state only. Durable local reuse knowledge belongs 
 """,
         "harness/prompts/AGENTS.md": """# harness/prompts
 
-Project-local validated prompt assets live here.
+Project prompt entrypoints live here.
 
+Shared reusable prompt bodies can live under `~/.agents/harness/prompts/`.
+Keep this directory for stable in-repo entrypoints, local parameters, and project-specific prompt supplements.
 Do not store one-off current task notes here. Use `.harness/` for current-task state.
 Do not keep one-off initialization prompts, historical migration prompts, or rules already moved into a global skill.
 """,
@@ -1280,7 +1282,7 @@ bash scripts/check-consistency.sh
 | `.harness/reuse-index/` | 本地私有索引 | 用户自用的长期复用线索，默认 gitignore，`index.yaml` + 镜像 `README.md` |
 | `harness/policies/` | 项目策略 | 可被检查脚本读取的本地规则 |
 | `harness/templates/` | 模板 | 当前项目重复使用的决策或记录模板 |
-| `harness/prompts/` | Prompt 资产 | 已验证的项目本地 prompt 和工作流 |
+| `harness/prompts/` | Prompt 入口 | 仓库内稳定入口、局部补充，以及仍然项目专属的 prompt |
 | `harness/checks/` | 检查脚本 | 机械化一致性和规则检查 |
 | `feedback/` | 反馈记录 | 踩坑、修正和可复用流程经验 |
 | `docs/documentation-rules.md` | 文档规范 | 改文档前置读取与新增路径登记 |
@@ -1324,7 +1326,7 @@ bash scripts/check-consistency.sh
 - `.harness/reuse-index/`：用户本地私有的长期复用索引，默认 gitignore
 - `harness/policies/`：项目策略
 - `harness/templates/`：模板
-- `harness/prompts/`：Prompt 资产
+- `harness/prompts/`：Prompt 入口
 - `harness/checks/`：检查脚本
 - `feedback/`：反馈记录
 - `docs/documentation-rules.md`：文档修改前置读取与新增路径登记

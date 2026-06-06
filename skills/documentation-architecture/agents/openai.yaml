@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Architecture"
+  short_description: "Initialize or repair project docs architecture"
+  default_prompt: "Use documentation-architecture to initialize or repair docs/, documentation-rules.md, docs/README.md, and documentation path registration rules."

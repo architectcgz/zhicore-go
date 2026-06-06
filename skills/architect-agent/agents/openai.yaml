@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architect Agent"
+  short_description: "Analyze codebases, find coupling risks, and inspect broad aggregation for safe query splits"
+  default_prompt: "Use $architect-agent from the target repository root to analyze module boundaries, aggregation candidates, risks, and the smallest safe change path."

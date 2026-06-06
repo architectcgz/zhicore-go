@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Engineer"
+  short_description: "Implement and analyze frontend changes with async, state, contract, lifecycle, accessibility, and token guardrails"
+  default_prompt: "Use frontend-engineer as a frontend engineering agent. Inspect user-facing behavior, state and async ownership, component contracts, lifecycle cleanup, verification evidence, and improvement records using its Output Protocol."

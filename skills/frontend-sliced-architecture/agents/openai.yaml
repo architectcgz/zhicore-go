@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Sliced Architecture"
+  short_description: "Design scalable frontend feature/module architecture"
+  default_prompt: "Use frontend-sliced-architecture to structure this frontend project."
