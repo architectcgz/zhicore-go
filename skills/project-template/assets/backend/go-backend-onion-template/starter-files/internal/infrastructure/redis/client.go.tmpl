@@ -1,0 +1,35 @@
+package redis
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	redislib "github.com/redis/go-redis/v9"
+
+	"__GO_MODULE__/internal/config"
+)
+
+func NewClient(ctx context.Context, cfg config.RedisConfig) (*redislib.Client, error) {
+	if !cfg.Enabled || strings.TrimSpace(cfg.Addr) == "" {
+		return nil, nil
+	}
+
+	client := redislib.NewClient(&redislib.Options{
+		Addr:         cfg.Addr,
+		Username:     cfg.Username,
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		DialTimeout:  cfg.DialTimeout,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	})
+
+	if ctx != nil {
+		if err := client.Ping(ctx).Err(); err != nil {
+			return nil, fmt.Errorf("ping redis: %w", err)
+		}
+	}
+
+	return client, nil
+}

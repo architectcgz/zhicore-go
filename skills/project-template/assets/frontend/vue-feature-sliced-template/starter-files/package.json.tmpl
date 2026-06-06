@@ -1,0 +1,35 @@
+{
+  "name": "__APP_NAME__",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.33.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{vue,js,ts,json,css}\"",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.2.1",
+    "axios": "^1.12.2",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "@vitest/ui": "^4.0.18",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.8.3",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18",
+    "vue-tsc": "^3.0.7"
+  }
+}

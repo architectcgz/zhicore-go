@@ -1,0 +1,25 @@
+frontend/
+  src/
+    __tests__/
+    api/
+    entities/
+      user/
+    features/
+      auth/
+      layout/
+    pages/
+      auth/
+      dashboard/
+      error/
+    router/
+      guards.ts
+      routes/
+    runtime/
+    shared/
+      ui/
+    stores/
+    widgets/
+  index.html
+  package.json
+  tsconfig.json
+  vite.config.ts

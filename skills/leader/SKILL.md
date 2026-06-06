@@ -31,6 +31,8 @@ Coordinate delivery as a staged engineering workflow instead of a pile of discon
 8. Treat architecture and design documents as inputs, not implementation plans. For non-trivial work, require an executable implementation plan before code changes begin.
 9. Before new feature implementation or adding user/developer-visible capability, require `brainstorming` and carry its chosen direction into the plan.
 10. After the implementation plan exists, require a plan-evaluation gate before coding: architecture boundary clarity, owner and reuse point definition, hidden redesign risk, and whether the plan covers structural convergence rather than only output behavior.
+11. When the repository uses `code-workflow`, treat `completion-full` as completion evidence only; the real gate is an independent reviewer after that evidence exists.
+12. The independent reviewer should receive a compact review packet, not the entire implementation conversation.
 
 ## Trivial vs Non-Trivial
 
@@ -70,12 +72,28 @@ For non-trivial work, require the closed loop: implementation, initial verificat
 6. **Review**
    - Check correctness, regressions, architecture drift, security, and missing tests.
    - Use specialist self-checks as input, but keep the final review gate at the leader level for non-trivial work.
+   - When `code-workflow` applies, gather completion evidence first, then dispatch an independent `code-reviewer` with a compact review packet.
 7. **Validation**
    - Run the smallest sufficient verification set and capture evidence.
 8. **Documentation Check**
    - Verify that the documentation items planned before implementation were updated or explicitly ruled out by the same source-of-truth rules.
 9. **Fix Loop**
    - If review or validation fails, fix the root cause and repeat the relevant gates, including any affected planned documentation check.
+
+## Review Packet
+
+When dispatching the independent reviewer for a non-trivial task, prefer a compact packet with:
+
+- repository root
+- task slug
+- implementation plan path
+- diff / commit range / changed files
+- executed validation commands and results
+- relevant architecture / contract doc paths
+- project-local architecture or workflow checks already run
+- known risk areas and expected review focus
+
+Do not forward the entire implementation conversation when a compact packet is enough.
 
 ## Output Expectations
 

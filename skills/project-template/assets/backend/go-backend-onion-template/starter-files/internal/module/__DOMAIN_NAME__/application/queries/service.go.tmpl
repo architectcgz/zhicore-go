@@ -1,0 +1,32 @@
+package queries
+
+import (
+	"context"
+
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/contracts"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/ports"
+)
+
+type Service struct {
+	repository ports.Repository
+}
+
+func NewService(repository ports.Repository) Service {
+	return Service{repository: repository}
+}
+
+func (s Service) List(ctx context.Context) ([]contracts.ItemView, error) {
+	items, err := s.repository.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]contracts.ItemView, 0, len(items))
+	for _, item := range items {
+		views = append(views, contracts.ItemView{
+			ID:   item.ID,
+			Name: item.Name,
+		})
+	}
+	return views, nil
+}

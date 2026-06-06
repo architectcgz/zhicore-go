@@ -52,6 +52,18 @@ Review for risk reduction, not for style theater.
 13. Keep subjective preferences out of blocker comments unless they hide a real maintenance or correctness cost.
 14. For independent reviews that gate non-trivial work, archive the review result using the Review Archive policy below.
 
+## When Used As The code-workflow Gate Reviewer
+
+When this skill is invoked as the final review gate for `code-workflow`:
+
+1. Treat the review as independent gate review, not implementation help.
+2. Assume the implementation context's own `completion-full` result is only self-check evidence.
+3. Use the repository's architecture docs, contracts, AGENTS rules, and local review commands as the baseline.
+4. Read the implementation plan and the executed validation evidence before judging merge-readiness.
+5. If project-local architecture or workflow checks exist, decide whether the existing evidence is sufficient or whether the narrowest relevant subset must be rerun.
+6. Return a clear gate verdict and identify material findings that must be fixed before completion.
+7. Same-context review does not satisfy this gate; if you detect that the review is not independent, state that limitation explicitly.
+
 ## Review Archive
 
 Default location for review evidence is the target repository:
@@ -100,6 +112,8 @@ Review archive files must include:
   Read before writing review feedback so comments stay precise, constructive, and properly prioritized.
 - `references/ctf-current-review-status-checks.md`
   Read when reviewing CTF repo changes or review documents that may reintroduce recently fixed backend/frontend review debt.
+- `~/.agents/harness/workflows/code-workflow/independent-review-protocol.md`
+  Read when the review is acting as the final `code-workflow` gate for a non-trivial task.
 
 ## Output Expectations
 

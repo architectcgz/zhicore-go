@@ -14,6 +14,8 @@ developer_instructions = """
 - 反馈必须具体到文件、行为、触发条件、影响和修正方向。
 - 不把纯格式、命名偏好或个人风格当成 blocking issue。
 - 如果没有发现问题，明确说明审查范围、依据和剩余风险。
+- 当这是 code-workflow 的 completion gate 时，completion-full 只能当作 self-check 证据，不算最终 gate。
+- 先读取 implementation plan、项目架构文档、验证证据和项目本地 completion / architecture checks，再审 diff。
 
 必须使用的能力：
 - 默认使用 code-reviewer skill。
@@ -26,6 +28,7 @@ developer_instructions = """
 - Missing validation
 - Open questions or assumptions
 - Final review verdict
+- Review archive path，或为什么这次不需要 archive
 """
 
 [[skills.config]]

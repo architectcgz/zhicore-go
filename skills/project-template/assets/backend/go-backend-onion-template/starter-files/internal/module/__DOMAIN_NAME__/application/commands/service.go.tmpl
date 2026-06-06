@@ -1,0 +1,61 @@
+package commands
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/contracts"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/domain"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/entity"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/ports"
+)
+
+type CreateInput struct {
+	Name string
+}
+
+type Service struct {
+	repository ports.Repository
+	txRunner   ports.TxRunner
+}
+
+func NewService(repository ports.Repository, txRunner ports.TxRunner) Service {
+	return Service{
+		repository: repository,
+		txRunner:   txRunner,
+	}
+}
+
+func (s Service) Create(ctx context.Context, input CreateInput) (contracts.ItemView, error) {
+	name, err := domain.NormalizeName(input.Name)
+	if err != nil {
+		return contracts.ItemView{}, err
+	}
+
+	now := time.Now().UTC()
+	item := &entity.Item{
+		ID:        fmt.Sprintf("%s-%d", "__DOMAIN_NAME__", now.UnixNano()),
+		Name:      name,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if err := s.withinTransaction(ctx, func(txCtx context.Context) error {
+		return s.repository.Save(txCtx, item)
+	}); err != nil {
+		return contracts.ItemView{}, err
+	}
+
+	return contracts.ItemView{
+		ID:   item.ID,
+		Name: item.Name,
+	}, nil
+}
+
+func (s Service) withinTransaction(ctx context.Context, fn func(context.Context) error) error {
+	if s.txRunner == nil {
+		return fn(ctx)
+	}
+	return s.txRunner.WithinTransaction(ctx, fn)
+}

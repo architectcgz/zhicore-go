@@ -1,0 +1,97 @@
+package bootstrap
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	redislib "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+
+	"__GO_MODULE__/internal/app"
+	"__GO_MODULE__/internal/config"
+	"__GO_MODULE__/internal/infrastructure/logger"
+	"__GO_MODULE__/internal/infrastructure/postgres"
+	infraredis "__GO_MODULE__/internal/infrastructure/redis"
+)
+
+func Run() {
+	rootCtx := context.Background()
+	env := os.Getenv("APP_ENV")
+
+	cfg, err := config.Load(env)
+	if err != nil {
+		panic(err)
+	}
+
+	log, err := logger.New(cfg.Log)
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = log.Sync() }()
+
+	db := mustOpenPostgres(rootCtx, cfg, log)
+	cache := openOptionalRedis(rootCtx, cfg, log)
+
+	server, err := app.NewHTTPServer(cfg, log, db, cache)
+	if err != nil {
+		closeResources(log, db, cache)
+		log.Fatal("http_server_init_failed", zap.Error(err))
+	}
+
+	go func() {
+		if serveErr := server.Start(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			log.Fatal("http_server_failed", zap.Error(serveErr))
+		}
+	}()
+
+	waitCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	<-waitCtx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error("http_server_shutdown_failed", zap.Error(err))
+	}
+	closeResources(log, db, cache)
+}
+
+func mustOpenPostgres(ctx context.Context, cfg *config.Config, log *zap.Logger) *gorm.DB {
+	db, err := postgres.Open(ctx, cfg.Postgres)
+	if err != nil {
+		log.Fatal("postgres_init_failed", zap.Error(err))
+	}
+	return db
+}
+
+func openOptionalRedis(ctx context.Context, cfg *config.Config, log *zap.Logger) *redislib.Client {
+	if cfg == nil || !cfg.Redis.Enabled {
+		log.Info("redis_disabled")
+		return nil
+	}
+	client, err := infraredis.NewClient(ctx, cfg.Redis)
+	if err != nil {
+		log.Fatal("redis_init_failed", zap.Error(err))
+	}
+	return client
+}
+
+func closeResources(log *zap.Logger, db *gorm.DB, cache *redislib.Client) {
+	if db != nil {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		} else {
+			log.Warn("postgres_sql_db_unavailable_for_close", zap.Error(err))
+		}
+	}
+	if cache != nil {
+		_ = cache.Close()
+	}
+}

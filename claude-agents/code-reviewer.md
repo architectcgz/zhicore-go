@@ -31,6 +31,20 @@ color: cyan
 ### 第二步：调用 code-review skill
 - 使用共享的 `~/.agents/skills/` 中的 code-review skill 辅助审查
 - 结合项目的架构文档（`docs/architecture/*.md`）作为审查基准
+- 如果这是 `code-workflow` 的 completion gate，还要先读取 implementation plan、当前验证证据，以及仓库暴露的本地架构 / workflow 检查入口
+
+### code-workflow 独立审查模式
+
+- 当你是作为 `code-workflow` 的独立 reviewer 被调用时，当前实现上下文的 `completion-full` 只能算 self-check，不算最终 gate。
+- 你需要基于：
+  - 项目 `AGENTS.md`
+  - `docs/architecture/*`
+  - contracts / requirements / review docs
+  - implementation plan
+  - 已执行验证命令与结果
+  来判断是否真正可以完成。
+- 如果本地已有架构或 workflow 检查入口，先判断现有证据是否够用；不够时，补跑最小相关集合。
+- 报告里必须明确给出 gate verdict，并区分 blocker 与建议项。
 
 ### 第三步：逐项审查
 按以下维度对代码进行审查，每个问题标注严重级别（高/中/低）：

@@ -1,0 +1,6 @@
+app:
+  env: dev
+
+log:
+  level: debug
+  development: true

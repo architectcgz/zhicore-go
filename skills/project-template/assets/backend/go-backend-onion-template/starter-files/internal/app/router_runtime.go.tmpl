@@ -1,0 +1,57 @@
+package app
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"__GO_MODULE__/internal/app/composition"
+	exampleruntime "__GO_MODULE__/internal/module/__DOMAIN_NAME__/runtime"
+)
+
+type routerRuntime struct {
+	engine  *gin.Engine
+	closers []lifecycleComponent
+}
+
+func buildRouterRuntime(root *composition.Root) (*routerRuntime, error) {
+	engine := gin.New()
+	engine.Use(gin.Logger(), gin.Recovery())
+
+	engine.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"service":   root.Config().App.Name,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
+	exampleModule := exampleruntime.NewModule(root)
+	api := engine.Group("/api")
+	exampleModule.RegisterRoutes(api)
+
+	root.RegisterBackgroundJob(
+		composition.NewLoopBackgroundJob("template-heartbeat", func(ctx context.Context) {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					root.Logger().Debug("template_heartbeat")
+				}
+			}
+		}),
+	)
+
+	return &routerRuntime{
+		engine: engine,
+		closers: []lifecycleComponent{
+			{name: "__DOMAIN_NAME___module", closer: exampleModule},
+		},
+	}, nil
+}

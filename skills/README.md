@@ -17,17 +17,30 @@
   - `security-vulnerability-scan`
   - `code-workflow`
 
-共享 workflow 入口：
+共享 workflow / harness 入口：
+
+- harness 初始化入口
+  - `bash ~/.agents/harness/init-project.sh <repo-root>`
+  - 这个入口会先初始化 harness，再默认安装 `code-workflow`，最后跑项目本地 consistency check。
+  - 低层命令 `harness-initializer.py` 和 `workflow-installer.sh` 继续保留给修复、调试和局部安装场景。
+
+- `project-template`
+  - 负责集中维护可复用的项目代码模板资产，以及项目级 `AGENTS.md` starter。
+  - 不负责决定是否安装 harness 或 workflow package。
 
 - `code-workflow`
   - 负责跨项目的非琐碎任务工作流模型：`琐碎任务 / 非琐碎任务` 判定、`writing-plans` 前置、每任务独立 worktree、`task-slug`、implementation plan、startup gate、review/doctor 分层。
+  - 对 `非琐碎任务`，`completion-full` 只算实现上下文自检；完成前还需要独立 `code-reviewer` agent gate，再进入 `workflow-governance`。
   - 共享 package：`~/.agents/harness/workflows/code-workflow/`
+  - 独立 review handoff 协议：`~/.agents/harness/workflows/code-workflow/independent-review-protocol.md`
   - 共享脚本入口：`bash ~/workspace/projects/scripts/start-workflow.sh <topic-or-slug>`
   - 共享安装器：`bash ~/.agents/harness/workflow-installer.sh <repo-root> code-workflow`
+  - 共享同步入口：`bash ~/.agents/harness/workflow-sync.sh <repo-root> code-workflow`
+  - 如果当前任务改了 shared `code-workflow` package，本轮结束前必须对目标仓库显式跑一次同步，不假设自动传播
   - 共享基线校验：`bash ~/.agents/harness/workflow-sync-check.sh <repo-root> code-workflow`
   - 完成归档入口：`bash harness/workflow-plugins/code-workflow/archive_task_artifacts.sh [--task-slug <slug>]`
 
-- `harness-workflow`
+- `workflow-package-manager`
   - 负责共享 workflow package 的选择、安装、升级和漂移校验。
   - 入口：`bash ~/.agents/harness/workflow-installer.sh <repo-root> <workflow-name>`
   - 校验：`bash ~/.agents/harness/workflow-sync-check.sh <repo-root> <workflow-name>`

@@ -1,0 +1,63 @@
+package infrastructure
+
+import (
+	"context"
+	"errors"
+	"sync"
+
+	"gorm.io/gorm"
+
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/entity"
+)
+
+type Repository struct {
+	db    *gorm.DB
+	mu    sync.RWMutex
+	items map[string]entity.Item
+}
+
+func NewRepository(db *gorm.DB) *Repository {
+	return &Repository{
+		db:    db,
+		items: make(map[string]entity.Item),
+	}
+}
+
+func (r *Repository) List(_ context.Context) ([]entity.Item, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	items := make([]entity.Item, 0, len(r.items))
+	for _, item := range r.items {
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *Repository) GetByID(_ context.Context, id string) (*entity.Item, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.items[id]
+	if !ok {
+		return nil, errors.New("item not found")
+	}
+	copy := item
+	return &copy, nil
+}
+
+func (r *Repository) Save(_ context.Context, item *entity.Item) error {
+	if item == nil {
+		return errors.New("item is required")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.items[item.ID] = *item
+	_ = r.db
+	return nil
+}
+
+func (r *Repository) Close(_ context.Context) error {
+	return nil
+}

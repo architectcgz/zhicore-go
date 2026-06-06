@@ -1,0 +1,14 @@
+{
+  "name": "vue-feature-sliced-template",
+  "category": "frontend",
+  "source_project": "ctf",
+  "summary": "Vue 3 + Vite + Feature-Sliced style starter based on the CTF frontend structure.",
+  "primary_stack": ["vue3", "vite", "typescript", "pinia", "vue-router", "vitest"],
+  "placeholders": {
+    "__APP_NAME__": "Application name",
+    "__DEFAULT_AUTH_REDIRECT__": "Default authenticated landing route",
+    "__DEFAULT_LOGIN_PATH__": "Login route path"
+  },
+  "starter_files_dir": "starter-files",
+  "tree_file": "tree.txt"
+}

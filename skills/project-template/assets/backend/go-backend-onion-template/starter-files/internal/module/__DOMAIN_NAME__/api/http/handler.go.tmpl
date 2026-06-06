@@ -1,0 +1,58 @@
+package http
+
+import (
+	nethttp "net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/application/commands"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/application/queries"
+)
+
+type Handler struct {
+	commands commands.Service
+	queries  queries.Service
+}
+
+type createItemRequest struct {
+	Name string `json:"name"`
+}
+
+func NewHandler(commandService commands.Service, queryService queries.Service) *Handler {
+	return &Handler{
+		commands: commandService,
+		queries:  queryService,
+	}
+}
+
+func (h *Handler) RegisterRoutes(group *gin.RouterGroup) {
+	if group == nil {
+		return
+	}
+	group.GET("", h.list)
+	group.POST("", h.create)
+}
+
+func (h *Handler) list(c *gin.Context) {
+	items, err := h.queries.List(c.Request.Context())
+	if err != nil {
+		c.JSON(nethttp.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(nethttp.StatusOK, gin.H{"items": items})
+}
+
+func (h *Handler) create(c *gin.Context) {
+	var req createItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(nethttp.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	item, err := h.commands.Create(c.Request.Context(), commands.CreateInput{Name: req.Name})
+	if err != nil {
+		c.JSON(nethttp.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(nethttp.StatusCreated, item)
+}

@@ -1,0 +1,125 @@
+<mxfile host="app.diagrams.net" modified="2026-06-06T23:30:00.000Z" agent="Codex" version="30.0.2">
+  <diagram id="override-model" name="Override Model">
+    <mxGraphModel dx="1420" dy="840" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="10" value="Shared code-workflow package&#xa;Global owner" style="swimlane;html=1;rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="980" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="Workflow semantics&#xa;stage model, startup gate,&#xa;independent review contract" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="10">
+          <mxGeometry x="30" y="50" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="Managed assets installed&#xa;scripts/start-implementation.sh&#xa;check-startup-gate.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="10">
+          <mxGeometry x="270" y="50" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="Shared stage runner&#xa;harness/workflow-plugins/code-workflow/&#xa;run_workflow_stage.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="10">
+          <mxGeometry x="520" y="50" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="Do not repo-override here&#xa;Change shared package, then sync" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="10">
+          <mxGeometry x="780" y="50" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="20" value="Project override layer&#xa;Recommended adaptation surface" style="swimlane;html=1;rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="230" width="980" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="Stage plugin dirs&#xa;pre-commit-quick.d&#xa;completion-full.d&#xa;workflow-governance.d" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="20">
+          <mxGeometry x="30" y="55" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="Project decides&#xa;which checks run in which stage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="20">
+          <mxGeometry x="290" y="55" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="Project may add / remove / reorder&#xa;plugin scripts inside a stage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="20">
+          <mxGeometry x="550" y="55" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="Stable wrappers stay thin&#xa;scripts/check-*.sh -> local checks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="20">
+          <mxGeometry x="800" y="55" width="150" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="30" value="Project facts and enforcement&#xa;Repo-owned logic" style="swimlane;html=1;rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="480" width="980" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="harness/checks/*&#xa;project-local mechanical checks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="30">
+          <mxGeometry x="40" y="55" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="scripts/check-backend-architecture.sh&#xa;scripts/check-frontend-architecture.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="30">
+          <mxGeometry x="300" y="55" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="docs/architecture/*&#xa;contracts&#xa;project AGENTS rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="30">
+          <mxGeometry x="600" y="55" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="This is where project truth lives" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="30">
+          <mxGeometry x="810" y="55" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="40" value="Independent review orchestration&#xa;Not a shell plugin stage" style="swimlane;html=1;rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="20" width="420" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="completion-full evidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="40">
+          <mxGeometry x="110" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="Compact review packet&#xa;plan + diff + validation +&#xa;architecture inputs + risks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="40">
+          <mxGeometry x="95" y="160" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="Independent code-reviewer agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="40">
+          <mxGeometry x="95" y="310" width="230" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="Reviewer uses project docs,&#xa;project checks, and local rules&#xa;as review basis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="40">
+          <mxGeometry x="95" y="420" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="Only after review passes:&#xa;workflow-governance / archive / handoff" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="40">
+          <mxGeometry x="95" y="560" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="101" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;" edge="1" parent="1" source="11" target="12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="102" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#6c8ebf;" edge="1" parent="1" source="12" target="13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="103" value="installs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="13" target="21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="104" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="21" target="22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="105" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="22" target="23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="106" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#82b366;" edge="1" parent="1" source="23" target="24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="107" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#b85450;" edge="1" parent="1" source="23" target="31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="108" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#b85450;" edge="1" parent="1" source="31" target="32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="109" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#b85450;" edge="1" parent="1" source="32" target="33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="110" value="feeds basis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="33" target="44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="111" value="evidence" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="22" target="41">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="112" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="41" target="42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="113" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="42" target="43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="114" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="43" target="44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="115" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#9673a6;" edge="1" parent="1" source="44" target="45">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="116" value="sync after shared package changes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;endArrow=classic;strokeColor=#d79b00;" edge="1" parent="1" source="14" target="21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

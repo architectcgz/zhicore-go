@@ -17,7 +17,9 @@ Use this layered timing model:
 2. Task-intake analysis gate: relevant `superpowers` analysis pass first, then `grill-with-docs`
 3. Coding-start gate
 4. Pre-commit lightweight checks
-5. Review / doctor / CI governance audit
+5. Completion validation
+6. Independent review gate
+7. Review / doctor / CI governance audit
 
 Do not collapse these into one script.
 
@@ -44,6 +46,10 @@ Do not collapse these into one script.
    - usually `superpowers:brainstorming`
    - debugging or failure tasks usually `superpowers:systematic-debugging`
    - if another `superpowers` analysis skill is a better fit, use that instead
+9. For non-trivial work, `completion-full` is still implementation-context self-check, not the final review gate.
+10. The final review gate for non-trivial work must run in a separate agent or equivalently independent context.
+11. If the user explicitly asks to use `code-workflow` together with an independent reviewer / separate agent / 独立 review agent, that authorizes the minimum reviewer subagent required for the gate.
+12. If tool policy or user instruction does not authorize spawning that reviewer, state clearly that the independent review gate remains unmet.
 
 ## Shared Entry
 
@@ -78,15 +84,37 @@ To verify that a repository still matches the shared workflow baseline:
 bash ~/.agents/harness/workflow-sync-check.sh <repo-root> code-workflow
 ```
 
+To resync a repository after the shared package changes:
+
+```bash
+bash ~/.agents/harness/workflow-sync.sh <repo-root> code-workflow
+```
+
 This scaffold provides the generic common pieces:
 
 - `scripts/check-task-intake.sh`
 - `scripts/start-implementation.sh`
 - `scripts/check-startup-gate.sh`
+- `harness/workflow-plugins/code-workflow/run_workflow_stage.sh`
 - `harness/workflow-plugins/code-workflow/archive_task_artifacts.sh`
 - `harness/checks/check_startup_gate.py`
 - `harness/templates/implementation-plan-skeleton.md`
 - `/.harness/session-gates/` ignore rule
+
+The shared stage runner defines the common stage names:
+
+- `pre-commit-quick`
+- `completion-full`
+- `workflow-governance`
+
+Repositories still own which local plugins are registered under each `<stage>.d/` directory.
+
+The independent review gate is intentionally not a shell stage owned by this package.
+It is an orchestration step above the shell runner:
+
+- `completion-full` proves implementation-context validation
+- a separate `code-reviewer` agent performs the real gate review
+- `workflow-governance` remains the post-review harness / docs / repo-governance audit
 
 Generated managed files carry a `Managed by code-workflow package` version header so shared upgrades and drift checks have a stable mechanical target.
 
@@ -100,6 +128,12 @@ The archive script should:
 
 Project-specific protected-surface checks and repo-specific review audits remain local.
 
+Read the shared handoff contract at:
+
+```text
+~/.agents/harness/workflows/code-workflow/independent-review-protocol.md
+```
+
 ## Project Adaptation Boundary
 
 Keep these global:
@@ -109,6 +143,7 @@ Keep these global:
 - workspace / slug / plan / gate binding
 - commit task binding convention
 - shared scaffold installer
+- the independent-review orchestration contract and handoff shape
 
 Keep these project-local:
 
@@ -117,6 +152,33 @@ Keep these project-local:
 - architecture-specific checks
 - OpenAPI or contract sync audits
 - project review categories and docs layout
+- which project-local architecture / contract / review commands the reviewer should rerun
+
+## Independent Review Gate
+
+For non-trivial work, after `completion-full` passes:
+
+1. Prepare a compact review handoff instead of reusing the whole implementation conversation.
+2. Spawn a separate `code-reviewer` agent with that handoff.
+3. Have the reviewer use:
+   - the `code-reviewer` skill
+   - the target repository's `AGENTS.md`
+   - the relevant `docs/architecture/*`, contracts, and project-local review rules
+4. Include the implementation plan path, changed files or diff basis, and executed validation evidence.
+5. If the repository exposes project-local architecture or workflow review commands, include them as review inputs and rerun the narrowest relevant set when evidence is weak.
+6. Treat same-context review as self-check only, never as the independent completion gate.
+
+Recommended reviewer context:
+
+- repo root
+- task slug
+- implementation plan path
+- diff / commit range / files under review
+- validation commands and results
+- architecture / contract docs to use as the review basis
+- known risk areas and expected review focus
+
+Do not treat "I looked over my own changes after coding" as satisfying this gate.
 
 ## Interaction With Other Skills
 
@@ -125,8 +187,9 @@ Keep these project-local:
 - Use the relevant `superpowers` analysis skill at task intake, usually `superpowers:brainstorming`.
 - Use `superpowers:systematic-debugging` instead when the task starts from a bug, failure, or unexpected behavior.
 - Use `grill-with-docs` immediately after the `superpowers` analysis pass, before the plan is considered ready.
-- Use `harness-workflow` when a repository needs the `code-workflow` package installed or checked.
+- Use `workflow-package-manager` when a repository needs the `code-workflow` package installed or checked.
 - Use `harness-engineering` when a repository needs the scaffold installed or repaired.
+- Use `code-reviewer` for the independent completion gate after `completion-full`.
 
 ## Required Behavior
 
@@ -140,4 +203,7 @@ When this skill applies:
    - relevant `superpowers` analysis skill
    - `grill-with-docs`
 6. Use the analysis gate output to finish the implementation plan before implementation starts.
-7. When the repository uses this workflow, completed plan/task artifacts should be archived through the shared archive script instead of staying in the active plan/task directories indefinitely.
+7. For non-trivial implementation, do not stop at `completion-full`; run the independent review gate before claiming completion.
+8. When the user or tool policy permits delegation, prefer a separate `code-reviewer` agent for that gate instead of reusing the implementation context.
+9. If the shared `code-workflow` package itself was modified in the current task, run `bash ~/.agents/harness/workflow-sync.sh <repo-root> code-workflow` against each target repository before handoff.
+10. When the repository uses this workflow, completed plan/task artifacts should be archived through the shared archive script instead of staying in the active plan/task directories indefinitely.

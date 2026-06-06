@@ -12,6 +12,7 @@
 - 共享 skill、共享 harness、共享 agents 的主体默认放在 `~/.agents/` 下维护，例如 `~/.agents/skills/`、`~/.agents/harness/`、`~/.agents/codex-agents/`、`~/.agents/claude-agents/`。
 - `~/.codex/skills/`、`~/.codex/agents/`、`~/.claude/skills/`、`~/.claude/agents/` 默认只作为入口或软链接层；除非某项内容明确只属于单一 agent，否则不要在这些入口层分别维护一份正文。
 - 当共享 skill / harness / agent 需要修改时，默认直接修改 `~/.agents/` 下的主体，再检查各入口软链接是否仍然正确；不要先改 `.codex` 再回填。
+- 当修改 `~/.agents/harness/workflows/<workflow-name>/` 下的 shared workflow package 后，结束本轮前必须对目标仓库显式执行一次 `bash ~/.agents/harness/workflow-sync.sh <repo-root> <workflow-name>`；不要假设项目会自动同步。
 
 ## 1. 语言与沟通
 - 默认使用中文沟通；代码、命令、路径、报错、协议字段保持原样。
@@ -120,7 +121,7 @@
 - `.harness/`、`harness/`、`feedback/`、harness 检查和 hook 初始化：
   - `harness-engineering`
 - 共享 workflow package 的选择、安装、升级、基线校验：
-  - `harness-workflow`
+  - `workflow-package-manager`
 - 非琐碎任务工作流治理、共享 startup gate、worktree/task-slug/plan 绑定：
   - `code-workflow`
 - 需要制定 plan 或方案时：

@@ -1,0 +1,55 @@
+package runtime
+
+import (
+	"context"
+
+	"github.com/gin-gonic/gin"
+
+	"gorm.io/gorm"
+
+	"__GO_MODULE__/internal/app/composition"
+	httpapi "__GO_MODULE__/internal/module/__DOMAIN_NAME__/api/http"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/application/commands"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/application/queries"
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/infrastructure"
+)
+
+type Module struct {
+	repository *infrastructure.Repository
+	handler    *httpapi.Handler
+}
+
+func NewModule(root *composition.Root) Module {
+	repository := infrastructure.NewRepository(root.DB())
+	txRunner := infrastructure.NewTxRunner(root.DB())
+	commandService := commands.NewService(repository, txRunner)
+	queryService := queries.NewService(repository)
+
+	return Module{
+		repository: repository,
+		handler: httpapi.NewHandler(
+			commandService,
+			queryService,
+		),
+	}
+}
+
+func (m Module) RegisterRoutes(group *gin.RouterGroup) {
+	if group == nil || m.handler == nil {
+		return
+	}
+	m.handler.RegisterRoutes(group.Group("/__DOMAIN_NAME__"))
+}
+
+func (m Module) Close(ctx context.Context) error {
+	if m.repository == nil {
+		return nil
+	}
+	return m.repository.Close(ctx)
+}
+
+var _ interface {
+	Close(context.Context) error
+} = Module{}
+
+var _ = func(*gorm.DB) {} // keep gorm visible in the starter for future persistence replacement

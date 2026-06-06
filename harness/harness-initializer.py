@@ -64,6 +64,12 @@ def write(path: Path, content: str, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | 0o111)
 
 
+def write_if_missing(path: Path, content: str, executable: bool = False) -> None:
+    if path.exists():
+        return
+    write(path, content, executable=executable)
+
+
 def read_asset(relative: str) -> str:
     return (DOCS_ASSETS / relative).read_text(encoding="utf-8")
 
@@ -76,6 +82,23 @@ def ensure_documentation_scaffold(repo: Path) -> None:
     write(repo / "docs" / "documentation-rules.md", read_asset("documentation-rules.md"))
     write(repo / "docs" / "README.md", read_asset("README.md"))
     write(repo / "docs" / "improvements" / "README.md", read_asset("improvements/README.md"))
+    write_if_missing(
+        repo / "docs" / "architecture" / "README.md",
+        """# Architecture Index
+
+This directory stores current system design, module boundaries, data flow, integration points, and long-lived technical constraints.
+
+## How To Use
+
+- Keep only current architecture facts here.
+- When a structural change lands, update this index or the nearest affected architecture document in the same change.
+- If the project has not written stable architecture facts yet, record that state explicitly instead of leaving the directory unindexed.
+
+## Current Entries
+
+- Add links to active architecture documents here as they appear.
+""",
+    )
 
 
 def ensure_claude_symlink(repo: Path) -> None:
@@ -256,6 +279,24 @@ python3 ~/.agents/harness/skill-sync/remind_skill_sync.py --cwd "$cwd" "$@"
 """
 
 
+def architecture_guard_paths_policy() -> str:
+    return """# One repo-relative path per line.
+# These are the minimum architecture fact sources that must stay present.
+
+docs/architecture/README.md
+"""
+
+
+def architecture_guard_commands_policy() -> str:
+    return """# One shell command per line.
+# Add project-specific architecture checks here when they exist.
+# Examples:
+# go test ./... -run 'Architecture|Boundar'
+# npm run test:architecture
+# bash scripts/check-backend-architecture.sh
+"""
+
+
 def test_workflow_check_script() -> str:
     return r"""#!/usr/bin/env bash
 set -euo pipefail
@@ -362,6 +403,113 @@ if [[ "$fail" -eq 0 ]]; then
   echo "$(green '✓ test workflow checks passed')"
 else
   echo "$(red '✗ test workflow checks failed')"
+fi
+
+exit "$fail"
+"""
+
+
+def architecture_guard_script() -> str:
+    return r"""#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$script_dir/.."
+
+fail=0
+ran_command=0
+
+red() { printf '\033[31m%s\033[0m' "$1"; }
+green() { printf '\033[32m%s\033[0m' "$1"; }
+
+pass_msg() {
+  echo "  $(green PASS) — $1"
+}
+
+fail_msg() {
+  echo "  $(red FAIL) — $1"
+  fail=1
+}
+
+check_contains() {
+  local file="$1" pattern="$2" label="$3"
+  if [[ ! -f "$file" ]]; then
+    fail_msg "$label: missing $file"
+  elif grep -qE "$pattern" "$file"; then
+    pass_msg "$label"
+  else
+    fail_msg "$label"
+  fi
+}
+
+echo "[A1] architecture fact source exists"
+if [[ -d "docs/architecture" ]]; then
+  pass_msg "docs/architecture directory exists"
+else
+  fail_msg "docs/architecture directory is missing"
+fi
+
+if [[ -f "docs/architecture/README.md" ]]; then
+  pass_msg "docs/architecture/README.md exists"
+else
+  fail_msg "docs/architecture/README.md is missing"
+fi
+
+echo "[A2] architecture navigation is wired"
+check_contains "AGENTS.md" 'docs/architecture/' "AGENTS references docs/architecture/"
+check_contains "docs/README.md" 'docs/architecture/' "docs/README.md references docs/architecture/"
+
+echo "[A3] architecture guard policies exist"
+if [[ -f "harness/policies/architecture-guard-paths.txt" ]]; then
+  pass_msg "harness/policies/architecture-guard-paths.txt exists"
+else
+  fail_msg "harness/policies/architecture-guard-paths.txt is missing"
+fi
+
+if [[ -f "harness/policies/architecture-guard-commands.txt" ]]; then
+  pass_msg "harness/policies/architecture-guard-commands.txt exists"
+else
+  fail_msg "harness/policies/architecture-guard-commands.txt is missing"
+fi
+
+echo "[A4] required architecture paths stay present"
+if [[ -f "harness/policies/architecture-guard-paths.txt" ]]; then
+  while IFS= read -r path || [[ -n "$path" ]]; do
+    path="${path#"${path%%[![:space:]]*}"}"
+    path="${path%"${path##*[![:space:]]}"}"
+    [[ -z "$path" || "$path" == \#* ]] && continue
+    if [[ -e "$path" ]]; then
+      pass_msg "$path exists"
+    else
+      fail_msg "$path is missing"
+    fi
+  done < "harness/policies/architecture-guard-paths.txt"
+fi
+
+echo "[A5] project-specific architecture commands"
+if [[ -f "harness/policies/architecture-guard-commands.txt" ]]; then
+  while IFS= read -r command || [[ -n "$command" ]]; do
+    command="${command#"${command%%[![:space:]]*}"}"
+    command="${command%"${command##*[![:space:]]}"}"
+    [[ -z "$command" || "$command" == \#* ]] && continue
+    ran_command=1
+    echo "  [cmd] $command"
+    if bash -lc "$command"; then
+      pass_msg "$command"
+    else
+      fail_msg "$command"
+    fi
+  done < "harness/policies/architecture-guard-commands.txt"
+fi
+
+if [[ "$ran_command" -eq 0 ]]; then
+  pass_msg "no project-specific architecture commands registered"
+fi
+
+if [[ "$fail" -eq 0 ]]; then
+  echo "$(green '✓ architecture guard passed')"
+else
+  echo "$(red '✗ architecture guard failed')"
 fi
 
 exit "$fail"
@@ -1073,6 +1221,7 @@ fi
 
 echo "[C5] hooks and commit message guard are wired"
 check_file "scripts/check-commit-message.sh"
+check_file "scripts/check-architecture.sh"
 check_file "scripts/check-test-workflow.sh"
 if [[ -f ".githooks/pre-commit" ]]; then
   check_contains ".githooks/pre-commit" 'scripts/check-consistency\.sh' "pre-commit runs scripts/check-consistency.sh"
@@ -1088,7 +1237,15 @@ else
   fail=1
 fi
 
-echo "[C6] test workflow guard is surfaced to the operator"
+echo "[C6] architecture guard is surfaced to the operator"
+if [[ -x "scripts/check-architecture.sh" ]]; then
+  bash scripts/check-architecture.sh
+else
+  echo "  $(red FAIL) — scripts/check-architecture.sh is not executable"
+  fail=1
+fi
+
+echo "[C7] test workflow guard is surfaced to the operator"
 if [[ -x "scripts/check-test-workflow.sh" ]]; then
   bash scripts/check-test-workflow.sh
 else
@@ -1096,7 +1253,7 @@ else
   fail=1
 fi
 
-echo "[C7] open todos are surfaced to the operator"
+echo "[C8] open todos are surfaced to the operator"
 if [[ -x "scripts/check-open-todos.sh" ]]; then
   bash scripts/check-open-todos.sh --quiet-if-empty
 else
@@ -1104,7 +1261,7 @@ else
   fail=1
 fi
 
-echo "[C8] todo governance stays consistent"
+echo "[C9] todo governance stays consistent"
 if [[ -x "scripts/check-todo-governance.sh" ]]; then
   bash scripts/check-todo-governance.sh
 else
@@ -1221,6 +1378,7 @@ fi
 
 echo "[C5] hooks and commit message guard are wired"
 check_file "scripts/check-commit-message.sh"
+check_file "scripts/check-architecture.sh"
 check_file "scripts/check-test-workflow.sh"
 if [[ -f ".githooks/pre-commit" ]]; then
   check_contains ".githooks/pre-commit" 'scripts/check-consistency\.sh' "pre-commit runs scripts/check-consistency.sh"
@@ -1245,7 +1403,15 @@ check_file "scripts/check-skill-sync-reminder.sh"
 check_contains "docs/documentation-rules.md" 'No Circular References' "documentation rules forbid circular references"
 check_contains "AGENTS.md" 'scripts/check-open-todos\.sh' "AGENTS references todo reminder"
 
-echo "[C7] test workflow guard is surfaced to the operator"
+echo "[C7] architecture guard is surfaced to the operator"
+if [[ -x "scripts/check-architecture.sh" ]]; then
+  bash scripts/check-architecture.sh
+else
+  echo "  $(red FAIL) — scripts/check-architecture.sh is not executable"
+  fail=1
+fi
+
+echo "[C8] test workflow guard is surfaced to the operator"
 if [[ -x "scripts/check-test-workflow.sh" ]]; then
   bash scripts/check-test-workflow.sh
 else
@@ -1253,7 +1419,7 @@ else
   fail=1
 fi
 
-echo "[C8] open todos are surfaced to the operator"
+echo "[C9] open todos are surfaced to the operator"
 if [[ -x "scripts/check-open-todos.sh" ]]; then
   bash scripts/check-open-todos.sh --quiet-if-empty
 else
@@ -1261,7 +1427,7 @@ else
   fail=1
 fi
 
-echo "[C9] todo governance stays consistent"
+echo "[C10] todo governance stays consistent"
 if [[ -x "scripts/check-todo-governance.sh" ]]; then
   bash scripts/check-todo-governance.sh
 else
@@ -1289,11 +1455,14 @@ def main() -> None:
         for relative, content in strict_docs(project_name, args.profile).items():
             write(repo / relative, content)
         write(repo / "scripts/check-consistency.sh", check_script(), executable=True)
+        write(repo / "scripts/check-architecture.sh", architecture_guard_script(), executable=True)
         write(repo / "scripts/check-test-workflow.sh", test_workflow_check_script(), executable=True)
         write(repo / "scripts/check-open-todos.sh", todo_reminder_script(), executable=True)
         write(repo / "scripts/check-todo-governance.sh", todo_governance_check_script(), executable=True)
         write(repo / "scripts/check-skill-sync-reminder.sh", skill_sync_reminder_script(), executable=True)
         write(repo / "scripts/check-commit-message.sh", commit_message_check_script(), executable=True)
+        write_if_missing(repo / "harness/policies/architecture-guard-paths.txt", architecture_guard_paths_policy())
+        write_if_missing(repo / "harness/policies/architecture-guard-commands.txt", architecture_guard_commands_policy())
         write(repo / "harness/policies/commit-message.json", commit_message_policy_content(args.profile))
 
         insert_or_replace(
@@ -1312,10 +1481,12 @@ def main() -> None:
 | `works/` | 作品输出 | 可展示模板、报告和说明 |
 | `prompts/` | 提示词积累 | 已验证提示词和工作流 |
 | `references/` | 外部资源 | 文章、仓库和工具索引 |
+| `docs/architecture/` | 架构事实 | 当前系统设计、边界和长期技术约束 |
 
 项目根保持 `CLAUDE.md -> AGENTS.md`，让 Claude / Codex 使用同一份入口规则。
 
-机械化检查：`bash scripts/check-consistency.sh`。""",
+机械化检查：`bash scripts/check-consistency.sh`。
+架构守卫入口：`bash scripts/check-architecture.sh`。""",
         )
         insert_or_replace(
             repo / "AGENTS.md",
@@ -1355,11 +1526,17 @@ def main() -> None:
 
 ```bash
 bash scripts/check-consistency.sh
+```
+
+最小架构守卫：
+
+```bash
+bash scripts/check-architecture.sh
 ```""",
         )
         hook_docs = """## Harness 检查
 
-- `pre-commit`：运行 `scripts/check-consistency.sh`，其中会继续执行 `scripts/check-test-workflow.sh`，检查严格参考 harness 的顶层目录、导航、资料计数和测试工作流约束。
+- `pre-commit`：运行 `scripts/check-consistency.sh`，其中会继续执行 `scripts/check-architecture.sh` 与 `scripts/check-test-workflow.sh`，检查严格参考 harness 的顶层目录、导航、最小架构守卫和测试工作流约束。
 - `pre-commit`：非阻塞运行 `scripts/check-skill-sync-reminder.sh --staged`，提醒把跨项目规则上收全局 skill 或 shared harness。
 - `commit-msg`：运行 `scripts/check-commit-message.sh`，由共享检查器读取 `harness/policies/commit-message.json` 校验标题、正文和激活任务的 `Task:` 绑定。
 - 原有 API 合同同步逻辑继续保留。"""
@@ -1369,11 +1546,14 @@ bash scripts/check-consistency.sh
         for relative, content in ctf_current_docs(project_name, args.profile).items():
             write(repo / relative, content)
         write(repo / "scripts/check-consistency.sh", ctf_current_check_script(), executable=True)
+        write(repo / "scripts/check-architecture.sh", architecture_guard_script(), executable=True)
         write(repo / "scripts/check-test-workflow.sh", test_workflow_check_script(), executable=True)
         write(repo / "scripts/check-open-todos.sh", todo_reminder_script(), executable=True)
         write(repo / "scripts/check-todo-governance.sh", todo_governance_check_script(), executable=True)
         write(repo / "scripts/check-skill-sync-reminder.sh", skill_sync_reminder_script(), executable=True)
         write(repo / "scripts/check-commit-message.sh", commit_message_check_script(), executable=True)
+        write_if_missing(repo / "harness/policies/architecture-guard-paths.txt", architecture_guard_paths_policy())
+        write_if_missing(repo / "harness/policies/architecture-guard-commands.txt", architecture_guard_commands_policy())
         write(repo / "harness/policies/commit-message.json", commit_message_policy_content(args.profile))
 
         insert_or_replace(
@@ -1394,10 +1574,12 @@ bash scripts/check-consistency.sh
 | `feedback/` | 反馈记录 | 踩坑、修正和可复用流程经验 |
 | `docs/documentation-rules.md` | 文档规范 | 改文档前置读取与新增路径登记 |
 | `docs/README.md` | 文档索引 | 当前事实源地图和文档阅读顺序 |
+| `docs/architecture/` | 架构事实 | 当前系统设计、边界和长期技术约束 |
 
 项目根保持 `CLAUDE.md -> AGENTS.md`，让 Claude / Codex 使用同一份入口规则。
 
 机械化检查：`bash scripts/check-consistency.sh`。
+架构守卫入口：`bash scripts/check-architecture.sh`。
 
 开发过程中，如果某个模块第一次形成稳定复用模式，主动补 `.harness/reuse-index/<source-path>/README.md`；如果模块内部也已经分出稳定层次，再继续补该子路径下的镜像 `README.md`。这是本地提醒，不作为 pre-commit 阻塞项。
 
@@ -1443,11 +1625,17 @@ bash scripts/check-consistency.sh
 
 ```bash
 bash scripts/check-consistency.sh
+```
+
+最小架构守卫：
+
+```bash
+bash scripts/check-architecture.sh
 ```""",
         )
         hook_docs = """## Harness 检查
 
-- `pre-commit`：运行 `scripts/check-consistency.sh`，其中会继续执行 `scripts/check-test-workflow.sh`，检查 CTF 探索版 harness 的目录、导航、本地私有 reuse 索引归属和测试工作流约束。
+- `pre-commit`：运行 `scripts/check-consistency.sh`，其中会继续执行 `scripts/check-architecture.sh` 与 `scripts/check-test-workflow.sh`，检查 CTF 探索版 harness 的目录、导航、本地私有 reuse 索引归属、最小架构守卫和测试工作流约束。
 - `pre-commit`：非阻塞运行 `scripts/check-skill-sync-reminder.sh --staged`，提醒把跨项目规则上收全局 skill 或 shared harness。
 - `commit-msg`：运行 `scripts/check-commit-message.sh`，由共享检查器读取 `harness/policies/commit-message.json` 校验标题、正文和激活任务的 `Task:` 绑定。
 - 原有项目 hook 逻辑继续保留。"""

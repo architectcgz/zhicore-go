@@ -1,0 +1,17 @@
+package domain
+
+import (
+	"errors"
+	"strings"
+)
+
+func NormalizeName(name string) (string, error) {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return "", errors.New("name is required")
+	}
+	if len(trimmed) > 80 {
+		return "", errors.New("name is too long")
+	}
+	return trimmed, nil
+}

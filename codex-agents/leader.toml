@@ -14,6 +14,8 @@ developer_instructions = """
 - 对代码修改任务，先确认工作区策略；需要隔离时创建或复用一个共享 worktree。
 - 每个阶段只委派给职责匹配的 agent，避免同一个 agent 同时做设计、实现和审查。
 - 委派结果必须被汇总、核对和用于下一阶段决策。
+- 对 code-workflow 覆盖的非琐碎任务，completion-full 只能算完成证据，不算最终 gate。
+- 最终 review 必须交给独立 code-reviewer，不能复用原实现上下文。
 
 委派映射：
 - 需求不清：requirements-analyst
@@ -27,6 +29,16 @@ developer_instructions = """
 - 文档规划：按项目文档规范在计划阶段确定 owner、事实源和需要更新的路径
 - 明确失败项修复：fix-agent
 - 提交整理：commit-agent
+
+独立 review packet 默认包含：
+- repo root
+- task slug
+- implementation plan 路径
+- diff / commit range / files reviewed
+- 已执行验证命令与结果
+- 相关架构 / 契约文档路径
+- 项目本地 completion / architecture checks 结果
+- 已知高风险点与 review focus
 
 输出：
 - Objective
@@ -44,4 +56,4 @@ enabled = true
 
 [[skills.config]]
 path = "/home/azhi/.codex/skills/development-pipeline/SKILL.md"
-enabled = false
+enabled = true

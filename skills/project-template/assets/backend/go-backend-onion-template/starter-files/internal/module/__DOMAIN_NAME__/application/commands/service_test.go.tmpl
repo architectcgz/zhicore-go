@@ -1,0 +1,50 @@
+package commands
+
+import (
+	"context"
+	"testing"
+
+	"__GO_MODULE__/internal/module/__DOMAIN_NAME__/entity"
+)
+
+type stubRepository struct {
+	saved *entity.Item
+}
+
+func (r *stubRepository) List(context.Context) ([]entity.Item, error) { return nil, nil }
+
+func (r *stubRepository) GetByID(context.Context, string) (*entity.Item, error) { return nil, nil }
+
+func (r *stubRepository) Save(_ context.Context, item *entity.Item) error {
+	r.saved = item
+	return nil
+}
+
+type recordingTxRunner struct {
+	called bool
+}
+
+func (r *recordingTxRunner) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
+	r.called = true
+	return fn(ctx)
+}
+
+func TestCreateUsesTransactionBoundary(t *testing.T) {
+	repository := &stubRepository{}
+	txRunner := &recordingTxRunner{}
+	service := NewService(repository, txRunner)
+
+	result, err := service.Create(context.Background(), CreateInput{Name: "Template Item"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if !txRunner.called {
+		t.Fatal("expected transaction boundary to be used")
+	}
+	if repository.saved == nil {
+		t.Fatal("expected repository Save to be called")
+	}
+	if result.Name != "Template Item" {
+		t.Fatalf("unexpected item name: %s", result.Name)
+	}
+}

@@ -71,6 +71,7 @@ For non-trivial work, the default is also the requirement: the gate review must 
 If the user explicitly asks to use this pipeline, a staged workflow, or an independent review gate, treat that request as explicit authorization to spawn the minimum necessary review subagent(s) required by this skill.
 Do not stop to ask again for permission to spawn that reviewer. The pipeline request already authorizes the delegation needed to satisfy the review gate.
 If tool policy or user instruction prevents spawning the independent reviewer, stop and state that the review gate is still unmet. Do not archive same-context review as if it satisfied the independent review requirement.
+If the repository uses `code-workflow`, map this requirement onto that workflow explicitly: `completion-full` is self-check, then the independent review gate runs, and only after that can `workflow-governance` / final handoff be treated as completion-ready.
 
 ## Review Evidence Location
 
@@ -140,6 +141,14 @@ Follow this sequence:
 11. final code review
 12. release notes or handoff
 13. finishing a development branch
+
+When the repo uses `code-workflow`, the relevant completion order is:
+
+1. `completion-full`
+2. independent review gate
+3. fix + impacted re-validation when needed
+4. `workflow-governance`
+5. handoff / archive / branch finishing
 
 Read [references/stage-definitions.md](references/stage-definitions.md) for the full stage contract.
 Read [references/review-gates.md](references/review-gates.md) for rejection and loopback rules.

@@ -13,6 +13,8 @@ Default to the current CTF harness shape in `/home/azhi/workspace/projects/ctf` 
 
 Keep `deusyu/harness-engineering` as an important upstream reference, especially for repo-as-source-of-truth, progressive navigation, feedback capture, mechanical enforcement, and agent readability. Use strict top-level reference directories only when the user explicitly asks to follow the upstream structure.
 
+For brand-new project initialization, `harness-engineering` owns the harness subsystem itself. It should expose mechanical commands that a higher-level workflow or operator can call, but it does not own reusable frontend/backend code templates.
+
 ## Workflow
 
 1. Read the target repo first: `AGENTS.md`, README, docs indexes, existing hooks, CI, scripts, plan/review/improvement folders, and current `git status`.
@@ -22,13 +24,14 @@ Keep `deusyu/harness-engineering` as an important upstream reference, especially
    - feedback loop: improvements, incidents, review findings, prompts
    - enforcement: scripts, hooks, CI, tests, linters
 3. Use the current CTF harness shape by default while preserving the upstream `deusyu/harness-engineering` principles.
-4. Initialize or repair the harness with `~/.agents/harness/harness-initializer.py`.
+4. Initialize or repair the harness with `~/.agents/harness/harness-initializer.py`, or for the normal harness bootstrap path use `bash ~/.agents/harness/init-project.sh "$PWD"`.
 5. Ensure the repository root keeps `CLAUDE.md -> AGENTS.md`; create the symlink when missing, but do not overwrite an existing non-symlink file silently.
 6. If the local workspace provides `~/workspace/projects/scripts/check-agent-entrypoints.sh`, run it against the target repo after initialization.
 7. Ensure the generated scaffold includes `scripts/check-test-workflow.sh` and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving test workflow rules as prompt text only.
+8. Ensure the generated scaffold includes a minimal `scripts/check-architecture.sh` guard plus seed policy files, and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving architecture ownership only in prompt text.
 8. Run the generated harness check and any affected existing hook/script checks.
 9. Report changed files, validation evidence, and any residual gaps.
-10. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow` or ensure an equivalent local workflow already exists.
+10. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow`, or prefer the higher-level bootstrap wrapper `bash ~/.agents/harness/init-project.sh "$PWD"` during normal initialization.
 11. Treat `code-workflow` as the owner of non-trivial task workflow semantics. `harness-engineering` should only install or repair that shared workflow entry, not redefine its rules here.
 
 When the repo uses project todos, initialize a non-blocking reminder flow on the canonical path `docs/todo/`:
@@ -44,6 +47,14 @@ When the repo has automated tests or an obvious test surface, initialize a mecha
 - have `scripts/check-consistency.sh` execute it
 - rely on existing pre-commit or CI entry points to enforce it transitively
 
+When the repo has architecture docs or any structural code surface, initialize a minimal architecture guard:
+
+- add `scripts/check-architecture.sh`
+- seed `harness/policies/architecture-guard-paths.txt`
+- seed `harness/policies/architecture-guard-commands.txt`
+- have `scripts/check-consistency.sh` execute it
+- treat the command list as the project-local extension point for backend/frontend/module boundary checks
+
 When the repo uses the local reuse index pattern, wire a non-blocking reminder into root `AGENTS.md`:
 
 - when implementation first forms a stable reuse pattern in a module, remind the operator to add `.harness/reuse-index/<source-path>/README.md`
@@ -55,9 +66,7 @@ When the repo uses the local reuse index pattern, wire a non-blocking reminder i
 From any target repository root:
 
 ```bash
-python3 /home/azhi/.agents/harness/harness-initializer.py --project-name "$(basename "$PWD")"
-bash /home/azhi/workspace/projects/scripts/check-agent-entrypoints.sh "$PWD"
-bash scripts/check-consistency.sh
+bash /home/azhi/.agents/harness/init-project.sh "$PWD"
 ```
 
 To add the shared non-trivial task workflow after the harness exists:
@@ -69,11 +78,12 @@ bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow
 For strict upstream-reference mode:
 
 ```bash
-python3 /home/azhi/.agents/harness/harness-initializer.py --project-name "$(basename "$PWD")" --mode strict-reference
-bash /home/azhi/workspace/projects/scripts/check-agent-entrypoints.sh "$PWD"
+bash /home/azhi/.agents/harness/init-project.sh "$PWD" --mode strict-reference
 ```
 
-The script is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.harness/`, `.harness/reuse-decisions/`, optional local `.harness/reuse-index/`, `harness/policies/`, `harness/templates/`, `harness/prompts/`, `harness/checks/`, `feedback/`, `scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates top-level `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, `references/`, `scripts/check-test-workflow.sh`, and a consistency check.
+`init-project.sh` is the preferred high-level bootstrap wrapper. It runs `harness-initializer.py`, then installs the requested workflow package by default, then runs the repo-local consistency check when present. The lower-level Python initializer remains the repair/debugging entry for harness-only operations.
+
+The initializer is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.harness/`, `.harness/reuse-decisions/`, optional local `.harness/reuse-index/`, `harness/policies/`, `harness/templates/`, `harness/prompts/`, `harness/checks/`, `feedback/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates top-level `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, `references/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check.
 
 ## Harness Shape
 
@@ -89,6 +99,7 @@ Keep the harness as a map, not a manual. In the current local standard:
 - `.harness/reuse-index/`: user-local, gitignored reuse index. Keep `index.yaml` as the top-level route map and mirrored `README.md` files as module/module-internal secondary indexes.
 - `feedback/`: mistakes, corrections, workflow lessons, and reusable learning that has not yet been fully absorbed elsewhere.
 - `scripts/check-consistency.sh`: deterministic guard against drift.
+- `scripts/check-architecture.sh`: deterministic minimal architecture guard for docs/architecture routing and project-local architecture commands.
 - `scripts/check-test-workflow.sh`: deterministic guard that checks whether test workflow instructions are documented and actually wired into enforcement paths.
 - `scripts/check-open-todos.sh`: non-blocking reminder for unchecked backlog items under `docs/todo/`, plus completed files that still need archiving.
 - `scripts/check-skill-sync-reminder.sh`: non-blocking reminder that asks whether project harness changes should stay local or be synchronized into `~/.agents/skills/` or `~/.agents/harness/`.

@@ -1,0 +1,49 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	"__GO_MODULE__/internal/config"
+)
+
+func Open(ctx context.Context, cfg config.PostgresConfig) (*gorm.DB, error) {
+	gormDB, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("open postgres: %w", err)
+	}
+
+	sqlDB, err := gormDB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("resolve sql db: %w", err)
+	}
+
+	applyPoolConfig(sqlDB, cfg)
+
+	if ctx != nil {
+		if err := sqlDB.PingContext(ctx); err != nil {
+			return nil, fmt.Errorf("ping postgres: %w", err)
+		}
+	}
+
+	return gormDB, nil
+}
+
+func applyPoolConfig(db *sql.DB, cfg config.PostgresConfig) {
+	if db == nil {
+		return
+	}
+	if cfg.MaxIdleConns > 0 {
+		db.SetMaxIdleConns(cfg.MaxIdleConns)
+	}
+	if cfg.MaxOpenConns > 0 {
+		db.SetMaxOpenConns(cfg.MaxOpenConns)
+	}
+	if cfg.ConnMaxLifetime > 0 {
+		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+	}
+}

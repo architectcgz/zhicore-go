@@ -1,0 +1,7 @@
+app:
+  env: prod
+
+log:
+  level: info
+  encoding: json
+  development: false

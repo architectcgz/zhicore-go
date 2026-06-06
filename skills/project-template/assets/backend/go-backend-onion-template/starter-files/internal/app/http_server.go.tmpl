@@ -1,0 +1,119 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+
+	redislib "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+
+	"__GO_MODULE__/internal/app/composition"
+	"__GO_MODULE__/internal/config"
+)
+
+type lifecycleCloser interface {
+	Close(ctx context.Context) error
+}
+
+type lifecycleComponent struct {
+	name   string
+	closer lifecycleCloser
+}
+
+type HTTPServer struct {
+	server         *http.Server
+	backgroundJobs []composition.BackgroundJob
+	closers        []lifecycleComponent
+	appCtx         context.Context
+	appCancel      context.CancelFunc
+	logger         *zap.Logger
+}
+
+func NewHTTPServer(cfg *config.Config, log *zap.Logger, db *gorm.DB, cache *redislib.Client) (*HTTPServer, error) {
+	root, err := composition.BuildRoot(cfg, log, db, cache)
+	if err != nil {
+		return nil, err
+	}
+
+	routerRuntime, err := buildRouterRuntime(root)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HTTPServer{
+		server: &http.Server{
+			Addr:         fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
+			Handler:      routerRuntime.engine,
+			ReadTimeout:  cfg.HTTP.ReadTimeout,
+			WriteTimeout: cfg.HTTP.WriteTimeout,
+			IdleTimeout:  cfg.HTTP.IdleTimeout,
+		},
+		backgroundJobs: root.BackgroundJobs(),
+		closers:        routerRuntime.closers,
+		appCtx:         root.Context(),
+		appCancel:      root.Cancel,
+		logger:         log,
+	}, nil
+}
+
+func (s *HTTPServer) Start() error {
+	if err := s.startBackgroundJobs(); err != nil {
+		return err
+	}
+	return s.server.ListenAndServe()
+}
+
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	var shutdownErrs []error
+
+	if err := s.stopBackgroundJobs(ctx); err != nil {
+		shutdownErrs = append(shutdownErrs, err)
+	}
+
+	if s.server == nil {
+		return errors.Join(shutdownErrs...)
+	}
+	if err := s.server.Shutdown(ctx); err != nil {
+		shutdownErrs = append(shutdownErrs, err)
+	}
+	if s.appCancel != nil {
+		s.appCancel()
+	}
+	for _, component := range s.closers {
+		if component.closer == nil {
+			continue
+		}
+		s.logger.Info("closing_component", zap.String("component", component.name))
+		if err := component.closer.Close(ctx); err != nil {
+			shutdownErrs = append(shutdownErrs, fmt.Errorf("%s: %w", component.name, err))
+		}
+	}
+	return errors.Join(shutdownErrs...)
+}
+
+func (s *HTTPServer) startBackgroundJobs() error {
+	if s.appCtx == nil {
+		return errors.New("http server background jobs require application context")
+	}
+	for _, job := range s.backgroundJobs {
+		s.logger.Info("starting_background_job", zap.String("job", job.Name()))
+		if err := job.Start(s.appCtx); err != nil {
+			return fmt.Errorf("%s: %w", job.Name(), err)
+		}
+	}
+	return nil
+}
+
+func (s *HTTPServer) stopBackgroundJobs(ctx context.Context) error {
+	var errs []error
+	for _, job := range s.backgroundJobs {
+		s.logger.Info("stopping_background_job", zap.String("job", job.Name()))
+		if err := job.Stop(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", job.Name(), err))
+		}
+	}
+	return errors.Join(errs...)
+}

@@ -1,0 +1,14 @@
+{
+  "name": "go-backend-onion-template",
+  "category": "backend",
+  "source_project": "ctf",
+  "summary": "Go backend starter based on the CTF project's onion/clean backend structure.",
+  "primary_stack": ["go", "gin", "gorm", "redis", "zap", "viper"],
+  "placeholders": {
+    "__GO_MODULE__": "Go module path",
+    "__SERVICE_NAME__": "Service name",
+    "__DOMAIN_NAME__": "Example domain/module name"
+  },
+  "starter_files_dir": "starter-files",
+  "tree_file": "tree.txt"
+}
