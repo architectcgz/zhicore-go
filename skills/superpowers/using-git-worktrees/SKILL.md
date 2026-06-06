@@ -11,6 +11,8 @@ Git worktrees create isolated workspaces sharing the same repository, allowing w
 
 **Core principle:** Systematic directory selection + safety verification = reliable isolation.
 
+Do not create a worktree by reflex. If the repository main worktree is currently clean, it is the only active task workspace, and no parallel isolation is needed, staying in the main worktree is acceptable. Use this skill when isolation is actually needed.
+
 **Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
 
 ## Directory Selection Process

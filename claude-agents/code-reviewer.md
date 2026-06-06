@@ -29,7 +29,7 @@ color: cyan
 - 记录最新 commit 的短 hash（7 位）
 
 ### 第二步：调用 code-review skill
-- 使用本地安装的 `~/.claude/skills/` 中的 code-review skill 辅助审查
+- 使用共享的 `~/.agents/skills/` 中的 code-review skill 辅助审查
 - 结合项目的架构文档（`docs/architecture/*.md`）作为审查基准
 
 ### 第三步：逐项审查

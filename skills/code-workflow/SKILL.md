@@ -26,10 +26,11 @@ Do not collapse these into one script.
 1. Distinguish `琐碎任务` and `非琐碎任务`.
 2. `非琐碎任务` must not start directly in implementation.
 3. Each non-trivial task slice must bind:
-   - one independent worktree
+   - one isolated workspace context
    - one `task-slug`
    - one implementation plan
    - one local startup gate record
+   Normally this isolated workspace is a dedicated worktree. If the repository main worktree is currently clean, no other task is active there, and no parallel isolation is needed, the main worktree itself may serve as that isolated workspace.
 4. Agent orchestration and mechanical enforcement must stay separate.
    - Agents decide and guide.
    - Scripts, hooks, and review checks enforce.
@@ -105,7 +106,7 @@ Keep these global:
 
 - the layered workflow model
 - non-trivial task startup shape
-- worktree / slug / plan / gate binding
+- workspace / slug / plan / gate binding
 - commit task binding convention
 - shared scaffold installer
 
