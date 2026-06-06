@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onion Clean Architecture"
+  short_description: "Design clean/onion backend architecture for new projects"
+  default_prompt: "Use onion-clean-architecture to design this backend architecture."
