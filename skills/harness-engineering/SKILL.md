@@ -26,14 +26,15 @@ For brand-new project initialization, `harness-engineering` owns the harness sub
 3. Use the current CTF harness shape by default while preserving the upstream `deusyu/harness-engineering` principles.
 4. Initialize or repair the harness with `~/.agents/harness/harness-initializer.py`, or for the normal harness bootstrap path use `bash ~/.agents/harness/init-project.sh "$PWD"`.
 5. Ensure the repository root keeps `CLAUDE.md -> AGENTS.md`; create the symlink when missing, but do not overwrite an existing non-symlink file silently.
-6. If the local workspace provides `~/workspace/projects/scripts/check-agent-entrypoints.sh`, run it against the target repo after initialization.
-7. Ensure the generated scaffold includes `scripts/check-test-workflow.sh` and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving test workflow rules as prompt text only.
-8. Ensure the generated scaffold includes a minimal `scripts/check-architecture.sh` guard plus seed policy files, and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving architecture ownership only in prompt text.
-9. Ensure the generated scaffold includes `scripts/check-script-guard.sh` plus `harness/policies/script-guard.json`, and that `scripts/check-consistency.sh` actually invokes the script guard so large harness/operator scripts are forced to split before they drift.
-10. Run the generated harness check and any affected existing hook/script checks.
-11. Report changed files, validation evidence, and any residual gaps.
-12. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow`, or prefer the higher-level bootstrap wrapper `bash ~/.agents/harness/init-project.sh "$PWD"` during normal initialization.
-13. Treat `code-workflow` as the owner of non-trivial task workflow semantics. `harness-engineering` should only install or repair that shared workflow entry, not redefine its rules here.
+6. Ensure the generated scaffold includes `scripts/check-agent-entrypoints.sh` and that the repo's main consistency/governance check actually executes it, instead of leaving entrypoint alignment as a one-off manual doctor step.
+7. If the local workspace provides `~/workspace/projects/scripts/check-agent-entrypoints.sh`, run it against the target repo after initialization.
+8. Ensure the generated scaffold includes `scripts/check-test-workflow.sh` and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving test workflow rules as prompt text only.
+9. Ensure the generated scaffold includes a minimal `scripts/check-architecture.sh` guard plus seed policy files, and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving architecture ownership only in prompt text.
+10. Ensure the generated scaffold includes `scripts/check-script-guard.sh` plus `harness/policies/script-guard.json`, and that `scripts/check-consistency.sh` actually invokes the script guard so large harness/operator scripts are forced to split before they drift.
+11. Run the generated harness check and any affected existing hook/script checks.
+12. Report changed files, validation evidence, and any residual gaps.
+13. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow`, or prefer the higher-level bootstrap wrapper `bash ~/.agents/harness/init-project.sh "$PWD"` during normal initialization.
+14. Treat `code-workflow` as the owner of non-trivial task workflow semantics. `harness-engineering` should only install or repair that shared workflow entry, not redefine its rules here.
 
 When the repo uses project todos, initialize a non-blocking reminder flow on the canonical path `docs/todo/`:
 
@@ -107,6 +108,7 @@ Keep the harness as a map, not a manual. In the current local standard:
 - `.harness/reuse-index/`: user-local, gitignored reuse index. Keep `index.yaml` as the top-level route map and mirrored `README.md` files as module/module-internal secondary indexes.
 - `feedback/`: mistakes, corrections, workflow lessons, and reusable learning that has not yet been fully absorbed elsewhere.
 - `scripts/check-consistency.sh`: deterministic guard against drift.
+- `scripts/check-agent-entrypoints.sh`: deterministic guard that requires `CLAUDE.md -> AGENTS.md` and any project-local Claude skill bridge to stay aligned.
 - `scripts/check-architecture.sh`: deterministic minimal architecture guard for docs/architecture routing and project-local architecture commands.
 - `scripts/check-test-workflow.sh`: deterministic guard that checks whether test workflow instructions are documented and actually wired into enforcement paths.
 - `scripts/check-script-guard.sh`: deterministic guard that limits harness/operator script growth and forces oversized scripts to split.

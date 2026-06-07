@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .consistency_content import check_script, ctf_current_check_script
 from .content import (
+    agent_entrypoints_check_script,
     architecture_guard_commands_policy,
     architecture_guard_paths_policy,
     architecture_guard_script,
@@ -45,6 +46,7 @@ def parse_args() -> argparse.Namespace:
 
 def write_common_scaffold(repo: Path, profile: str, consistency_script: str) -> None:
     write(repo / "scripts/check-consistency.sh", consistency_script, executable=True)
+    write(repo / "scripts/check-agent-entrypoints.sh", agent_entrypoints_check_script(), executable=True)
     write(repo / "scripts/check-architecture.sh", architecture_guard_script(), executable=True)
     write(repo / "scripts/check-test-workflow.sh", test_workflow_check_script(), executable=True)
     write(repo / "scripts/check-script-guard.sh", script_guard_check_script(), executable=True)

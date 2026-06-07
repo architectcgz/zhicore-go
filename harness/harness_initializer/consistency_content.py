@@ -107,15 +107,11 @@ check_contains "docs/documentation-rules.md" 'New Path Registration' "documentat
 check_contains "docs/documentation-rules.md" 'No Circular References' "documentation rules forbid circular references"
 
 echo "[C4a] project agent entrypoints stay aligned"
-if [[ -L "CLAUDE.md" ]]; then
-  if [[ "$(readlink -f CLAUDE.md)" == "$(readlink -f AGENTS.md)" ]]; then
-    echo "  $(green PASS) — CLAUDE.md points to AGENTS.md"
-  else
-    echo "  $(red FAIL) — CLAUDE.md does not resolve to AGENTS.md"
-    fail=1
-  fi
+check_file "scripts/check-agent-entrypoints.sh"
+if [[ -x "scripts/check-agent-entrypoints.sh" ]]; then
+  bash scripts/check-agent-entrypoints.sh
 else
-  echo "  $(red FAIL) — CLAUDE.md must be a symlink to AGENTS.md"
+  echo "  $(red FAIL) — scripts/check-agent-entrypoints.sh is not executable"
   fail=1
 fi
 
@@ -248,15 +244,11 @@ check_contains "AGENTS.md" 'prompts/' "AGENTS references prompts"
 check_contains "AGENTS.md" 'references/' "AGENTS references references"
 
 echo "[C2a] project agent entrypoints stay aligned"
-if [[ -L "CLAUDE.md" ]]; then
-  if [[ "$(readlink -f CLAUDE.md)" == "$(readlink -f AGENTS.md)" ]]; then
-    echo "  $(green PASS) — CLAUDE.md points to AGENTS.md"
-  else
-    echo "  $(red FAIL) — CLAUDE.md does not resolve to AGENTS.md"
-    fail=1
-  fi
+check_file "scripts/check-agent-entrypoints.sh"
+if [[ -x "scripts/check-agent-entrypoints.sh" ]]; then
+  bash scripts/check-agent-entrypoints.sh
 else
-  echo "  $(red FAIL) — CLAUDE.md must be a symlink to AGENTS.md"
+  echo "  $(red FAIL) — scripts/check-agent-entrypoints.sh is not executable"
   fail=1
 fi
 

@@ -36,6 +36,16 @@ python3 ~/.agents/harness/skill-sync/remind_skill_sync.py --cwd "$cwd" "$@"
 """
 
 
+def agent_entrypoints_check_script() -> str:
+    return r"""#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cwd="$(cd "$script_dir/.." && pwd)"
+exec bash "$HOME/.agents/harness/check-project-agent-entrypoints.sh" "$cwd"
+"""
+
+
 def script_guard_policy_content() -> str:
     return """{
   "include": [
