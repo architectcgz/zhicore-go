@@ -63,6 +63,12 @@ Completion order for non-trivial task slices:
 3. Fix material findings and rerun impacted validation when needed.
 4. Only then enter `workflow-governance` / doctor / archive / final handoff.
 
+Startup gate status model:
+
+- `active`: the task is still in active implementation / validation.
+- `ready_to_merge`: plan/task artifacts are already archived, but the task still owns the current worktree for final commit, merge, or cleanup.
+- `archived`: terminal closed state; not treated as an effective current task gate anymore.
+
 The reviewer handoff contract lives at:
 
 ```text

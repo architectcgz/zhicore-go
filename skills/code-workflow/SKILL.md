@@ -124,7 +124,8 @@ The archive script should:
 
 - move the completed implementation plan into `docs/plan/archive/impl-plan/<YYYY-MM>/`
 - archive matching `docs/tasks/*<task-slug>*.md` files into `docs/tasks/archive/<YYYY-MM>/` when that directory exists
-- mark the local startup gate as archived when the current worktree owns the active gate
+- move the local startup gate from `active` to `ready_to_merge` when the current worktree owns the gate
+- keep `archived` reserved as the terminal closed state after final cleanup or a later explicit close action
 
 Project-specific protected-surface checks and repo-specific review audits remain local.
 

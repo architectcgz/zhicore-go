@@ -29,10 +29,11 @@ For brand-new project initialization, `harness-engineering` owns the harness sub
 6. If the local workspace provides `~/workspace/projects/scripts/check-agent-entrypoints.sh`, run it against the target repo after initialization.
 7. Ensure the generated scaffold includes `scripts/check-test-workflow.sh` and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving test workflow rules as prompt text only.
 8. Ensure the generated scaffold includes a minimal `scripts/check-architecture.sh` guard plus seed policy files, and that `scripts/check-consistency.sh`, hooks, or CI actually invoke it instead of leaving architecture ownership only in prompt text.
-8. Run the generated harness check and any affected existing hook/script checks.
-9. Report changed files, validation evidence, and any residual gaps.
-10. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow`, or prefer the higher-level bootstrap wrapper `bash ~/.agents/harness/init-project.sh "$PWD"` during normal initialization.
-11. Treat `code-workflow` as the owner of non-trivial task workflow semantics. `harness-engineering` should only install or repair that shared workflow entry, not redefine its rules here.
+9. Ensure the generated scaffold includes `scripts/check-script-guard.sh` plus `harness/policies/script-guard.json`, and that `scripts/check-consistency.sh` actually invokes the script guard so large harness/operator scripts are forced to split before they drift.
+10. Run the generated harness check and any affected existing hook/script checks.
+11. Report changed files, validation evidence, and any residual gaps.
+12. When the repository should adopt the shared non-trivial task workflow, install the common startup package with `bash ~/.agents/harness/workflow-installer.sh "$PWD" code-workflow`, or prefer the higher-level bootstrap wrapper `bash ~/.agents/harness/init-project.sh "$PWD"` during normal initialization.
+13. Treat `code-workflow` as the owner of non-trivial task workflow semantics. `harness-engineering` should only install or repair that shared workflow entry, not redefine its rules here.
 
 When the repo uses project todos, initialize a non-blocking reminder flow on the canonical path `docs/todo/`:
 
@@ -54,6 +55,13 @@ When the repo has architecture docs or any structural code surface, initialize a
 - seed `harness/policies/architecture-guard-commands.txt`
 - have `scripts/check-consistency.sh` execute it
 - treat the command list as the project-local extension point for backend/frontend/module boundary checks
+
+When the repo has harness/operator scripts, initialize a mechanical script-growth guard:
+
+- add `scripts/check-script-guard.sh`
+- seed `harness/policies/script-guard.json`
+- have `scripts/check-consistency.sh` execute it
+- keep the policy focused on harness/operator entrypoints, wrappers, and harness checks instead of unrelated domain build scripts
 
 When the repo uses the local reuse index pattern, wire a non-blocking reminder into root `AGENTS.md`:
 
@@ -101,6 +109,7 @@ Keep the harness as a map, not a manual. In the current local standard:
 - `scripts/check-consistency.sh`: deterministic guard against drift.
 - `scripts/check-architecture.sh`: deterministic minimal architecture guard for docs/architecture routing and project-local architecture commands.
 - `scripts/check-test-workflow.sh`: deterministic guard that checks whether test workflow instructions are documented and actually wired into enforcement paths.
+- `scripts/check-script-guard.sh`: deterministic guard that limits harness/operator script growth and forces oversized scripts to split.
 - `scripts/check-open-todos.sh`: non-blocking reminder for unchecked backlog items under `docs/todo/`, plus completed files that still need archiving.
 - `scripts/check-skill-sync-reminder.sh`: non-blocking reminder that asks whether project harness changes should stay local or be synchronized into `~/.agents/skills/` or `~/.agents/harness/`.
 - Shared non-trivial task workflow package: install and verify `~/.agents/harness/workflows/code-workflow/`, but keep its behavior definition in the `code-workflow` skill instead of duplicating it here.
