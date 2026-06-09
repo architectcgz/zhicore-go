@@ -2,6 +2,7 @@ frontend/
   src/
     __tests__/
     api/
+      __tests__/
     entities/
       user/
     features/
@@ -12,12 +13,17 @@ frontend/
       dashboard/
       error/
     router/
+      __tests__/
       guards.ts
       routes/
     runtime/
+      __tests__/
     shared/
       ui/
+        __tests__/
     stores/
+      __tests__/
+    test/
     widgets/
   index.html
   package.json

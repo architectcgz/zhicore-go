@@ -62,6 +62,11 @@ Use the global verification rules, then list the smallest project-specific comma
 When the repository has tests, include an explicit testing prompt here:
 
 - Write or update the narrowest relevant tests first.
+- Treat TDD tests as maintained behavior specifications and regression guards. Do not delete them after implementation unless the behavior signal is duplicated by a clearer test, obsolete, implementation-coupled, or intentionally moved to a better owner/layer.
+- Put each test at the owner/layer that proves the contract:
+  - Backend: package-local tests for module semantics and unexported details; internal test utilities for helpers that need private access; system/API tests for black-box route or transport behavior; runtime/integration tests for real databases, external processes, or containers; architecture tests for boundary guardrails; testkit helpers for stable cross-test builders, fixtures, and assertions.
+  - Frontend: colocated `__tests__` near shared, feature, page, store, API, router, runtime, config, or utility owners; root-level `src/__tests__` only for architecture, design-system, or cross-cutting guardrails; shared test setup and reusable helpers under the project's test support directory.
+- Do not duplicate the same behavior signal across layers. If multiple layers need coverage, each layer must prove a distinct contract.
 - After writing tests, run the smallest relevant test command that covers the changed surface.
 - If the repository has verification scripts such as `scripts/check-*.sh`, `scripts/check-*.py`, or another documented guard command, run the relevant script check after the test command before claiming completion.
 - If the repository already has `scripts/check-consistency.sh`, git hooks, CI validation, or another mechanical guardrail, wire the relevant test-related script check into that enforcement path instead of leaving it as prompt text only.

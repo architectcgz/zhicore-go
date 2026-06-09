@@ -18,6 +18,16 @@
 - `internal/shared/` 放跨模块共享内核
 - `migrations/`、`configs/`、`tests/` 与运行时脚本保持独立
 
+测试放置规则：
+
+- 包内 `*_test.go`：模块内业务语义、未导出实现、application service / command / query / repository 的局部契约；需要访问包私有符号时默认留在源码旁边。
+- `internal/testutil/*`：需要接近内部实现、会被多个包内或系统测试复用的测试工具；不要放只服务单个测试文件的一次性封装。
+- `tests/architecture`：源码级架构 guardrail，只检查边界、目录和迁移约束，不跑业务语义回归。
+- `tests/system/http/<scenario>`：黑盒 HTTP / router 级长场景，只表达请求、角色、状态和响应断言；环境搭建、seed 和通用断言优先复用 testutil / testkit。
+- `tests/runtime`：需要 PostgreSQL、runtime agent、容器端口、外部进程或真实 migration 参与的集成测试。
+- `tests/testkit`：跨 `tests/*` 复用的场景 builder、fixture、assert helper 和测试数据工厂；不访问未导出实现。
+- TDD 写出的测试默认是行为规格和回归护栏，不因为对应功能已经实现就删除；只在行为信号重复、实现细节锁定、迁移 guard 到期，或目标行为明确废弃时合并或删除。
+
 当前模板现在更接近“可继续直接开工的 starter”：
 
 - `tree.txt`：推荐目录树

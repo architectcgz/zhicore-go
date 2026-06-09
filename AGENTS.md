@@ -101,6 +101,8 @@
   - `test-master`
 - 实现后的验证、最小充分检查、证据归档：
   - `test-engineer`
+- 新功能、缺陷修复、重构、行为变化或前端逻辑变化的 TDD：
+  - `test-driven-development`
 - 代码审查、Review 格式、风险导向反馈：
   - `code-reviewer`
   - `code-review-excellence`

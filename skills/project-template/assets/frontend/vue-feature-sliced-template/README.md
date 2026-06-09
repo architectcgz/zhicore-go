@@ -17,6 +17,18 @@
 - `src/shared/` 放通用 UI、基础 model、基础库
 - `src/router/routes/` 按路由命名空间拆分
 
+测试放置规则：
+
+- `src/shared/**/__tests__`：放 shared model、shared lib、shared UI 原语自己的行为测试；不得在这里测试具体 feature 或页面流程。
+- `src/features/**/__tests__` 或 feature 内邻近 `__tests__`：放 feature owner 的状态、校验、权限、异步流程、组合逻辑和 feature 私有 UI 行为。
+- `src/pages/**/__tests__`：放 route / page 入口集成测试，只覆盖页面装配、路由参数、入口状态和关键用户流程；不重复锁定 shared 组件或 feature 内部结构。
+- `src/api/__tests__`：放 API adapter、请求参数、响应映射和后端 contract 对齐测试。
+- `src/stores/__tests__`：放 Pinia store 行为、持久化、权限状态和跨页面共享状态。
+- `src/router/__tests__`、`src/runtime/__tests__`、`src/config/__tests__`、`src/utils/__tests__`：分别放对应基础设施 owner 的测试，不承接业务场景。
+- `src/__tests__`：只放架构边界、设计系统 guard、跨切面回归防线和无法归属到单一 feature / page / shared owner 的测试；新增前必须能说明它为什么不能贴近具体 owner。
+- `src/test`：放 Vitest setup、测试环境适配和稳定复用的测试工具；只服务单个测试文件的 helper 先留在测试文件本地。
+- TDD 写出的测试默认是行为规格和回归护栏，不因为对应功能已经实现就删除；只在行为信号重复、实现细节锁定、迁移 guard 到期，或目标行为明确废弃时合并或删除。
+
 当前模板现在更接近“可直接起页面壳并继续补业务”的 starter：
 
 - `tree.txt`：推荐目录树

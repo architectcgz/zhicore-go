@@ -201,6 +201,7 @@ Keep tests green. Don't add behavior.
 ## Test Suite Growth
 
 TDD grows the test suite on purpose. It should not grow one catch-all file forever.
+Tests created during TDD are maintained behavior specifications and regression guards, not disposable scaffolding. Do not delete them just because implementation is complete; delete or merge tests only when their behavior signal is intentionally retired, duplicated by a clearer test, or moved to a better owner/layer.
 
 During REFACTOR, treat tests as maintained code:
 
