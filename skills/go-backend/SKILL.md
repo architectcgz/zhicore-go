@@ -5,7 +5,9 @@ description: Use when implementing, refactoring, or reviewing Go backend code, e
 
 # Go Backend
 
-Use this skill together with `backend-engineer` when the backend code is Go.
+This skill extends `backend-engineer`.
+
+Read and apply `backend-engineer` first. Use this file only for the additional rules that are specific to Go, GORM, `database/sql`, Go test style, and common Go backend tooling.
 
 ## Context Convention
 
@@ -29,6 +31,7 @@ Default every service, repository, handler, job, worker, checker, runner, and ot
 - Close `Rows` and check `rows.Err()` after iteration.
 - Do not build SQL with `fmt.Sprintf` or string concatenation for values. Pass values as query arguments so the driver can bind them safely.
 - Tune connection pools only with evidence from the workload; avoid changing `SetMaxOpenConns`, `SetMaxIdleConns`, or lifetimes as a blind fix.
+- Follow `backend-engineer` schema ownership rules. In Go codebases that use GORM, this means `AutoMigrate` belongs in test helpers and temporary fixtures, not in formal runtime paths.
 
 ## Errors and API Contracts
 
@@ -56,6 +59,7 @@ Default every service, repository, handler, job, worker, checker, runner, and ot
 - Keep package boundaries boring and explicit; do not introduce generic utility packages to hide domain behavior.
 - Preserve repository-local error wrapping, logging, tracing, and transaction conventions.
 - Make goroutine ownership, cancellation, timeout, retry, and cleanup behavior visible.
+- In retry loops, workers, and consumers, decide backoff on the error path first; do not make waiting contingent on logger, tracing, or other observability dependencies being present.
 - Keep database transactions scoped and deterministic; do not mix unrelated side effects into a transaction without a clear ordering reason.
 - Wide provider-owned repository interfaces must be split into smaller capability repositories. Compose the final dependency in the consuming application package, not in `ports` or `contracts`.
 - Use typed structs and existing mappers for API, DTO, persistence, and domain boundaries.
