@@ -1,5 +1,5 @@
 ---
-name: grill-me
+name: grillme
 description: Use when the user wants to stress-test a plan or design, asks to be grilled, or needs each decision branch examined until ambiguities are resolved.
 ---
 
