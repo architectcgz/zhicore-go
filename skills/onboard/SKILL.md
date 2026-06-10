@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: Designs and improves onboarding flows, empty states, and first-run experiences to help users reach value quickly. Use when the user mentions onboarding, first-time users, empty states, activation, getting started, or new user flows.
+description: Use when the user mentions onboarding, first-time users, empty states, first-run experiences, activation, getting started, or new user flows.
 argument-hint: "[target]"
 ---
 

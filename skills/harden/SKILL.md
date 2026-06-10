@@ -1,6 +1,6 @@
 ---
 name: harden
-description: Improve interface resilience through better error handling, async interaction safety, i18n support, text overflow handling, and edge case management. Makes interfaces robust and production-ready. Use when the user asks to harden, make production-ready, handle edge cases, add error states, or fix overflow, race conditions, and i18n issues.
+description: Use when the user asks to harden, make production-ready, handle edge cases, add error states, improve async interaction safety, add i18n support, or fix text overflow and race conditions.
 argument-hint: "[target]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: normalize
-description: Audits and realigns UI to match design system standards, spacing, tokens, and patterns. Use when the user mentions consistency, design drift, mismatched styles, tokens, or wants to bring a feature back in line with the system.
+description: Use when the user mentions consistency, design drift, mismatched styles, tokens, or wants to realign a feature with the design system's standards, spacing, and patterns.
 argument-hint: "[feature (page, route, component...)]"
 ---
 

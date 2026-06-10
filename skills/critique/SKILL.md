@@ -1,6 +1,6 @@
 ---
 name: critique
-description: Evaluate design from a UX perspective, assessing visual hierarchy, information architecture, emotional resonance, cognitive load, and overall quality with quantitative scoring, persona-based testing, and actionable feedback. Use when the user asks to review, critique, evaluate, or give feedback on a design or component.
+description: Use when the user asks to review, critique, evaluate, or give feedback on a design or component, assessing visual hierarchy, information architecture, cognitive load, and overall UX quality.
 argument-hint: "[area (feature, page, component...)]"
 ---
 

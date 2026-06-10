@@ -1,6 +1,6 @@
 ---
 name: teach-impeccable
-description: One-time setup that gathers design context for your project and saves it to your AI config file. Run once to establish persistent design guidelines.
+description: Use when setting up persistent design guidelines for a project for the first time, a one-time setup that gathers design context and saves it to your AI config file.
 ---
 
 Gather design context for this project, then persist it for all future sessions.

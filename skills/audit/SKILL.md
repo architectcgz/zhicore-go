@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Run technical quality checks across accessibility, async state handling, performance, theming, responsive design, and frontend anti-patterns. Generates a scored report with P0-P3 severity ratings and actionable plan. Use when the user wants an accessibility check, performance audit, or technical quality review.
+description: Use when the user wants an accessibility check, performance audit, or technical quality review covering accessibility, async state handling, performance, theming, responsive design, and frontend anti-patterns, with P0-P3 severity ratings.
 argument-hint: "[area (feature, page, component...)]"
 ---
 
