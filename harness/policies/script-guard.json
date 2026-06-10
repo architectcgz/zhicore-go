@@ -4,6 +4,8 @@
     "harness/*.py",
     "harness/checks/**/*.sh",
     "harness/checks/**/*.py",
+    "harness/commit-message/*.py",
+    "harness/harness_initializer/*.py",
     "harness/todo/*.py",
     "harness/skill-sync/*.py",
     "harness/workflows/*/*.sh",
@@ -12,6 +14,10 @@
   ],
   "exclude": [],
   "max_lines": 260,
-  "max_lines_by_glob": {},
-  "advice": "If a harness or workflow script approaches this limit, split the stable entrypoint from managed assets, helper modules, or repo-local wrappers instead of extending one large script."
+  "max_lines_by_glob": {
+    "harness/harness_initializer/content.py": 480,
+    "harness/harness_initializer/docs_content.py": 480,
+    "harness/harness_initializer/consistency_content.py": 400
+  },
+  "advice": "If a harness or workflow script approaches this limit, split the stable entrypoint from managed assets, helper modules, or repo-local wrappers instead of extending one large script. The three initializer *_content modules are pure scaffold-text templates and carry higher explicit caps; keep executable logic in app.py/scaffold.py under the default limit."
 }
