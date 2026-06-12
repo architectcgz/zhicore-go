@@ -1,6 +1,8 @@
 # Plan Template
 
-Use this structure when converting the spec into tasks.
+Use this structure when converting the spec into reviewable tasks.
+
+If the target repository uses `code-workflow`, do not save this file's generic structure as the repository implementation plan. Use the repository's managed implementation plan skeleton, normally `harness/templates/implementation-plan-skeleton.md`, and treat this template as the task-slicing reference that fills its `Execution Slices`, `Validation Plan`, and `Review focus` sections.
 
 ## Plan Summary
 - Objective

@@ -52,6 +52,12 @@ def run_git(*args: str) -> str:
     return result.stdout
 
 
+def run_git_quiet(*args: str) -> tuple[int, str]:
+    """Run git command without check=True, return (returncode, stdout)"""
+    result = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+    return result.returncode, result.stdout
+
+
 def changed_paths(args: argparse.Namespace) -> list[str]:
     if args.base:
         output = run_git("diff", "--name-only", "--diff-filter=ACMR", f"{args.base}...{args.head}")
@@ -139,6 +145,11 @@ def validate_effective_gate(path: Path, payload: dict[str, object], *, require_c
                 continue
             if contains_placeholder(section_text):
                 errors.append(f"plan section still contains placeholders: {heading}")
+
+        # Plan must be committed before implementation starts
+        returncode, _ = run_git_quiet("ls-files", "--error-unmatch", plan_path_value)
+        if returncode != 0:
+            errors.append(f"plan file must be committed before implementation: {plan_path_value}")
 
     return errors
 

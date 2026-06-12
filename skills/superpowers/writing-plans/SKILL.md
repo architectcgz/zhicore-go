@@ -104,12 +104,9 @@ def function(input):
 Run: `pytest tests/path/test.py::test_name -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit this slice according to the target repository policy**
 
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
-```
+Check the repository's `AGENTS.md`, `CLAUDE.md`, or commit policy before writing the command. Include task metadata when the project requires it, use the project's required message shape, and do not copy a generic one-line commit example into repositories with stricter rules.
 ````
 
 ## Remember
