@@ -172,6 +172,7 @@ ARCHIVE_TASK_ARTIFACTS="$(with_managed_header shell "$(read_managed_source "arch
 CLEANUP_TASK_WORKTREE="$(with_managed_header shell "$(read_managed_source "cleanup-task-worktree.sh")")"
 CHECK_STARTUP_GATE_PY="$(with_managed_header python "$(read_managed_source "check_startup_gate.py")")"
 IMPLEMENTATION_PLAN_SKELETON="$(with_managed_header markdown "$(read_managed_source "implementation-plan-skeleton.md")")"
+EPIC_INDEX_SKELETON="$(with_managed_header markdown "$(read_managed_source "epic-index-skeleton.md")")"
 
 write_file "$repo_root/scripts/check-task-intake.sh" "$CHECK_TASK_INTAKE"
 write_file "$repo_root/scripts/start-implementation.sh" "$START_IMPLEMENTATION"
@@ -181,6 +182,7 @@ write_file "$repo_root/harness/workflow-plugins/code-workflow/archive_task_artif
 write_file "$repo_root/harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh" "$CLEANUP_TASK_WORKTREE"
 write_file "$repo_root/harness/checks/check_startup_gate.py" "$CHECK_STARTUP_GATE_PY"
 write_file "$repo_root/harness/templates/implementation-plan-skeleton.md" "$IMPLEMENTATION_PLAN_SKELETON"
+write_file "$repo_root/harness/templates/epic-index-skeleton.md" "$EPIC_INDEX_SKELETON"
 append_gitignore_line "/.harness/session-gates/"
 
 if [[ "$check_mode" -eq 1 ]]; then
