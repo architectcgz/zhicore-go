@@ -73,7 +73,7 @@ For non-trivial work, implementation-agent self-check is necessary but never suf
 
 For non-trivial work, the implementing context's self-check never satisfies completion. The gate review must run in a separate subagent or an equivalently independent context; same-context review counts only as self-check.
 
-- The minimum necessary independent reviewer is authorized by default. Do not pause to ask again for delegation permission unless the user explicitly forbade it.
+- Entering `development-pipeline` or `code-workflow` counts as the user's explicit delegation authorization for the minimum necessary independent reviewer. Do not pause to ask again for delegation permission unless the user explicitly forbade it.
 - If tool policy or an explicit user restriction blocks spawning the reviewer, stop and state that the gate is unmet. Never archive same-context review as if it met this gate.
 - After the gate passes, fix material findings and re-run impacted verification.
 

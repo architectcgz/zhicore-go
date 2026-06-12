@@ -79,6 +79,7 @@ Project-local Checks To Consider:
 - 默认使用独立 `code-reviewer` agent
 - 默认 `fork_context=false`
 - 不把完整实现对话原样灌给 reviewer；只传收敛后的 handoff
+- 进入 `code-workflow` 就等价于用户已经对这一个“最小必要”的 reviewer delegation 给出显式授权；不要再额外等待一轮“是否允许起 reviewer subagent”的确认
 - 如果工具策略或用户要求不允许启动子 agent，必须明确说明：
   - 独立 review gate 尚未满足
   - 当前只能做 self-check，不能当作最终 completion review

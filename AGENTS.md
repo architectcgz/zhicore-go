@@ -90,7 +90,7 @@
 - 若多个 skill 适用，先用流程 / 路由类 skill 判断进入方式，再叠加领域 skill；不得因为“只是小改”“我已经知道怎么做”而跳过明显适用的 skill。
 - 只有在确认没有适用 skill，或现有 skill 无法覆盖当前问题时，才直接按全局规则和项目上下文解决，并在必要时说明缺口。
 - 可长期复用的专题细则应沉淀到对应 skill；不要继续堆回全局 prompt 或项目 `AGENTS.md`。
-- 对被 workflow 或 pipeline 判定为 `非琐碎任务` 的工作，默认视为用户已经授权为了完成独立 review gate 而委派“最小必要”的 reviewer subagent；除非用户明确禁止 delegation，或当前工具策略明确禁止，否则不要因为缺少额外口头授权而跳过独立 review。
+- 对被 workflow 或 pipeline 判定为 `非琐碎任务` 的工作，进入 `code-workflow` / `development-pipeline` 即视为用户已经对完成独立 review gate 所需的“最小必要” reviewer subagent 给出显式 delegation 授权；除非用户明确禁止 delegation，或当前工具策略明确禁止，否则不要因为缺少额外口头授权而跳过独立 review。
 - Vue / `.vue` / Vue Router / Pinia / Vite with Vue：
   - `vue-best-practices`
   - `frontend-engineer`
