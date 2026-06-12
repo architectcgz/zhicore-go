@@ -15,15 +15,32 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** This should be run in a dedicated worktree (created by brainstorming skill).
 
-**Save plans to the project-specified plan directory.**
+**Save plans to the appropriate directory based on plan type.**
 
 Resolve the plan directory in this order:
 
-1. Use the plan location explicitly defined by the project's `AGENTS.md`, `docs/README.md`, or equivalent project documentation.
-2. If no explicit location is defined but the project already has a clear plan directory such as `docs/plan/`, use it.
-3. If the project has no specified or existing plan directory, use the default: `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`.
+1. **Default (exploratory plans)**: `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+   - Use this for quick drafts, technical exploration, prototyping, and temporary investigations
+   - Does not require project to declare this location
+   - Short lifecycle, can be deleted after completion
 
-Always report the actual saved path. Do not hardcode `docs/superpowers/plans/` when the project defines another plan location.
+2. **Formal implementation plans**: Only use the project-defined formal plan location if ALL of these conditions are met:
+   - The project explicitly defines a formal implementation plan location (e.g., via `<!-- FORMAL_IMPL_PLAN_DIR: docs/plan/impl-plan/ -->` marker in `AGENTS.md`, or explicit `formal_impl_plan_location` field)
+   - The task is structural, cross-module, or requires formal review and task gate binding
+   - The plan will be tracked through code-workflow with a task slug and startup gate
+
+3. **Fallback for projects with existing `docs/plan/` but no explicit formal marker**: 
+   - If the project has a `docs/plan/` directory and `docs/plan/README.md` that clearly distinguishes formal vs exploratory plans, follow that structure
+   - Otherwise, default to `docs/superpowers/plans/` for safety
+
+**Decision criteria:**
+
+Ask yourself: "Is this a formal, structural change that will go through code-workflow with task gates and formal review?"
+- **Yes** → Use project's formal plan location (if defined)
+- **No** → Use `docs/superpowers/plans/`
+- **Unsure** → Use `docs/superpowers/plans/` and mention that it can be promoted to formal plan if needed
+
+Always report the actual saved path. When using `docs/superpowers/plans/`, briefly note: "This is an exploratory plan. If it evolves into a formal implementation, it should be promoted to the project's formal plan directory."
 
 ## Scope Check
 
