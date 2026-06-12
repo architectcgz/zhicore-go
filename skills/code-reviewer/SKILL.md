@@ -63,6 +63,35 @@ When this skill is invoked as the final review gate for `code-workflow`:
 6. Return a clear gate verdict and identify material findings that must be fixed before completion.
 7. Same-context review does not satisfy this gate; if you detect that the review is not independent, state that limitation explicitly.
 
+## Checklist Mode
+
+For complex or high-risk reviews, use the dimension-by-dimension checklist enforcer to prevent quality blind spots.
+
+**Trigger conditions** (any of):
+- Review involves concurrency, resource management, API compatibility, or initialization logic
+- Diff size >300 lines or >5 files
+- User explicitly requests comprehensive review
+- Gate review for production-bound changes
+
+**How to invoke**:
+Use the Workflow tool with `workflows/checklist-review.js`:
+```javascript
+workflow({ scriptPath: '~/.agents/skills/code-reviewer/workflows/checklist-review.js', args: { diffSource: 'git diff HEAD~1' } })
+```
+
+**What it does**:
+1. Loads `review-checklist.yaml` with 8 mandatory quality dimensions
+2. For each dimension, spawns an agent that checks ALL items in that dimension against the diff
+3. Forces a verdict (pass / findings / N/A) for every dimension—no skipping allowed
+4. Consolidates findings by severity and produces a gate verdict
+
+**Output**:
+- `gate_verdict`: pass / pass_with_minor_issues / pass_with_major_issues / blocked
+- `dimensions_checked`: count of dimensions reviewed
+- `all_findings`: sorted by severity (Blocker → Major → Minor → Nit), each with dimension, location, issue, impact, suggestion
+
+Use checklist mode when thoroughness matters more than speed, or when the review must satisfy compliance/audit requirements.
+
 ## Review Archive
 
 Default location for review evidence is the target repository:
@@ -111,6 +140,10 @@ Review archive files must include:
   Read when the review target is frontend architecture, ownership, slice boundaries, state flow, or UI-domain decomposition. This file is a standalone, paste-ready prompt with its own `P0/P1/P2` scale; when driving the review from this skill, map its levels back to the `Blocker/Major/Minor/Nit` scale below instead of mixing both.
 - `references/review-communication.md`
   Read before writing review feedback so comments stay precise, constructive, and properly prioritized.
+- `review-checklist.yaml`
+  Structured checklist of 8 mandatory quality dimensions (resource lifecycle, boundary conditions, concurrency, initialization, observability, compatibility, configuration, error UX). Used by checklist mode to enforce dimension-by-dimension coverage.
+- `workflows/checklist-review.js`
+  Workflow script that enforces checklist-driven review: loads the checklist, checks each dimension against the diff, and produces a gate verdict with consolidated findings. Invoke via Workflow tool for comprehensive reviews.
 - `~/.agents/harness/workflows/code-workflow/independent-review-protocol.md`
   Read when the review is acting as the final `code-workflow` gate for a non-trivial task.
 
