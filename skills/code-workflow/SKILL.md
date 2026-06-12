@@ -97,6 +97,7 @@ This scaffold provides the generic common pieces:
 - `scripts/check-startup-gate.sh`
 - `harness/workflow-plugins/code-workflow/run_workflow_stage.sh`
 - `harness/workflow-plugins/code-workflow/archive_task_artifacts.sh`
+- `harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh`
 - `harness/checks/check_startup_gate.py`
 - `harness/templates/implementation-plan-skeleton.md`
 - `/.harness/session-gates/` ignore rule
@@ -126,6 +127,16 @@ The archive script should:
 - archive matching `docs/tasks/*<task-slug>*.md` files into `docs/tasks/archive/<YYYY-MM>/` when that directory exists
 - move the local startup gate from `active` to `ready_to_merge` when the current worktree owns the gate
 - keep `archived` reserved as the terminal closed state after final cleanup or a later explicit close action
+
+Use `bash harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh` after the task head has already been merged and the startup gate is `ready_to_merge`.
+
+The cleanup script should:
+
+- require the startup gate to already be `ready_to_merge`
+- require the task worktree to be clean before removal
+- require the task HEAD to already be merged into the chosen target ref, defaulting to `HEAD`
+- mark the startup gate `archived` as the terminal closed state
+- remove dedicated task worktrees, but never delete the current main worktree root just to close a task that ran in place
 
 Project-specific protected-surface checks and repo-specific review audits remain local.
 

@@ -169,6 +169,7 @@ START_IMPLEMENTATION="$(with_managed_header shell "$(read_managed_source "start-
 CHECK_STARTUP_GATE_SH="$(with_managed_header shell "$(read_managed_source "check-startup-gate.sh")")"
 RUN_WORKFLOW_STAGE="$(with_managed_header shell "$(read_managed_source "run-workflow-stage.sh")")"
 ARCHIVE_TASK_ARTIFACTS="$(with_managed_header shell "$(read_managed_source "archive-task-artifacts.sh")")"
+CLEANUP_TASK_WORKTREE="$(with_managed_header shell "$(read_managed_source "cleanup-task-worktree.sh")")"
 CHECK_STARTUP_GATE_PY="$(with_managed_header python "$(read_managed_source "check_startup_gate.py")")"
 IMPLEMENTATION_PLAN_SKELETON="$(with_managed_header markdown "$(read_managed_source "implementation-plan-skeleton.md")")"
 
@@ -177,6 +178,7 @@ write_file "$repo_root/scripts/start-implementation.sh" "$START_IMPLEMENTATION"
 write_file "$repo_root/scripts/check-startup-gate.sh" "$CHECK_STARTUP_GATE_SH"
 write_file "$repo_root/harness/workflow-plugins/code-workflow/run_workflow_stage.sh" "$RUN_WORKFLOW_STAGE"
 write_file "$repo_root/harness/workflow-plugins/code-workflow/archive_task_artifacts.sh" "$ARCHIVE_TASK_ARTIFACTS"
+write_file "$repo_root/harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh" "$CLEANUP_TASK_WORKTREE"
 write_file "$repo_root/harness/checks/check_startup_gate.py" "$CHECK_STARTUP_GATE_PY"
 write_file "$repo_root/harness/templates/implementation-plan-skeleton.md" "$IMPLEMENTATION_PLAN_SKELETON"
 append_gitignore_line "/.harness/session-gates/"
@@ -208,6 +210,7 @@ else
     "$repo_root/scripts/check-startup-gate.sh" \
     "$repo_root/harness/workflow-plugins/code-workflow/run_workflow_stage.sh" \
     "$repo_root/harness/workflow-plugins/code-workflow/archive_task_artifacts.sh" \
+    "$repo_root/harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh" \
     "$repo_root/harness/checks/check_startup_gate.py"
   rm -f "$repo_root/scripts/archive-task-artifacts.sh"
   mkdir -p "$repo_root/.harness/session-gates"

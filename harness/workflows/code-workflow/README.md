@@ -51,6 +51,8 @@ Read it in order:
 Besides startup-gate and archive assets, the package also owns the shared stage mechanism installed into:
 
 - `harness/workflow-plugins/code-workflow/run_workflow_stage.sh`
+- `harness/workflow-plugins/code-workflow/archive_task_artifacts.sh`
+- `harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh`
 
 That runner exposes the shared stage names:
 
@@ -75,6 +77,13 @@ Completion order for non-trivial task slices:
 2. Hand off to an independent `code-reviewer` agent for the real completion gate.
 3. Fix material findings and rerun impacted validation when needed.
 4. Only then enter `workflow-governance` / doctor / archive / final handoff.
+
+After merge / final integration:
+
+1. Archive task artifacts so the startup gate moves to `ready_to_merge`.
+2. Merge the task branch or otherwise integrate the task head.
+3. Run `bash harness/workflow-plugins/code-workflow/cleanup_task_worktree.sh` from the integration worktree to safely close the dedicated task worktree.
+4. The cleanup step marks the gate `archived`; dedicated task worktrees are removed only when they are clean and already merged.
 
 Startup gate status model:
 
