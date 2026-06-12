@@ -65,7 +65,9 @@ if [[ "$list_mode" -eq 1 ]]; then
     echo "FAIL: plan directory not found: $PLAN_DIR" >&2
     exit 1
   fi
-  find "$PLAN_DIR" -maxdepth 1 -type f -name "*-EPIC.md" | sort
+  # List both old-style flat EPIC files and new-style subdirs with EPIC.md
+  find "$PLAN_DIR" -maxdepth 1 -type f -name "*-EPIC.md" 2>/dev/null | sort
+  find "$PLAN_DIR" -maxdepth 2 -type f -name "EPIC.md" 2>/dev/null | sort
   exit 0
 fi
 
@@ -74,10 +76,15 @@ if [[ -z "$epic_slug" ]]; then
   exit 1
 fi
 
-epic_index="$PLAN_DIR/${epic_slug}-EPIC.md"
-
-if [[ ! -f "$epic_index" ]]; then
-  echo "FAIL: epic index not found: $epic_index" >&2
+# Support both new structure (epic-slug/EPIC.md) and old flat structure (epic-slug-EPIC.md)
+if [[ -f "$PLAN_DIR/${epic_slug}/EPIC.md" ]]; then
+  epic_index="$PLAN_DIR/${epic_slug}/EPIC.md"
+  epic_dir="$PLAN_DIR/${epic_slug}"
+elif [[ -f "$PLAN_DIR/${epic_slug}-EPIC.md" ]]; then
+  epic_index="$PLAN_DIR/${epic_slug}-EPIC.md"
+  epic_dir="$PLAN_DIR"
+else
+  echo "FAIL: epic index not found: tried $PLAN_DIR/${epic_slug}/EPIC.md and $PLAN_DIR/${epic_slug}-EPIC.md" >&2
   exit 1
 fi
 

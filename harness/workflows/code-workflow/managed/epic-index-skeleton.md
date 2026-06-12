@@ -23,7 +23,7 @@
 
 - Task Slug: `__SLICE_1_SLUG__`
 - Status: `not-started` <!-- not-started | in-progress | completed -->
-- Plan: [implementation-plan](__SLICE_1_SLUG__-implementation-plan.md)
+- Plan: [implementation-plan](__SLICE_1_SLUG__.md)
 - Depends On: 无
 - Notes:
 
@@ -31,7 +31,7 @@
 
 - Task Slug: `__SLICE_2_SLUG__`
 - Status: `not-started`
-- Plan: [implementation-plan](__SLICE_2_SLUG__-implementation-plan.md)
+- Plan: [implementation-plan](__SLICE_2_SLUG__.md)
 - Depends On: `__SLICE_1_SLUG__`
 - Notes:
 
@@ -39,7 +39,7 @@
 
 - Task Slug: `__SLICE_3_SLUG__`
 - Status: `not-started`
-- Plan: [implementation-plan](__SLICE_3_SLUG__-implementation-plan.md)
+- Plan: [implementation-plan](__SLICE_3_SLUG__.md)
 - Depends On: `__SLICE_1_SLUG__`
 - Notes:
 
