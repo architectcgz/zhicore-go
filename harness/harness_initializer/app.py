@@ -74,7 +74,7 @@ def configure_strict_reference(repo: Path, project_name: str, profile: str) -> t
 
 | 目录 | 内容 | 说明 |
 |------|------|------|
-| `concepts/` | 概念笔记 | Harness 核心概念与 CTF 项目映射 |
+| `concepts/` | AGENTS 补充 | 补充项目 `AGENTS.md`，记录长期概念、原则和 harness 定义 |
 | `thinking/` | 独立思考 | 对项目 harness 边界和取舍的判断 |
 | `practice/` | 动手实践 | 初始化和后续实验记录 |
 | `feedback/` | 反馈记录 | 踩坑、修正和可复用经验 |
@@ -114,7 +114,7 @@ def configure_strict_reference(repo: Path, project_name: str, profile: str) -> t
 
 本项目按 `deusyu/harness-engineering` 建立顶层 harness 结构：
 
-- `concepts/`：核心概念
+- `concepts/`：项目 `AGENTS.md` 的补充，记录长期概念与原则
 - `thinking/`：独立思考
 - `practice/`：实践记录
 - `feedback/`：反馈闭环

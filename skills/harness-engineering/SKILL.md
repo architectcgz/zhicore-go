@@ -92,7 +92,7 @@ bash /home/azhi/.agents/harness/init-project.sh "$PWD" --mode strict-reference
 
 `init-project.sh` is the preferred high-level bootstrap wrapper. It runs `harness-initializer.py`, then installs the requested workflow package by default, then runs the repo-local consistency check when present. The lower-level Python initializer remains the repair/debugging entry for harness-only operations.
 
-The initializer is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.harness/`, `.harness/reuse-decisions/`, optional local `.harness/reuse-index/`, `harness/policies/`, `harness/templates/`, `harness/prompts/`, `harness/checks/`, `feedback/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates top-level `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, `references/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check.
+The initializer is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.harness/`, `.harness/reuse-decisions/`, optional local `.harness/reuse-index/`, `harness/policies/`, `harness/templates/`, `harness/prompts/`, `harness/checks/`, `feedback/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates top-level `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, `references/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check; in that layout, `concepts/` should be treated as a supplement to the root `AGENTS.md`, while the root `AGENTS.md` remains the project description and navigation entrypoint.
 
 ## Harness Shape
 
@@ -116,7 +116,7 @@ Keep the harness as a map, not a manual. In the current local standard:
 - `scripts/check-skill-sync-reminder.sh`: non-blocking reminder that asks whether project harness changes should stay local or be synchronized into `~/.agents/skills/` or `~/.agents/harness/`.
 - Shared non-trivial task workflow package: install and verify `~/.agents/harness/workflows/code-workflow/`, but keep its behavior definition in the `code-workflow` skill instead of duplicating it here.
 
-When strict upstream reference mode is requested, use `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, and `references/` as demonstrated by `deusyu/harness-engineering`.
+When strict upstream reference mode is requested, use `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, and `references/` as demonstrated by `deusyu/harness-engineering`. In that mode, `concepts/` supplements the root `AGENTS.md` with long-lived concepts and principles rather than replacing the root navigation role.
 
 ## Guardrails
 

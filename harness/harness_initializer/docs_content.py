@@ -17,14 +17,14 @@ def strict_docs(project_name: str, profile: str) -> dict[str, str]:
         else "重点关注仓库事实源、规则漂移、验证闭环和 agent 可读性。"
     )
     return {
-        "concepts/AGENTS.md": """# concepts/ — 概念笔记
+        "concepts/AGENTS.md": """# concepts/ — AGENTS 补充说明
 
-严格参考 harness-engineering 仓库：每个核心概念一个文件，编号排序。
+本目录作为项目根 `AGENTS.md` 的补充层使用。根 `AGENTS.md` 负责项目说明、入口导航和索引；这里补充长期稳定的概念、原则和 harness 定义。
 
 ## 文件约定
 
 - 文件名：`{编号}-{英文短名}.md`
-- `00-overview.md` 是总览，先读这个。
+- 先读根 `AGENTS.md`，再读 `00-overview.md`。
 - 每篇第一段必须说明概念是什么，随后写出它在本项目中的落点。
 
 ## 当前内容
@@ -39,11 +39,11 @@ def strict_docs(project_name: str, profile: str) -> dict[str, str]:
 
 ## 下一步
 
-读完概念后，去 `thinking/` 写项目化判断和质疑。
+如果根 `AGENTS.md` 已经足够回答当前问题，就不要为了补目录而重复写一份；只有长期稳定、会反复影响 agent 判断的概念才进入这里。
 """,
         "concepts/00-overview.md": f"""# Harness Overview
 
-Harness Engineering 在本仓库中的含义：人类维护约束、事实源、反馈与检查，AI agent 在这些边界内完成工程任务。
+Harness Engineering 在本仓库中的含义：人类维护约束、事实源、反馈与检查，AI agent 在这些边界内完成工程任务。本目录作为项目根 `AGENTS.md` 的补充，只承接长期稳定的概念层说明。
 
 ## 项目落点
 
@@ -117,7 +117,7 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 """,
         "thinking/AGENTS.md": """# thinking/ — 独立思考
 
-读完 `concepts/` 后，在这里写本项目对 Harness Engineering 的判断、质疑和取舍。
+读完根 `AGENTS.md` 和 `concepts/` 后，在这里写本项目对 Harness Engineering 的判断、质疑和取舍。
 
 ## 文件约定
 
@@ -227,7 +227,7 @@ bash scripts/check-harness-consistency.sh
 
 ## 结构
 
-- `concepts/`：概念与项目映射
+- `concepts/`：补充项目 `AGENTS.md` 的长期概念与原则
 - `thinking/`：判断与取舍
 - `practice/`：实验和初始化记录
 - `feedback/`：踩坑与修正
