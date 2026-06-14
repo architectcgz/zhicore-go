@@ -80,8 +80,13 @@
 - 不要把一段时间内累计的修改、顺手优化、无关重构或其他任务的改动合并到同一次提交里。
 - 尤其是前端页面改动，应尽量按页面、问题或用户可感知的行为变化拆分，保证每次提交都能清楚说明“这一次具体改了什么”。
 - 如果工作区中已经存在其他改动，提交前先区分哪些属于本次任务；未经用户明确要求，不得一并提交。
+- 当用户说“合并回去”“合并分支”“merge 回主线/主分支”时，默认理解为执行真实的 Git 合并语义（`git merge`、`git cherry-pick`、`git rebase` 后 fast-forward，或用户明确指定的等价历史操作）；不得擅自降级成手动拷贝文件、直接补丁回填或仅把改动带到工作区。若当前工作区不适合直接合并，应先说明阻塞点并切换到合适的干净集成上下文，再继续完成真正的合并。
 - commit message 默认使用中文描述，格式建议为 `feat(模块): 变更内容`；`feat`、`fix`、`refactor`、`docs` 等类型关键字保持英文。
 - `git commit` 优先使用单行 `-m`；如需补充说明，使用多个 `-m` 参数，禁止 heredoc。
+- 默认推送顺序：先尝试通过 `gh` 的 credential helper 走 HTTPS 推送；只有在 `gh` 不可用、未登录，或仓库/环境明确只能走 SSH 时，才回退到 SSH 推送。
+- 推荐推送形式：
+  `git -c credential.helper='!gh auth git-credential' push https://github.com/<owner>/<repo>.git <src-ref>:<dst-ref>`
+  若 `gh auth status` 不可用或未登录，再使用常规 `git push origin ...` / SSH 路径。
 - **禁止在 commit message 末尾追加 `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` 或任何形式的 Co-Authored-By 署名。**
 - 新建项目、初始化项目级 `AGENTS.md`，或补修 agent 入口时，必须同时创建项目根 `CLAUDE.md -> AGENTS.md`，并运行 `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh <project-root>` 验证；需要核查全局入口时运行 `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh --global`。
 

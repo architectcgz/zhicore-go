@@ -95,8 +95,13 @@ Then: Cleanup worktree (Step 5)
 #### Option 2: Push and Create PR
 
 ```bash
-# Push branch
-git push -u origin <feature-branch>
+# Prefer GitHub CLI credential helper over SSH
+if gh auth status >/dev/null 2>&1; then
+  git -c credential.helper='!gh auth git-credential' \
+    push -u https://github.com/<owner>/<repo>.git <feature-branch>
+else
+  git push -u origin <feature-branch>
+fi
 
 # Create PR
 gh pr create --title "<title>" --body "$(cat <<'EOF'
