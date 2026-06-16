@@ -5,6 +5,11 @@ backend/
     config.yaml
     config.dev.yaml
     config.prod.yaml
+  docs/
+    reviews/
+    todos/
+      debt/
+        archive/
   internal/
     app/
       composition/

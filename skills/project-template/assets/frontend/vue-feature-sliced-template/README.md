@@ -34,6 +34,7 @@
 - `tree.txt`：推荐目录树
 - `starter-files/`：起步文件与代码片段
 - `manifest.json`：模板元信息与占位变量说明
+- `docs/reviews/` 与 `docs/todos/debt/`：review 证据和未收口技术债的默认目录骨架
 
 这次补上的最小闭环：
 
@@ -43,6 +44,8 @@
 - `src/features/auth/`、`src/entities/user/`、`src/widgets/dashboard/` 示例
 - `router guard`、错误页路由与登录 / dashboard 页面壳
 - `createDefaultErrorRuntimeOptions()`：给 401/500/route error 提供可替换的默认行为
+- `docs/reviews/README.md`：约定 review 证据的放置方式
+- `docs/todos/debt/README.md` 与 `_template.md`：约定 unresolved debt 的目录、文件命名和条目格式
 
 生成后建议先做：
 

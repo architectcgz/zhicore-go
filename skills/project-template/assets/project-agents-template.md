@@ -43,6 +43,8 @@ Use the project's existing package manager and scripts. Do not invent commands t
 
 If a command is unavailable or dependencies are missing, report the exact blocked command and the reason.
 
+- If this repository standardizes on a repo-scoped workflow layer such as Trellis, record the exact install and initialization commands here or in the nearest setup document. If not, remove this note instead of implying Trellis is already present.
+
 ## 4. Architecture and Change Boundaries
 
 - Follow the existing module layout, naming conventions, layering, error handling, logging style, and test patterns.
@@ -87,4 +89,6 @@ Use the global git and worktree rules, then record only repository-specific deli
 - Documentation rules are owned by `docs/documentation-rules.md`; documentation navigation is owned by `docs/README.md`.
 - Before creating, moving, deleting, or editing documentation, read `docs/documentation-rules.md` when it exists, then the nearest existing index for the target area.
 - When code behavior, APIs, configuration, database shape, setup flow, or user-visible behavior changes, plan the documentation owner and target path before implementation.
+- When the project uses recurring post-delivery review governance, keep review reports under `docs/reviews/` and unresolved technical debt under `docs/todos/debt/`.
+- Keep technical debt as separate debt files plus a debt index under `docs/todos/debt/`; do not grow one root-level `DEBT.md` forever.
 - Do not duplicate the full documentation taxonomy in this file. If a new durable documentation path changes agent routing, add only the route here and keep the detailed rule in the documentation owner file.

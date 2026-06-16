@@ -1,4 +1,9 @@
 frontend/
+  docs/
+    reviews/
+    todos/
+      debt/
+        archive/
   src/
     __tests__/
     api/

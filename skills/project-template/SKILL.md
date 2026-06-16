@@ -50,10 +50,13 @@ It does not own harness initialization, workflow installation, or documentation 
 13. When the repository provides verification scripts such as `scripts/check-*.sh`, `scripts/check-*.py`, or another documented guard command, make the testing prompt require a follow-up script check after the test run. Prefer existing project scripts over generic advice.
 14. Do not stop at prompt text alone when the repository already has mechanical enforcement entry points. If `scripts/check-consistency.sh`, git hooks, CI checks, or another repository guardrail exists, require the relevant test-related script check to be wired into at least one enforced path. A prompt-only rule is not sufficient once enforcement infrastructure exists.
 15. If the repository has tests but no mechanical enforcement entry point yet, say so explicitly in `AGENTS.md` or the initialization report; do not pretend the test workflow is enforced already.
-16. Validate the final file by checking that it is readable, internally consistent, and does not reference missing tools, scripts, or skills.
-17. If documentation scaffolding is needed, route to `documentation-architecture`; do not create documentation templates from this skill.
-18. If a harness should be initialized, route to `harness-engineering` or `bash ~/.agents/harness/init-project.sh ...`; do not absorb harness ownership into this skill.
-19. If a local entrypoint guard exists, require the initialization workflow to run it after creating the root files, for example `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh <project-root>`.
+16. When a repository would benefit from a repo-scoped task/spec/workspace workflow layer but does not already define one, mention Trellis installation as an optional recommendation in the initialization report or setup notes. Keep it clearly optional unless the repository already standardizes on Trellis, and do not invent `.trellis/` files silently.
+17. When the project should preserve post-delivery review evidence, keep raw or synthesized review reports under `docs/reviews/` and keep unresolved technical debt as separate files under `docs/todos/debt/`. Do not collapse recurring debt into a single root-level `DEBT.md`.
+18. If the template includes debt tracking, provide a `docs/todos/debt/README.md` index plus a reusable debt entry template that defines the file format, status, priority, owner, source review, impact, and exit condition fields.
+19. Validate the final file by checking that it is readable, internally consistent, and does not reference missing tools, scripts, or skills.
+20. If documentation scaffolding is needed, route to `documentation-architecture`; do not create documentation templates from this skill.
+21. If a harness should be initialized, route to `harness-engineering` or `bash ~/.agents/harness/init-project.sh ...`; do not absorb harness ownership into this skill.
+22. If a local entrypoint guard exists, require the initialization workflow to run it after creating the root files, for example `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh <project-root>`.
 ## Template Use
 
 Use the bundled template at:
@@ -83,6 +86,8 @@ When creating a new project-level `AGENTS.md`, include only sections that are us
 
 - Keep: project overview, setup commands, project-specific verification commands, architecture boundaries, documentation structure, and repository-specific delivery constraints.
 - Customize: tech stack, package manager, test commands, build commands, lint/typecheck commands, service startup commands, database or migration rules, frontend/backend boundaries, generated-file rules, compatibility constraints, the testing prompt that tells agents what to run after writing tests, and the mechanical enforcement path that checks those commands.
+- Mention when useful: whether the repository should install a repo-scoped workflow layer such as Trellis, and the exact install/init command only when that decision is real for the project.
+- Include when the team wants recurring post-module review governance: `docs/reviews/` for review evidence and `docs/todos/debt/` for unresolved debt files, plus a clear debt file template instead of one growing `DEBT.md`.
 - Include: test file placement rules that route each test to the owner/layer it proves, and make duplicated or implementation-detail tests candidates for merge, rewrite, or removal.
 - Ensure: the initial scaffold reflects the chosen architecture instead of leaving the first implementation to invent structure ad hoc.
 - Remove: repeated global policy, generic communication rules, generic verification advice, generic git discipline, unused framework sections, placeholder examples, nonexistent scripts, nonexistent tools, and skill routing indexes.

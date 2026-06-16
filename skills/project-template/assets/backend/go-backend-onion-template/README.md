@@ -33,6 +33,7 @@
 - `tree.txt`：推荐目录树
 - `starter-files/`：起步文件与代码片段
 - `manifest.json`：模板元信息与占位变量说明
+- `docs/reviews/` 与 `docs/todos/debt/`：review 证据和未收口技术债的默认目录骨架
 
 这次补上的最小闭环：
 
@@ -43,6 +44,8 @@
 - `internal/module/__DOMAIN_NAME__/`：包含 entity/domain/contracts/commands/queries/http/runtime/infrastructure 的完整示例模块
 - `TxRunner`：保留 command 用例的事务边界样例，避免 service 直接耦合 GORM 事务
 - `redis.enabled`：默认关闭 Redis，降低 starter 首次启动门槛
+- `docs/reviews/README.md`：约定 review 证据的放置方式
+- `docs/todos/debt/README.md` 与 `_template.md`：约定 unresolved debt 的目录、文件命名和条目格式
 
 当前边界也要明确：
 
