@@ -29,5 +29,5 @@ developer_instructions = """
 """
 
 [[skills.config]]
-path = "/home/azhi/.codex/skills/code-agent/SKILL.md"
+path = "/home/azhi/.agents/skills/code-agent/SKILL.md"
 enabled = true

@@ -15,6 +15,7 @@ Language-specific backend skills should extend this skill rather than replace it
 - Prefer one durable owner for each backend concern: schema changes, contract normalization, permission checks, idempotency, and side-effect orchestration should not be silently duplicated across layers.
 - Treat database schema evolution as an explicit deployment concern, not an incidental runtime effect.
 - For backend behavior changes, load `test-driven-development` before production code and prove the behavior with a failing test first.
+- When a backend branch enforces a non-obvious business rule, state transition, or failure path, keep the comment directly above that branch and explain the trigger, business intent, and side effect instead of paraphrasing the code.
 
 ## Backend TDD Boundaries
 

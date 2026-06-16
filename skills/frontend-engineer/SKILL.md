@@ -53,6 +53,7 @@ Act as a frontend engineering agent for frontend implementation, refactor, inter
 26. For form controls such as inputs, selects, textareas, search fields, and filters, drive background, border, placeholder, caret, focus ring, and inner highlight through theme tokens or semantic CSS variables, then check both light and dark themes.
 27. Avoid broad generic local class names that are likely to collide with global styles. Prefer component- or page-scoped naming unless the project already provides a shared class.
 28. Reusable shell components such as modal, drawer, popover, panel, empty state, card, table, and form wrappers must not ship with visible scaffold or demo prose as runtime defaults. Keep examples in tests, docs, stories, or comments.
+29. When a frontend handler, watcher, computed branch, or async flow enforces a non-obvious business rule or exception path, keep the comment adjacent to that code and describe the user/business trigger plus resulting behavior, not the syntax itself.
 
 ## Workflow
 
