@@ -26,9 +26,9 @@
 
 ### Reference
 
-- [skills-directory-structure](shared/skills_directory_structure.md) — Skills 目录结构和软链接关系，~/.claude/skills 是父目录级软链接
+- [skills-directory-structure](shared/skills_directory_structure.md) — Skills 目录结构和软链接关系，~/.claude/skills 和 ~/.codex/skills 都是父目录级软链接
   - **关键词**：`skills`, `软链接`, `symlink`, `skill 创建`, `目录结构`
-  - **核心事实**：`~/.claude/skills -> ~/.agents/skills`（父目录软链接），新 skill 只需为 Codex 创建链接
+  - **核心事实**：`~/.claude/skills -> ~/.agents/skills` 和 `~/.codex/skills -> ~/.agents/skills`（双向父目录软链接），新 skill 无需任何链接操作
   - **优先级**：`high`（避免重复创建链接）
 
 ### Feedback

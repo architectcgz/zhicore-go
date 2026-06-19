@@ -28,10 +28,10 @@
 
 **特殊目录**：
 - `~/.codex/skills/.system/` — Codex 系统级 skills（如 skill-creator），保留在实体目录中
-- 项目专属 skills — 放在项目的 `.agents/skills/` 目录中（如 CTF 项目的 `ctf-*` skills）
+- 项目专属 skills — 放在项目的 `.agents/skills/` 目录中作为 wrapper/补充
 
-**工具脚本**：
-- `bash ~/.agents/scripts/setup-skill-links.sh` — 克隆仓库后初始化父目录软链接（已废弃，仅保留用于手动修复）
+**废弃的工具脚本**：
+- `bash ~/.agents/scripts/setup-skill-links.sh` — 已不再需要（仅保留用于手动修复）
 
 当前处于迁移期：
 
