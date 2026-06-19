@@ -6,6 +6,29 @@
 - `Claude`、`Codex` 或其他 agent 需要兼容时，各自的私有 skill 目录应回链到这里
 - 还没迁完的历史 skill 可以暂时继续保留在各 agent 私有目录，但新改动优先收口到这里
 
+## 重要：软链接结构
+
+**关键发现**：`~/.claude/skills` 本身是指向 `~/.agents/skills` 的**父目录级软链接**。
+
+```bash
+~/.claude/skills -> ~/.agents/skills  # 父目录软链接
+~/.codex/skills/                      # 实体目录
+```
+
+**创建新 skill 的步骤**：
+
+1. 在主体创建：`mkdir -p ~/.agents/skills/<skill-name>`
+2. **只需为 Codex 创建软链接**：`ln -s ~/.agents/skills/<skill-name> ~/.codex/skills/<skill-name>`
+3. Claude 自动可用（无需任何操作）
+
+**容器 skill（如 superpowers）**：
+- 只链接容器本身，不展开子 skill
+- Codex: `~/.codex/skills/superpowers -> ~/.agents/skills/superpowers`
+- Claude: 通过父目录软链接自动访问所有子 skills
+
+**工具脚本**：
+- `bash ~/.agents/scripts/setup-skill-links.sh` — 初始化脚本，自动为 Codex 创建所有一级目录的软链接
+
 当前处于迁移期：
 
 - 一部分目录已经是实体目录

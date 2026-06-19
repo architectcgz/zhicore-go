@@ -24,6 +24,13 @@
 
 ## Shared（共享记忆）
 
+### Reference
+
+- [skills-directory-structure](shared/skills_directory_structure.md) — Skills 目录结构和软链接关系，~/.claude/skills 是父目录级软链接
+  - **关键词**：`skills`, `软链接`, `symlink`, `skill 创建`, `目录结构`
+  - **核心事实**：`~/.claude/skills -> ~/.agents/skills`（父目录软链接），新 skill 只需为 Codex 创建链接
+  - **优先级**：`high`（避免重复创建链接）
+
 ### Feedback
 
 - [skill-creation-workflow](shared/feedback_skill_creation.md) — 创建 skill 前必须先使用 writing-skills skill 和检查现有工具 `[scope: claude, codex]`
