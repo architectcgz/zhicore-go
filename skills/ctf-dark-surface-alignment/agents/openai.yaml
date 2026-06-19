@@ -1,4 +1,0 @@
-interface:
-  display_name: "CTF Dark Surface"
-  short_description: "Align CTF pages to the repo's low-contrast dark surface system"
-  default_prompt: "Use the CTF dark surface alignment skill to replace hardcoded light UI, fix leaking Element Plus wrappers, and match the repo's established low-contrast dark surface language."

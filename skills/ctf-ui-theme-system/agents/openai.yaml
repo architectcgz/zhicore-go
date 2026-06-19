@@ -1,4 +1,0 @@
-interface:
-  display_name: "CTF UI Theme"
-  short_description: "Align CTF pages to the approved workspace design system"
-  default_prompt: "Use the CTF UI theme system to keep layout, typography, copy, and interaction patterns aligned with the approved academy, challenge, teacher, and admin workspace UI."
