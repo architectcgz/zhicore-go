@@ -1,0 +1,12 @@
+# 记忆文件可能包含个人偏好和项目状态，默认不提交到版本控制
+# 如需共享特定记忆，可以在团队约定后移除对应行
+
+# 保留结构说明文件
+!README.md
+!MEMORY.md
+!.gitignore
+
+# 忽略所有记忆内容
+shared/*.md
+claude/*.md
+codex/*.md

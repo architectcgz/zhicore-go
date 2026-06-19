@@ -16,3 +16,10 @@
 - `agent-rules/documentation-boundaries.md`：文档归属和结构性改动流程。
 - `agent-rules/risky-operations.md`：高风险操作确认。
 - `agent-rules/output-style.md`：输出风格。
+
+## 记忆系统
+
+- [memory-loading.md](memory-loading.md) — 记忆自动加载配置状态和技术方案
+## 快速参考
+
+- [memory-usage.md](quick-reference/memory-usage.md) — 记忆系统使用快速参考

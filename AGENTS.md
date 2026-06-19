@@ -40,7 +40,16 @@
 - 默认输出风格：
   [docs/agent-rules/output-style.md](/home/azhi/.agents/docs/agent-rules/output-style.md)
 
-## 3. 文档入口
+## 3. 记忆系统
+- 记忆系统入口和索引：
+  [memory/MEMORY.md](/home/azhi/.agents/memory/MEMORY.md)
+- 记忆系统设计和作用域规则：
+  [memory/README.md](/home/azhi/.agents/memory/README.md)
+- 每次任务开始前，根据当前工具加载对应作用域的记忆：
+  - Claude: `memory/shared/` + `memory/claude/`
+  - Codex: `memory/shared/` + `memory/codex/`
+
+## 4. 文档入口
 - `docs/documentation-rules.md` 是 `~/.agents/docs/` 的归属规则源：
   [docs/documentation-rules.md](/home/azhi/.agents/docs/documentation-rules.md)
 - `docs/README.md` 是 `~/.agents/docs/` 的导航索引：
