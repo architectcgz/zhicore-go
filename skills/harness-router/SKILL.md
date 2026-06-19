@@ -1,6 +1,6 @@
 ---
 name: harness-router
-description: "Use at the start of repository work to decide whether a request should enter the project harness workflow before execution. Trigger for most coding, refactor, testing, documentation, review, migration, architecture, prompt, skill, process, or multi-step tasks; skip only clearly simple local tasks such as answering a small question, reading one file, running a harmless command, or making a trivial typo-style edit."
+description: Use when starting repository work to decide whether a request should enter the project harness workflow before execution. Trigger for most coding, refactor, testing, documentation, review, migration, architecture, prompt, skill, process, or multi-step tasks; skip only clearly simple local tasks such as answering a small question, reading one file, running a harmless command, or making a trivial typo-style edit.
 metadata:
   short-description: Route tasks into harness workflows
 ---

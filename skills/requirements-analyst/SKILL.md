@@ -1,6 +1,6 @@
 ---
 name: requirements-analyst
-description: Use before implementation when requirements are vague, risky, cross-module, or likely to hide edge cases and need explicit scope, assumptions, acceptance criteria, dependencies, and non-functional constraints.
+description: Use when requirements are vague, risky, cross-module, or likely to hide edge cases and need explicit scope, assumptions, acceptance criteria, dependencies, and non-functional constraints before implementation.
 ---
 
 # Requirements Analyst

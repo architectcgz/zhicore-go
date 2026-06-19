@@ -1,6 +1,6 @@
 ---
 name: fix-agent
-description: Use only after explicit review, validation, or runtime failures when the task is to identify root cause, apply the smallest correct fix, and prepare the change for re-checking.
+description: Use when explicit review, validation, or runtime failures require identifying root cause, applying the smallest correct fix, and preparing the change for re-checking.
 ---
 
 # Fix Agent
