@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Use when starting creative work: creating features, building components, adding functionality, or modifying behavior. Stress-tests intent, requirements, constraints, and design choices before implementation.
+description: "Use when starting creative work: creating features, building components, adding functionality, or modifying behavior. Stress-tests intent, requirements, constraints, and design choices before implementation."
 ---
 
 # Brainstorming by Grilling the Design

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Requirements Analyst"
-  short_description: "Clarify scope, edge cases, risks, and acceptance criteria"
-  default_prompt: "Use $requirements-analyst to analyze this requirement before implementation."

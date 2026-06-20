@@ -1,8 +1,6 @@
 ---
 name: harness-engineering
-description: Use when initializing or refactoring a repository into an AI-agent harness: AGENTS.md navigation, repo-as-source-of-truth docs, feedback/improvement loops, mechanical consistency checks, git hook or CI guardrails, and project-specific harness onboarding.
-metadata:
-  short-description: Initialize repository harnesses
+description: "Use when initializing or refactoring a repository into an AI-agent harness: AGENTS.md navigation, repo-as-source-of-truth docs, feedback/improvement loops, mechanical consistency checks, git hook or CI guardrails, and project-specific harness onboarding."
 ---
 
 # Harness Engineering
