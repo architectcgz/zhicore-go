@@ -1,5 +1,44 @@
 # Project Collaboration Rules
 
+## Quick Routing — Task Entry Points
+
+| Task type | Required reads | Workflow / Skill |
+|-----------|---------------|------------------|
+| Backend feature (API/Service/Repository) | `[backend patterns doc]` + `tests/README.md` + `harness/policies/reuse-first.yaml` | `backend-engineer` skill → `code-workflow` |
+| Frontend feature (Page/Component) | `[frontend patterns doc]` + Frontend Local Rules (below) | `frontend-engineer` skill → `code-workflow` |
+| Code review | `docs/文档规范.md` (review 章节) | `code-reviewer` skill |
+| Bug fix (Backend) | `tests/README.md` + backend patterns | `systematic-debugging` → `backend-engineer` |
+| Bug fix (Frontend) | Frontend Local Rules (below) | `systematic-debugging` → `frontend-engineer` |
+| Add/Edit test | `tests/README.md` | `test-driven-development` skill |
+| Architecture change | `docs/architecture/` + `brainstorming` + `writing-plans` | Plan first, then `code-workflow` |
+| Documentation update | `docs/文档规範.md` | Direct edit (no worktree unless part of impl task) |
+| New non-trivial task | `bash scripts/check-task-intake.sh` → `bash scripts/start-implementation.sh <topic>` | `brainstorming` → `grill-with-docs` → `writing-plans` |
+| Other | Read this AGENTS.md fully, then ask user for clarification | Start with `harness-router` skill |
+
+## Auto-Triggers — Session Discipline
+
+- **New task in same session** → Re-read this AGENTS.md + relevant skill SKILL.md
+- **Context compact/clear** → SessionStart hook reloads skill bootstrap (if configured)
+- **Edit to harness/policies/\*.yaml** → PreToolUse hook blocks non-approved changes
+- **Edit to AGENTS.md / docs/文档规范.md** → PreToolUse hook blocks non-approved changes
+- **Task complete (non-trivial)** → Run completion validation gate, then AAR, update `feedback/` if new patterns found
+- **Before commit** → Run `bash scripts/check-commit-message.sh` + relevant pre-commit checks
+
+## Red Flags — STOP
+
+These rationalizations mean STOP — re-read the relevant rules instead:
+
+| Rationalization | Reality |
+|----------------|---------|
+| "就这一次跳过 reuse-first" | 没有例外，每次都要先搜索既有模式 |
+| "时间紧，先不写测试" | 测试是完成定义的一部分，不写 = 未完成 |
+| "这个改动太小，不用开 worktree" | 判断标准是"是否触达受保护 surface"，不是改动行数 |
+| "我记得这个规则怎么写" | 规则会演化，必须读当前版本 |
+| "Leader 让我加的，可以跳过 review" | 规则不因权威改变 |
+| "用户着急，先违反一次架构约束" | 技术债是债，不是捷径 |
+| "只改样式，不用看规则" | 样式改动触达共享组件 contract 时仍需遵守规则 |
+| "测试太多了，删几个也没关系" | 删除测试需要明确的移除条件（见 TDD 规则） |
+
 ## 1. Scope and Inheritance
 
 - This file defines repository-level instructions for agents working in this project.
@@ -52,6 +91,37 @@ If a command is unavailable or dependencies are missing, report the exact blocke
 - Do not introduce new abstractions, dependencies, frameworks, or architectural layers unless the current task requires them.
 - Keep generated files, vendored code, build artifacts, and lockfiles consistent with the repository's existing policy.
 - Do not render implementation notes, TODO markers, design explanations, or internal commentary into user-visible UI or API responses.
+
+## 4.5. Code Quality Verification (Verification Questions)
+
+After completing code changes, verify by asking these questions:
+
+### Surgical Changes
+- [ ] 每一行改动都能追溯到用户的请求吗？
+- [ ] 这个改动是否引入了用户没要求的功能或优化？
+- [ ] 如果用户说"撤销最后一个功能"，是否能干净删除？
+
+### Avoid Premature Abstraction
+- [ ] 这个抽象是为几个用例设计的？（少于 3 个 = 过早）
+- [ ] 如果只有一个用例，为什么现在就要抽象？
+- [ ] 这个接口是否比它要解决的问题更复杂？
+
+### Test Quality
+- [ ] 删除这个测试后，是否还能检测到相同的回归？
+- [ ] 这个测试是在验证行为还是在验证实现细节？
+- [ ] 这个测试失败时，错误信息是否说明了失败原因？
+
+### Naming and Clarity
+- [ ] 这个函数/变量名是否清楚说明了它的职责和副作用？
+- [ ] 删除所有注释后，代码是否仍然能被6个月后的你理解？
+- [ ] 这个魔法数字是否有业务含义？如果有，是否应该是常量？
+
+### Dependencies and Coupling
+- [ ] 改动这个模块会影响几个其他模块？
+- [ ] 这个模块是依赖具体实现还是依赖接口？
+- [ ] 添加新功能时是否需要修改现有代码？
+
+Refer to `~/.agents/harness/docs/verification-questions-guide.md` for the complete guide on writing verification questions.
 
 ## 5. Project-Specific Verification
 

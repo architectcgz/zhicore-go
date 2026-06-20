@@ -8,15 +8,26 @@ from pathlib import Path
 
 from .consistency_content import check_script, ctf_current_check_script
 from .content import (
+    aar_directory_readme,
+    aar_example,
+    aar_hook_readme,
     agent_entrypoints_check_script,
     architecture_guard_commands_policy,
     architecture_guard_paths_policy,
     architecture_guard_script,
+    claude_settings_hooks,
+    codex_hooks_json,
     commit_message_check_script,
     commit_message_policy_content,
+    known_antipatterns_examples,
+    known_antipatterns_readme,
+    post_tooluse_aar_hook_script,
+    protect_core_files_hook_script,
     script_guard_check_script,
     script_guard_policy_content,
     skill_sync_reminder_script,
+    test_trigger_rate_readme,
+    test_trigger_rate_script,
     test_workflow_check_script,
     todo_governance_check_script,
     todo_reminder_script,
@@ -54,10 +65,63 @@ def write_common_scaffold(repo: Path, profile: str, consistency_script: str) -> 
     write(repo / "scripts/check-todo-governance.sh", todo_governance_check_script(), executable=True)
     write(repo / "scripts/check-skill-sync-reminder.sh", skill_sync_reminder_script(), executable=True)
     write(repo / "scripts/check-commit-message.sh", commit_message_check_script(), executable=True)
+    write(repo / "scripts/test-trigger-rate.sh", test_trigger_rate_script(), executable=True)
+    write_if_missing(repo / "scripts/README-trigger-rate.md", test_trigger_rate_readme())
     write_if_missing(repo / "harness/policies/architecture-guard-paths.txt", architecture_guard_paths_policy())
     write_if_missing(repo / "harness/policies/architecture-guard-commands.txt", architecture_guard_commands_policy())
     write(repo / "harness/policies/commit-message.json", commit_message_policy_content(profile))
     write_if_missing(repo / "harness/policies/script-guard.json", script_guard_policy_content())
+
+    # PreToolUse Hook for protecting core files
+    write(repo / "harness/hooks/protect-core-files.sh", protect_core_files_hook_script(), executable=True)
+
+    # PostToolUse AAR Hook for after action review
+    write(repo / "harness/hooks/post-tooluse-aar.sh", post_tooluse_aar_hook_script(), executable=True)
+    write_if_missing(repo / "harness/hooks/README-AAR.md", aar_hook_readme())
+
+    # AAR feedback directory
+    write_if_missing(repo / "feedback/aar/README.md", aar_directory_readme())
+    write_if_missing(repo / "feedback/aar/example-aar.md", aar_example())
+
+    # Known Antipatterns directory
+    write_if_missing(repo / "harness/known-antipatterns/README.md", known_antipatterns_readme())
+    write_if_missing(repo / "harness/known-antipatterns/EXAMPLES.md", known_antipatterns_examples())
+
+    # Hook configurations
+    write_if_missing(repo / ".codex/hooks.json", codex_hooks_json())
+    write_if_missing(repo / ".claude/settings.local.json", claude_settings_hooks())
+
+
+def quick_routing_shell() -> str:
+    """生成新项目 AGENTS.md 的标准占位薄壳（Quick Routing + Auto-Triggers）。
+
+    结构可复用、内容禁止预制：通用行用现成全局 skill，项目特定行留 `<!-- FILL -->`
+    占位，项目起步后补充。两节放同一个 managed block，保证 test-trigger 解析锚点稳定。
+    """
+    return """## Quick Routing
+
+项目刚起步时这是占位薄壳：通用行可直接用，项目特定行用 `<!-- FILL -->` 占位，起步后替换为真实文件与 skill。压缩后这张表仍是 Agent 查"该读哪些文件 / 用哪个 skill"的线索。
+
+| Task type | Required reads | Workflow / Skill |
+|-----------|---------------|------------------|
+| Backend feature | <!-- FILL: backend patterns + tests/README --> | <!-- FILL: backend skill --> + `code-workflow` |
+| Frontend feature | <!-- FILL: frontend rules --> | <!-- FILL: frontend skill --> + `code-workflow` |
+| Code review | <!-- FILL: review 规范 --> | `code-reviewer` |
+| Bug fix | <!-- FILL: 相关 rules/tests --> | `systematic-debugging` |
+| Add/Edit test | <!-- FILL: tests/README --> | `test-driven-development` |
+| Architecture change | `docs/architecture/` | `brainstorming` then `writing-plans` |
+| Documentation update | <!-- FILL: 文档规范 --> | Direct edit |
+| Commit changes | — | `committing-changes` |
+| New non-trivial task | `bash scripts/check-open-todos.sh --quiet-if-empty` | `harness-router` then `writing-plans` |
+| Other | Read this AGENTS.md fully, then ask user | `harness-router` |
+
+## Auto-Triggers
+
+- New task in same session → re-read this AGENTS.md + the relevant skill SKILL.md（"我已经读过了"不算，上下文会压缩）。
+- Context compact / clear → SessionStart hook 重新注入 skill bootstrap（若已配置）。
+- Before any `git commit` → 先走 `committing-changes` skill 组织提交信息（默认禁止 Co-Authored-By）。
+- Task complete (non-trivial) → 跑验证门禁，再做 AAR，若有新模式更新 `feedback/`。
+- 起步后把 `<!-- FILL -->` 行替换为本项目真实的必读文件与 skill，替换完运行 `bash scripts/test-trigger-rate.sh` 检查 description 触发率。"""
 
 
 def configure_strict_reference(repo: Path, project_name: str, profile: str) -> tuple[str, str]:
@@ -87,6 +151,11 @@ def configure_strict_reference(repo: Path, project_name: str, profile: str) -> t
 
 机械化检查：`bash scripts/check-harness-consistency.sh`。
 架构守卫入口：`bash scripts/check-architecture.sh`。""",
+    )
+    insert_or_replace(
+        repo / "AGENTS.md",
+        "quick-routing",
+        quick_routing_shell(),
     )
     insert_or_replace(
         repo / "AGENTS.md",
@@ -176,6 +245,11 @@ def configure_ctf_current(repo: Path, project_name: str, profile: str) -> tuple[
 开发过程中，如果某个模块第一次形成稳定复用模式，主动补 `.harness/reuse-index/<source-path>/README.md`；如果模块内部也已经分出稳定层次，再继续补该子路径下的镜像 `README.md`。这是本地提醒，不作为 pre-commit 阻塞项。
 
 如果用户明确要求严格参考 `deusyu/harness-engineering` 的目录形态，再使用 strict reference 模式。""",
+    )
+    insert_or_replace(
+        repo / "AGENTS.md",
+        "quick-routing",
+        quick_routing_shell(),
     )
     insert_or_replace(
         repo / "AGENTS.md",
