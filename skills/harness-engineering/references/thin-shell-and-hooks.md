@@ -34,14 +34,55 @@ wiring; for how to write the skills these route to, see the `authoring-project-s
 
 ## hook(机制级护栏，不靠 Agent 自觉)
 
-- **SessionStart hook** —— 监听 startup / clear / compact，自动读入口/SKILL.md 注入 context（防遗忘）。
+- **SessionStart hook** —— 监听 startup / clear / compact，自动读项目入口薄壳或主 SKILL.md 注入 context（防遗忘）。
 - **PreToolUse hook** —— 在 Edit 核心规则文件前拦一刀，非 0 退出码直接取消这次 Edit（防违规）。
 - 注意：
   - hook schema 各工具不同（例如 Claude Code v2.1+ 的 PreToolUse 只认嵌套 `hooks:[{type,command}]`，
     flat 写法注册时不报错、debug 能看到名字，但 Edit 时静默不触发）。
   - hook 只能一定程度缓解；过多 hook 反而限制 Agent 发挥，复杂问题建议用 Sonnet 及以上模型。
-- 本机 Codex 侧已有 SessionStart 注入实现：`~/.agents/codex-hooks/session-skill-bootstrap.sh`
-  （按 cwd 向上找当前项目 `.agents/skills`，注入项目 skill 索引，不在项目内才回退全局）。
+  - 不要在全局 SessionStart 注入完整 skill 索引；description 负责触发，SKILL.md / references 按需加载。
+- 本机 Codex 侧当前不启用默认 SessionStart 注入。若具体项目需要防遗忘 hook，只注入该项目的薄壳路由或
+  `primary` 项目 SKILL.md 摘要，不回退展开全局 `~/.agents/skills`。
+
+Codex 项目级可复用脚本：`~/.agents/harness/hooks/session-thin-shell.sh`。
+
+项目 `.codex/hooks.json` 示例：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.agents/harness/hooks/session-thin-shell.sh",
+            "statusMessage": "Reloading project routing"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+默认读取项目根 `AGENTS.md`，优先抽取以下精确标记块：
+
+```markdown
+<!-- codex-session-thin-shell:start -->
+## Quick Routing
+...
+## Auto-Triggers
+...
+## Red Flags
+...
+<!-- codex-session-thin-shell:end -->
+```
+
+没有标记块时，脚本只抽取 `Quick Routing`、`Session Discipline`、`Auto-Triggers`、
+`Red Flags` 等短路由章节；仍然找不到时才截取入口文件开头。需要改入口文件时，用
+`CODEX_SESSION_THIN_SHELL_SOURCE=path/to/file.md`。
 
 ## 边界
 
