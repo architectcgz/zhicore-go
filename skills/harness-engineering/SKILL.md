@@ -135,3 +135,7 @@ When strict upstream reference mode is requested, use `concepts/`, `thinking/`, 
 ## References
 
 Read `references/harness-adaptation.md` only when the user explicitly asks for an adapted, non-strict harness.
+
+Read `references/thin-shell-and-hooks.md` when wiring entry files (`AGENTS.md` / `CODEX.md` / `.cursor`) and SessionStart / PreToolUse hooks so discipline survives long sessions, compaction, and `/clear` — thin-shell routing tables, three-layer anti-amnesia, and placeholder-shell bootstrapping for fresh projects.
+
+Read `references/skill-validation.md` when adding mechanical validation for skills — smoke-test (SKILL.md as source of truth: routing integrity, line counts, placeholder/entry consistency) and test-trigger (description trigger-rate), wired into the consistency check / hooks / CI.

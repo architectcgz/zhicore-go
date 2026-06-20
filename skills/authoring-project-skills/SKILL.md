@@ -44,14 +44,16 @@ reference,再按需读。详细规范在 `references/`,不在此内联。
 | 触发式 description、命名、关键词覆盖、各工具入口一致 | `references/description-and-triggers.md` |
 | 原则+检验句(✓Check)、约束而非硬编码、不写显而易见、一个好例子 | `references/writing-rules.md` |
 | 三级渐进加载、激活优于存储、坑点一句话+锚点、2/3 录入标准、泛化、录入位置、防日记本、规则清退 | `references/progressive-disclosure-and-evolution.md` |
-| 薄壳+hook 三层防失忆、一个 skill 一件事、primary/Do Not Use 边界、skill 组合三模式、自动化校验 | `references/cross-tool-and-composition.md` |
+| 一个 skill 一件事、primary/Do Not Use 边界、skill 组合三模式 | `references/isolation-and-composition.md` |
+| 薄壳、SessionStart/PreToolUse hook、三层防失忆、skill 校验(smoke-test/test-trigger)（harness 层，非 skill 手艺） | 读本项目实际的薄壳/hook/路由 → 当前项目 `AGENTS.md` + `harness/` + 项目 hook 配置（`.codex/hooks.json` 等）；学"怎么搭/怎么校验" → `harness-engineering` skill |
 
 ## Common Tasks
 - 新建项目 skill → 读 `skill-structure.md`(先单文件,命中文件夹化信号再拆)+ `description-and-triggers.md`。
 - 重构超长 SKILL.md → 读 `skill-structure.md`(导航中心解剖),把规则下沉到 rules/references,SKILL.md 只留路由。
 - description 命不中 → 读 `description-and-triggers.md`,改成触发条件式。
 - 录入新经验 / 清退旧规则 → 读 `progressive-disclosure-and-evolution.md`(2/3 标准 + 录入位置表)。
-- 让 skill 跨工具不失忆 → 读 `cross-tool-and-composition.md`(薄壳 + hook)。
+- 保持 skill 聚焦 / 组合 → 读 `isolation-and-composition.md`。
+- 让规则跨工具抗压缩、机械校验 skill(薄壳 + hook + smoke-test/test-trigger)→ harness 层:**读本项目**看当前 `AGENTS.md` + `harness/` + 项目 hook;**学怎么搭/校验**见 `harness-engineering`。
 - 不在列表内 → 先读本文件 Reference Map,再按主题匹配 reference。
 
 ## Known Gotchas(命中即停)
@@ -59,7 +61,7 @@ reference,再按需读。详细规范在 `references/`,不在此内联。
 - description 写成摘要/功能说明 → 命不中,且 Agent 可能照 description 抄近路跳过正文。见 `description-and-triggers.md`。
 - 坑点只躺 references 里 → 未来 Agent 走任务路径读不到 = 没生效。见 `progressive-disclosure-and-evolution.md`。
 - 把会话日志/调试过程当经验写进 references → skill 变日记本。见 `progressive-disclosure-and-evolution.md`。
-- 从 GitHub 拉一堆同类 skill → 触发冲突、命中率下降。少而精,一个 skill 一件事。见 `cross-tool-and-composition.md`。
+- 从 GitHub 拉一堆同类 skill → 触发冲突、命中率下降。少而精,一个 skill 一件事。见 `isolation-and-composition.md`。
 
 ## ✓Check(收尾自查)
 - SKILL.md 是否 ≤100 行且只讲"读什么/何时读"?
