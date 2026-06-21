@@ -69,8 +69,11 @@ Task-intake order for non-trivial task slices:
 
 1. Run the relevant `superpowers` analysis pass, normally `superpowers:brainstorming`.
 2. Then run `grill-with-docs` to look for gaps in scope, docs, assumptions, and owner boundaries.
-3. Use that output to finish the implementation plan.
+3. Use that output to finish the implementation plan in Chinese by default.
 4. Only then start implementation.
+
+Implementation plans under `docs/plan/impl-plan/` should use Chinese prose by default.
+Keep code, commands, paths, error messages, protocol fields, enum values, external proper nouns, and machine-parsed keys unchanged.
 
 Completion order for non-trivial task slices:
 

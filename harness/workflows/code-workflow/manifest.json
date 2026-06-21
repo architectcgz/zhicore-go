@@ -1,6 +1,6 @@
 {
   "name": "code-workflow",
-  "version": "2026-06-20.1",
+  "version": "2026-06-21.1",
   "entrypoint": "workflow.sh",
   "description": "Shared non-trivial task workflow package for repo-local startup, gate, and archive assets."
 }

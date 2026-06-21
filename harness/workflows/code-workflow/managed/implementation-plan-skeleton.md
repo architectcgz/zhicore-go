@@ -1,10 +1,12 @@
-# __TASK_TITLE__ Implementation Plan
+# __TASK_TITLE__ 实施计划
 
-**Goal:** TODO
+> 默认用中文填写本计划；代码、命令、路径、错误信息、协议字段、枚举值、外部专有名词和机器解析字段保持原文。
 
-**Architecture:** TODO
+**Goal:** 待填写
 
-**Tech Stack:** TODO
+**Architecture:** 待填写
+
+**Tech Stack:** 待填写
 
 ---
 
@@ -22,126 +24,126 @@
 ## Plan Status
 
 - Status: `draft` <!-- draft | ready-for-implementation | implemented | review-pending | review-passed | archived -->
-- Coding may start only after:
-  - [ ] Intake analysis gate completed
-  - [ ] Plan review / architecture-fit check completed
-  - [ ] Execution slices and validation plan filled
+- 开始编码前必须完成：
+  - [ ] 已完成 intake analysis gate
+  - [ ] 已完成计划评审 / 架构适配检查
+  - [ ] 已填写执行切片和验证计划
 
-## Objective And Non-Goals
+## Objective And Non-Goals / 目标与非目标
 
-- Objective:
-- Non-Goals:
+- 目标：
+- 非目标：
 
-## Problem Statement
+## Problem Statement / 问题陈述
 
-- Current behavior / structure:
-- Target behavior / structure:
-- Why this task is needed now:
+- 当前行为 / 结构：
+- 目标行为 / 结构：
+- 为什么现在需要做：
 
-## Inputs
+## Inputs / 输入
 
-- Source docs:
-- Related architecture/contracts:
-- Related prior work:
+- 来源文档：
+- 相关架构 / 契约：
+- 相关既有工作：
 
 ## Task Classification
 
 - Classification: `非琐碎任务`
-- Why:
+- 判定理由：
 
 ## Files
 
-- Create:
-- Modify:
-- Review:
-- Test:
+- 新建：
+- 修改：
+- 查阅：
+- 测试：
 
 ## 复用与 Owner 决策
 
-- Existing patterns searched:
-- Reuse / extend / split / create-new decision:
-- Owner boundary:
-- Why this is the narrowest safe surface:
+- 已搜索的既有模式：
+- 复用 / 扩展 / 拆分 / 新建决策：
+- Owner 边界：
+- 为什么这是最窄安全改动面：
 
 ## Intake Analysis Gate
 
-- Relevant superpowers analysis pass:
-- Why this pass fits:
-- grill-with-docs findings:
-- Plan adjustments after challenge:
+- 适用的 superpowers analysis pass：
+- 为什么该 analysis pass 适用：
+- grill-with-docs 发现：
+- challenge 后的计划调整：
 
-## Execution Slices
+## Execution Slices / 执行切片
 
-### Slice 1: TODO
+### Slice 1: 待填写
 
-- Goal:
-- Dependencies:
-- Files:
-  - Create:
-  - Modify:
-  - Review:
-  - Test:
-- Steps:
+- 目标：
+- 依赖：
+- 文件：
+  - 新建：
+  - 修改：
+  - 查阅：
+  - 测试：
+- 步骤：
   - [ ] Step 1:
   - [ ] Step 2:
-- Validation:
-- Review focus:
-- Done criteria:
+- 验证：
+- 评审重点：
+- 完成标准：
 
-## Impact And Compatibility
+## Impact And Compatibility / 影响与兼容性
 
-- API / DTO:
-- Data / migration:
-- State / cache / queue / event:
-- Runtime / config:
-- Frontend route / state / UX:
-- Docs / contracts:
+- API / DTO：
+- 数据 / migration：
+- 状态 / cache / queue / event：
+- 运行时 / config：
+- 前端 route / state / UX：
+- 文档 / contracts：
 
-## Plan Review / Architecture Fit
+## Plan Review / Architecture Fit / 计划评审与架构适配
 
-- Target owner boundary:
-- Reuse points / landing zones:
-- Known structural debt touched:
-- How this plan avoids behavior-only convergence:
-- Hidden second-redesign risk:
-- Decision after review:
+- 目标 owner 边界：
+- 复用点 / 落点：
+- 触及的已知结构债：
+- 本计划如何避免只改行为、不收敛结构：
+- 隐藏二次重构风险：
+- 评审后决策：
 
-## Documentation Owner
+## Documentation Owner / 文档归属
 
-- Current fact sources to read:
-- Fact sources to update after implementation:
-- Plan-only notes that must not become architecture source:
-- Archive condition:
+- 当前必须读取的事实源：
+- 实现后需要更新的事实源：
+- 不得升级为架构事实源的计划内备注：
+- 归档条件：
 
-## Validation Plan
+## Validation Plan / 验证计划
 
-- Per-slice commands:
-- Integration commands:
-- Manual checks:
-- Commands intentionally skipped and why:
+- 每个 slice 的命令：
+- 集成命令：
+- 手工检查：
+- 有意跳过的命令及原因：
 
-## Validation Evidence
+## Validation Evidence / 验证证据
 
 - Command:
   - Result:
   - Notes:
 
-## Independent Review Handoff
+## Independent Review Handoff / 独立评审交接
 
 - Review target:
-- Validation evidence summary:
-- Architecture / contract inputs:
-- Known risks / review focus:
-- Project-local checks to consider:
+- 验证证据摘要：
+- 架构 / 契约输入：
+- 已知风险 / 评审重点：
+- 可考虑的项目本地检查：
 
-## Rollback / Recovery
+## Rollback / Recovery / 回滚与恢复
 
-- Safe revert boundary:
-- Data / config / runtime recovery notes:
-- Irreversible operations:
+- 安全回退边界：
+- 数据 / 配置 / 运行时恢复说明：
+- 不可逆操作：
 
-## Residual Risks
+## Residual Risks / 残余风险
 
-- Risk:
-- Why acceptable:
-- Follow-up owner, if any:
+- 风险：
+- 为什么可接受：
+- 后续 owner（如有）：

@@ -32,6 +32,7 @@ Do not collapse these into one script.
    - one `task-slug`
    - one implementation plan
    - one local startup gate record
+   - implementation plan content written in Chinese by default; keep code, commands, paths, error messages, protocol fields, enum values, external proper nouns, and machine-parsed keys unchanged
    Normally this isolated workspace is a dedicated worktree. If the repository main worktree is currently clean, no other task is active there, and no parallel isolation is needed, the main worktree itself may serve as that isolated workspace.
 4. Agent orchestration and mechanical enforcement must stay separate.
    - Agents decide and guide.
@@ -197,7 +198,7 @@ Do not treat "I looked over my own changes after coding" as satisfying this gate
 ## Interaction With Other Skills
 
 - Use `development-pipeline` for multi-stage execution of a real engineering task.
-- Use `superpowers:writing-plans` for the implementation plan itself.
+- Use `superpowers:writing-plans` for the implementation plan itself; write the plan in Chinese by default unless the user explicitly requests another language.
 - Use the relevant `superpowers` analysis skill at task intake, usually `superpowers:brainstorming`.
 - Use `superpowers:systematic-debugging` instead when the task starts from a bug, failure, or unexpected behavior.
 - Use `grill-with-docs` immediately after the `superpowers` analysis pass, before the plan is considered ready.
