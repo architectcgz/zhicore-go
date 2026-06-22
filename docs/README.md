@@ -33,6 +33,7 @@
   - `docs/contracts/events.md`：RabbitMQ 事件 contract、envelope、outbox 和兼容性规则。
 - `docs/migration/`：Java 到 Go 的服务迁移映射、迁移顺序和发布说明。
   - `docs/migration/java-design-migration.md`：Java 侧设计的保留、改写、废弃和服务迁移盘点。
+  - `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族迁移的事实提取、contract、migration、测试、实现和交付流程。
 
 ## 流程和历史
 

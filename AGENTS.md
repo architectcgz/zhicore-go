@@ -5,6 +5,7 @@
 - 本仓库是 ZhiCore 后端从 Java 迁移到 Go 的工作区。
 - 当前 Java 实现仍保留在 `../zhicore-microservice`，Java 代码只作为接口和行为事实源；迁移目标不规划 Java/Go 运行时并存。
 - 迁移必须按服务增量推进。除非用户明确要求批量迁移，否则不要一次重写多个服务。
+- 执行单服务迁移或服务内 API 族迁移前，先读 `docs/migration/service-migration-workflow.md`。
 
 ## 常用命令
 
@@ -30,6 +31,7 @@
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
 - 修改单个服务职责、API 族、数据归属、事件、依赖或迁移风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
+- 修改服务迁移实施顺序、Java 事实提取流程、服务迁移完成标准或迁移切片规则前，先读 `docs/migration/service-migration-workflow.md`。
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
 - 修改测试策略、测试目录归属、测试分层、验证命令或 test-first 要求前，先读 `docs/architecture/testing.md`。
@@ -74,7 +76,7 @@
 - 使用 `docs/README.md` 作为文档索引。
 - 新建或初始化 README、docs、部署说明和 agent 规则时，正文默认使用中文；代码标识、包名、协议字段、命令、路径和错误文本保持原文。
 - 只有用户明确要求，或外部规范、上游模板、协议文档必须使用英文时，才为对应文档正文使用英文。
-- 迁移计划放在 `docs/migration/`。
+- 迁移计划和服务迁移实施流程放在 `docs/migration/`。
 - 正式 review 证据放在 `docs/reviews/`。
 - 交付完成门槛和 review 触发条件见 `docs/reviews/done-definition.md`。
 - 本地质量门禁、验证命令选择和未来 CI 最低要求见 `docs/reviews/quality-gates.md`。

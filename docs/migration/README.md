@@ -4,6 +4,8 @@
 
 详细设计迁移盘点见 `docs/migration/java-design-migration.md`。该文档记录 Java 侧设计中哪些保留、哪些改写、哪些废弃，以及逐服务迁移风险。
 
+迁移单个服务或服务内 API 族前，先读 `docs/migration/service-migration-workflow.md`，按事实提取、HTTP contract、schema migration、测试策略、Go 实现和交付验证的顺序推进。
+
 ## 源仓库
 
 Java 事实源：`../zhicore-microservice`

@@ -165,6 +165,15 @@
 编辑前阅读：`../zhicore-microservice` Java 源码和文档、`docs/architecture/service-boundaries.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/migration/service-migration-workflow.md`
+类型：迁移流程规则
+负责人：ZhiCore Java 到 Go 迁移
+是否入口：否
+允许内容：单服务或服务内 API 族迁移顺序、Java 事实提取、HTTP contract、schema migration、测试策略、Go 实现顺序、完成标准和交付验证规则
+禁止内容：单次任务执行日志、具体服务字段级 schema、完整 SQL migration、正式 review 证据、未核对来源的“已实现”结论
+编辑前阅读：`docs/migration/README.md`、`docs/migration/java-design-migration.md`、`docs/architecture/testing.md`、`docs/contracts/http-schema-template.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/contracts/`
 类型：当前 contract 治理规则
 负责人：ZhiCore Go 跨服务 contract
