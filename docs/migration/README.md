@@ -2,6 +2,8 @@
 
 本文件记录 Java ZhiCore 模块到 Go 落点的映射。
 
+详细设计迁移盘点见 `docs/migration/java-design-migration.md`。该文档记录 Java 侧设计中哪些保留、哪些改写、哪些废弃，以及逐服务迁移风险。
+
 ## 源仓库
 
 Java 事实源：`../zhicore-microservice`

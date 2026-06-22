@@ -9,11 +9,15 @@
 - `go.work`：本地 workspace，用于串联所有服务模块和共享库模块。
 - `services/zhicore-*`：独立可构建、可测试、可部署的 Go 服务。
 - `services/zhicore-*/go.mod`：每个服务独立拥有自己的 Go module。
-- `services/zhicore-*/internal`：服务私有的应用、领域、传输和基础设施代码。
+- `services/zhicore-*/api/http`：服务的 HTTP 入站层和外部 API 兼容代码。
+- `services/zhicore-*/internal`：服务私有的应用、领域、端口、运行时组装和基础设施代码。
 - `libs/contracts`：跨服务 client 契约和事件契约。
 - `libs/kit`：小型共享技术原语，例如响应封装、认证、配置、可观测性、数据库、缓存、RabbitMQ 客户端封装。
 - `deploy/`：Docker 和 Kubernetes 部署资产。
 - `docs/migration/`：迁移映射、迁移顺序和分阶段替换说明。
+- `docs/migration/java-design-migration.md`：Java 侧设计迁移盘点。
+- `docs/architecture/repository-layout.md`：仓库目录、服务目录模板和 `api` / `internal` 边界。
+- `docs/architecture/go-service-design.md`：Go 服务分层、运行时依赖、migration、缓存和事件规则。
 - `docs/architecture/id-strategy.md`：内部主键、外部公开 ID、业务编号和发号服务定位。
 
 ## 目标服务

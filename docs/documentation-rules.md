@@ -52,9 +52,18 @@
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
 是否入口：是
-允许内容：服务边界、数据归属、依赖方向、contract 放置规则、长期技术约束
+允许内容：仓库目录布局、服务边界、数据归属、依赖方向、contract 放置规则、长期技术约束
 禁止内容：临时任务记录、未评审实现计划、review 证据
 编辑前阅读：`../zhicore-microservice` Java 源码、Go 服务模块、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/repository-layout.md`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：否
+允许内容：仓库目录结构、服务目录模板、`api/http` 与 `internal` 边界、脚手架演进规则
+禁止内容：服务内业务规则、单个服务实现计划、迁移过程临时日志
+编辑前阅读：Go 服务目录、`scripts/check-structure.sh`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/architecture/id-strategy.md`
@@ -66,13 +75,31 @@
 编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的服务 schema、受影响的 contract、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/go-service-design.md`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：否
+允许内容：Go 服务内分层、依赖方向、运行时依赖映射、migration、缓存、事件、事务和 API 兼容规则
+禁止内容：单个服务的完整实现计划、临时迁移记录、未验证性能结论
+编辑前阅读：`docs/architecture/repository-layout.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/id-strategy.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/migration/java-design-migration.md`
+类型：迁移计划和映射
+负责人：ZhiCore Java 到 Go 迁移
+是否入口：否
+允许内容：Java 设计事实来源、保留/改写/废弃决策、逐服务迁移分析、迁移风险和后续切片
+禁止内容：Go 服务已实现结论、未核对源码的猜测、单次任务临时日志
+编辑前阅读：`../zhicore-microservice` Java 源码和文档、`docs/architecture/service-boundaries.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/contracts/`
 类型：当前 contract 治理规则
 负责人：ZhiCore Go 跨服务 contract
 是否入口：是
 允许内容：contract 归属、兼容性规则、版本策略、变更流程、发布约束
 禁止内容：服务私有 DTO 细节、临时迁移记录、review 证据
-编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的 `libs/contracts/...`、受影响的 `services/<service>/api/`、本文件
+编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的 `libs/contracts/...`、受影响的 `services/<service>/api/http`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/reviews/`

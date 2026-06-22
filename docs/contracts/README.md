@@ -8,7 +8,7 @@ Contract 包括：
 
 - `libs/contracts/clients/<provider-service>/` 下的同步 client contract。
 - `libs/contracts/events/<domain>/` 下的事件 payload contract。
-- `services/<service>/api/` 下描述外部可见行为的 API schema。
+- `services/<service>/api/http` 下描述外部可见行为的 HTTP API schema。
 
 服务私有 DTO、领域模型、数据库实体、仓储过滤条件、内部 command/query struct 不属于 contract。
 
@@ -73,7 +73,7 @@ Consumer 可以依赖 contract，但不能在自己的服务里重新定义 prov
 1. 确认 provider 和所有已知 consumer。
 2. 阅读 `docs/architecture/service-boundaries.md`。
 3. 判断变更是兼容还是破坏性。
-4. 更新 `libs/contracts/...` 或 `services/<service>/api/` 中 provider 拥有的 contract。
+4. 更新 `libs/contracts/...` 或 `services/<service>/api/http` 中 provider 拥有的 contract。
 5. 在最小归属边界增加或更新 contract test。
 6. 更新 provider 服务实现。
 7. 只有在 provider 兼容路径存在后，才更新 consumer。

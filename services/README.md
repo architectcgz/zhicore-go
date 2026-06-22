@@ -7,8 +7,8 @@
 - `go.mod`
 - `cmd/server/`
 - `internal/`
-- `api/`
+- `api/http/`
 - `configs/`
 - `migrations/`
 
-服务私有代码必须放在自己的 `internal/` 下。其他服务只能通过 `libs/contracts` 中的 contract 或对外 API 访问它，不允许导入另一个服务的 `internal`。
+HTTP 入站层放在服务根目录的 `api/http/` 下。服务私有代码必须放在自己的 `internal/` 下。其他服务只能通过 `libs/contracts` 中的 contract 或对外 API 访问它，不允许导入另一个服务的 `internal`。

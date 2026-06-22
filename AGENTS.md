@@ -18,12 +18,15 @@
 
 - `services/<service>` 是独立可部署、可测试、可构建的服务单元。
 - 每个服务拥有自己的 `go.mod`；不要添加根应用模块。
+- 修改仓库目录布局、服务目录模板、`api/http` 和 `internal` 落点前，先读 `docs/architecture/repository-layout.md`。
 - `services/<service>/cmd/server` 只放进程入口和运行时装配。
+- `services/<service>/api/http` 放 HTTP 入站层和外部 API 兼容代码。
 - `services/<service>/internal` 是服务私有代码，其他服务不得导入。
 - `libs/kit` 只放小而稳定的跨服务技术原语，不放服务特定业务规则。
 - `libs/contracts/events` 放跨服务事件 payload 契约。
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
+- 修改服务内分层、运行时依赖、migration、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
