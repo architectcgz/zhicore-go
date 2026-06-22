@@ -2,6 +2,8 @@
 
 本文件记录从 `../zhicore-microservice` 迁移到 `zhicore-go` 时，Java 侧设计中哪些保留、哪些改写、哪些废弃。
 
+各 Go 目标服务的模块级设计已经拆到 `docs/architecture/services/`。本文件保留迁移总览、保留/改写/废弃决策和风险盘点，不再承载每个服务的完整设计。
+
 ## 事实来源
 
 已核对的 Java 来源：
@@ -371,10 +373,9 @@ Java 多服务调用 IdGenerator，Go 侧默认使用数据库 sequence。迁移
 
 ## 后续迁移切片
 
-推荐按以下顺序继续把设计迁移到 Go：
+模块级设计已迁移到 `docs/architecture/services/`。后续继续按以下顺序把可执行契约和实现资产补齐：
 
 1. 外部 API 清单：从 Java controller 和 `zhicore-client` 提取每个服务必须保留的 HTTP contract，落到 `services/<service>/api/http`。
 2. Schema 清单：按服务拆分 Java 表结构，生成 Go 目标 migration 草案，并修正 ID 策略。
 3. 事件清单：从 `zhicore-integration` 和消费端提取事件 payload、routing key、producer、consumer、幂等存储。
-4. Content 设计迁移：优先迁移文章元数据、正文存储、作者快照、outbox 和 scheduled publish。
-5. User / Upload 迁移：作为相对清晰的写服务和基础服务，建立第一批 Go 行为测试和运行链路。
+4. Content / User / Upload 作为第一批实现候选，建立第一批 Go 行为测试和运行链路。

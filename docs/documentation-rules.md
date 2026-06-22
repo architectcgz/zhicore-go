@@ -66,6 +66,15 @@
 编辑前阅读：Go 服务目录、`scripts/check-structure.sh`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/services/`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：是
+允许内容：各服务职责、API 族、数据归属、事件、跨服务依赖、Go 落点、迁移风险和下一步实现切片
+禁止内容：字段级 HTTP schema、完整 SQL migration、单次任务临时日志、未核对来源的“已实现”结论
+编辑前阅读：`docs/architecture/service-boundaries.md`、`docs/architecture/repository-layout.md`、`docs/architecture/go-service-design.md`、对应 Java controller/schema/contract、本文档
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/architecture/id-strategy.md`
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
