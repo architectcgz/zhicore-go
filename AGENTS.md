@@ -10,7 +10,7 @@
 
 - `make check`：运行脚手架检查、测试文件规模检查和所有 Go 模块测试。
 - `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
-- `make test-size`：运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模。
+- `make test-size`：全量运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模；局部模式见 `docs/architecture/testing.md`。
 - `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
 
 当前还没有 CI 或 Git hook 强制校验。汇报脚手架或代码改动完成前，必须手动运行 `make check`。
@@ -82,6 +82,7 @@
 - `tests/runtime` 用于需要真实服务、容器、端口或外部依赖的测试。
 - `tests/testkit` 用于可复用的黑盒测试 fixture 和断言。
 - 测试文件按行为、endpoint、use case、repository query 或 worker 场景拆分；不要把多个不相关场景堆进一个超大 `*_test.go`。
+- 测试失败时先查 owner、contract、分层或实现语义，不要通过放宽断言、fixture 或 mock 迁就错误实现。
 - 测试是行为规格和回归保护。只有在信号重复、过时、过度耦合实现，或被迁移到更合适归属处时，才删除或合并。
 
 改动代码或测试后，先运行最窄相关的 `go test` 命令；当脚手架或共享边界发生变化时，交付前再运行 `make check`。

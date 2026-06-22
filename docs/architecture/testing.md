@@ -10,6 +10,7 @@
 - 新增测试必须证明一个真实行为契约，不为满足流程而测试 getter、setter、纯 mock 调用或实现细节。
 - 已有测试能覆盖同一行为时，不重复添加同信号测试；运行最窄相关测试即可。
 - Bugfix、contract、权限、分页、事务、幂等、并发、worker / consumer 和 migration 属于高风险面，应优先先补失败用例或回归测试。
+- 测试失败时先判断 owner、contract、分层或实现语义是否未收口；不要为了变绿而放宽断言、修改 fixture 或 mock 迁就错误实现。
 
 ## 风险分级
 
@@ -49,6 +50,8 @@
 | `tests/runtime` | 需要真实服务、容器、端口、PostgreSQL、Redis、RabbitMQ、MongoDB、Elasticsearch 等基础设施的测试。 |
 | `tests/testkit` | 黑盒测试 fixture、builder、HTTP client、断言辅助；不能承载业务规则。 |
 
+新增测试前先判断它证明的是哪一层契约。需要多层覆盖时，每一层必须证明不同事实：handler / HTTP test 证明路由、鉴权、序列化和错误 envelope；application test 证明业务决策和状态迁移；repository test 证明查询、事务、约束和错误翻译；runtime / system test 证明真实依赖协作。
+
 ## 测试写法和规模控制
 
 - 一个 test 只证明一个行为契约或一个失败信号。跨多个 endpoint、use case 或 repository 查询语义的测试必须拆开，除非它本身就是黑盒 workflow 测试。
@@ -63,6 +66,8 @@
 - 单个测试函数目标控制在 80 行以内。超过后优先拆子行为、提取请求构造/响应断言 helper，或把黑盒 workflow 移到 `tests/system/http`。
 - `handler_test.go`、`repository_test.go` 只适合包还小的时候使用；同一包出现多个 endpoint 或多个查询族后，应拆成 `<operation>_test.go`、`<resource>_handler_test.go`、`<query>_repository_test.go` 等更窄文件。
 - 新增测试后必须做一次整理：合并同失败信号的测试、删除过时断言、提取重复 fixture，并确认失败信息包含关键输入和实际输出。
+- 拆分超长测试文件时，优先先移动顶层 `Test...` 到按行为命名的新文件，让原文件暂时保留 shared helper / fixture owner；不要第一步就做跨包 testkit 大抽取。
+- 共享 schema、seed、HTTP 请求构造、响应断言或 fake 依赖如果已经被三个以上测试文件重复使用，应收口到稳定 helper；只服务单个文件的一次性封装继续留在本地。
 
 ## 改动类型要求
 
@@ -110,7 +115,7 @@ make check
 规则：
 
 - 只改服务内代码，先跑该服务最窄包测试。
-- 改测试文件组织、测试 helper、测试目录或规模规则，先跑 `make test-size`。
+- 改测试文件组织、测试 helper、测试目录或规模规则，先跑 `make test-size`。只查当前工作区改动可用 `python3 scripts/check-test-size.py --working-tree`，只查暂存内容可用 `python3 scripts/check-test-size.py --staged`，只查指定文件或目录可用 `python3 scripts/check-test-size.py --files <path...>`。
 - 改共享库、contract、脚手架、文档入口或检查脚本，交付前跑 `bash scripts/check-structure.sh`；必要时跑 `make check`。
 - 改并发、worker、consumer、缓存或共享状态，考虑 `go test -race`。
 - 改解析器、校验器、协议输入或安全敏感输入，考虑补 seed regression test 或 focused fuzz test。
