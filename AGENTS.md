@@ -27,9 +27,16 @@
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
 - 修改单个服务职责、API 族、数据归属、事件、依赖或迁移风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
-- 修改服务内分层、运行时依赖、migration、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
+- 修改服务内分层、运行时依赖、migration、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
+- 修改服务配置、启动流程、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、worker/consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
+- 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md`。
+- 修改对外错误响应、公开错误码、HTTP status 映射或字段级校验错误前，先读 `docs/contracts/errors.md`。
+- 修改 Go 服务内部错误分层、底层错误翻译、application 错误映射或 trace 记录规则前，先读 `docs/architecture/error-handling.md`。
+- 修改 contract 中的时间、ID、枚举、空值、数字、布尔或 JSON 字段命名前，先读 `docs/contracts/data-types.md`；涉及 ID 策略时同时读 `docs/architecture/id-strategy.md`。
+- 修改分页、排序、过滤或 cursor 语义前，先读 `docs/contracts/pagination.md`。
+- 修改 RabbitMQ 事件 contract、事件 envelope、routing key、outbox 或幂等规则前，先读 `docs/contracts/events.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
 - 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。

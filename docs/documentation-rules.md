@@ -88,9 +88,27 @@
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
 是否入口：否
-允许内容：Go 服务内分层、依赖方向、运行时依赖映射、migration、缓存、事件、事务和 API 兼容规则
+允许内容：Go 服务内分层、依赖方向、运行时依赖映射、命名和映射归属、migration、缓存、事件、事务和 API 兼容规则
 禁止内容：单个服务的完整实现计划、临时迁移记录、未验证性能结论
 编辑前阅读：`docs/architecture/repository-layout.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/id-strategy.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/error-handling.md`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：否
+允许内容：Go 服务内部错误分层、错误依赖方向、底层错误翻译、application 错误映射、日志和 trace 规则
+禁止内容：对外 HTTP 错误响应 schema、服务公开错误码清单、字段级 API 错误详情
+编辑前阅读：`docs/architecture/go-service-design.md`、本文件；涉及对外错误响应时再读 `docs/contracts/errors.md`
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/runtime-operations.md`
+类型：当前架构事实
+负责人：ZhiCore Go 运行期架构
+是否入口：否
+允许内容：配置、启动流程、优雅停机、健康检查、HTTP server timeout、下游 client timeout、重试、熔断、幂等、worker/consumer 停机和运行完成标准
+禁止内容：单个服务的临时部署记录、具体环境密钥、完整 Helm/Kubernetes manifest、一次性排障日志
+编辑前阅读：`docs/architecture/go-service-design.md`、`docs/architecture/error-handling.md`、本文件；涉及对外 HTTP contract 时再读 `docs/contracts/http.md`
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/migration/java-design-migration.md`
@@ -107,8 +125,53 @@
 负责人：ZhiCore Go 跨服务 contract
 是否入口：是
 允许内容：contract 归属、兼容性规则、版本策略、变更流程、发布约束
-禁止内容：服务私有 DTO 细节、临时迁移记录、review 证据
+禁止内容：服务私有 DTO 细节、具体协议专题规则、临时迁移记录、review 证据
 编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的 `libs/contracts/...`、受影响的 `services/<service>/api/http`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/http.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go HTTP API contract
+是否入口：否
+允许内容：HTTP path、method、header、响应 envelope、版本化和服务级 HTTP schema 放置规则
+禁止内容：错误码全集、服务字段级 schema、Go 内部 handler 实现、运行时路由配置
+编辑前阅读：`docs/contracts/README.md`、对应 Java controller、受影响的 `services/<service>/api/http`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/errors.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 错误 contract
+是否入口：否
+允许内容：对外错误响应、公开错误码、HTTP status 映射、字段级校验错误形态和错误码归属
+禁止内容：Go 内部错误分层实现、底层 driver 或 SDK 错误细节、服务私有 sentinel
+编辑前阅读：Java `ResultCode` / `ApiResponse`、受影响的服务 HTTP contract、本文件；涉及 Go 内部映射边界时再读 `docs/architecture/error-handling.md`
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/data-types.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 通用数据类型 contract
+是否入口：否
+允许内容：时间、ID、枚举、空值、数字、布尔和 JSON 字段命名的序列化规则
+禁止内容：具体服务数据库字段清单、单个 DTO 的完整字段级 schema、ID 算法实验
+编辑前阅读：`docs/architecture/id-strategy.md`、受影响的 Java DTO、受影响的 contract、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/pagination.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 分页 contract
+是否入口：否
+允许内容：page/cursor 分页、排序、过滤、cursor 不透明性和返回形态
+禁止内容：具体服务查询 SQL、索引设计细节、服务私有 repository filter
+编辑前阅读：受影响的 Java controller / DTO、受影响的服务 HTTP contract、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/events.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 事件 contract
+是否入口：否
+允许内容：RabbitMQ exchange、routing key、事件归属、事件 envelope、outbox、幂等和事件兼容性
+禁止内容：具体事件 payload 全量字段、consumer 私有处理策略、broker 部署运维细节
+编辑前阅读：`docs/architecture/go-service-design.md`、受影响的 `libs/contracts/events/...`、受影响的服务文档、本文件
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/reviews/`

@@ -12,6 +12,20 @@ Contract 包括：
 
 服务私有 DTO、领域模型、数据库实体、仓储过滤条件、内部 command/query struct 不属于 contract。
 
+## 专题事实源
+
+本文件只负责 contract 治理规则和变更流程；具体协议规则按专题拆分：
+
+| 专题 | 文档 | 负责内容 |
+| --- | --- | --- |
+| HTTP | `docs/contracts/http.md` | path、method、header、envelope、版本化和服务级 HTTP schema 放置规则。 |
+| 错误 | `docs/contracts/errors.md` | 对外错误响应、公开错误码、HTTP status 映射和字段级校验错误形态。 |
+| 通用数据类型 | `docs/contracts/data-types.md` | 时间、ID、枚举、空值、数字、布尔和 JSON 字段命名规则。 |
+| 分页 | `docs/contracts/pagination.md` | page/cursor 分页、排序、过滤和返回形态。 |
+| 事件 | `docs/contracts/events.md` | RabbitMQ exchange/routing key、事件 envelope、outbox、幂等和事件兼容性。 |
+
+Go 服务内部错误分层不属于对外 contract，见 `docs/architecture/error-handling.md`。
+
 ## 外部 API 兼容基线
 
 迁移阶段默认保留现有 Java 外部接口。前端暂时不修改，Go 服务替换 Java 服务时必须让现有前端和已知调用方无需改造即可继续工作。

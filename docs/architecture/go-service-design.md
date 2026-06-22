@@ -126,20 +126,34 @@ libs/contracts/events/<domain>/
 - Consumer 可以依赖 contract，但 consumer 内部仍定义自己的 port。
 - Provider DTO、数据库实体、repository filter、内部 command/query 不进入 `libs/contracts`。
 - 外部 HTTP API schema 放在 `services/<service>/api/http`，必须保持当前 API 兼容基线。
+- HTTP envelope、错误、数据类型、分页和事件的通用契约规则见 `docs/contracts/` 下的专题文档。
 
 ## 运行时依赖约定
 
+服务配置、启动、健康检查、优雅停机、超时、重试、熔断和幂等的详细规则见 `docs/architecture/runtime-operations.md`。
+
 | 能力 | 约定 |
 | --- | --- |
-| 服务发现 | Kubernetes Service DNS，本地开发用配置文件或环境变量 |
-| 配置注入 | env、ConfigMap、Secret |
-| 边缘入口 | Go gateway、reverse proxy 或 Ingress 配合 |
+| 服务发现 | 当前阶段使用本地配置或环境变量；进入 Kubernetes 后再使用 Kubernetes Service DNS |
+| 配置注入 | 当前阶段使用 env 和本地配置模板；进入 Kubernetes 后再映射为 ConfigMap、Secret |
+| 边缘入口 | 当前阶段使用薄 Go Gateway 作为应用入口，Nginx 或本地反向代理放在其前面；Kubernetes Ingress 只在部署进入 Kubernetes 后使用 |
 | 同步调用 | `libs/contracts/clients` + 调用方 `infrastructure/clients` 实现 |
 | 异步消息 | RabbitMQ topic exchange |
 | 限流和熔断 | Go middleware、client timeout/retry/circuit breaker、指标告警 |
+| 日志 | 结构化日志；生产环境默认 JSON，本地开发可用文本格式；字段和错误处置规则见 `docs/architecture/error-handling.md` |
+| 链路追踪 | 当前阶段至少传递 `X-Request-Id` / `X-Trace-Id`；进入统一观测后再接 OpenTelemetry |
+| 指标 | 当前阶段先在代码中保留稳定 operation 名称和错误分类；接入 Prometheus 后按服务、operation、status、errorCode 聚合 |
 | 数据访问 | 显式 SQL、repository 实现、必要时使用轻量 query helper |
 | 对象映射 | 显式 struct、构造函数和 mapper 函数 |
 | 内部主键 | PostgreSQL `BIGINT` sequence / identity，外部 ID 单独设计 |
+
+## 命名和映射归属
+
+- Go 内部包名、类型名、字段名、变量名和 receiver 名属于代码风格，默认遵循 Go 习惯和服务内现有写法。
+- JSON、HTTP query/path/body 字段、事件 payload 字段属于 contract，按 `docs/contracts/` 中对应专题文档定义。
+- 数据库列、outbox / inbox / ledger 表字段属于 migration/schema，默认使用 snake_case；导入 Java 既有 schema 时以兼容现状优先。
+- Redis key 片段和 RabbitMQ routing key 属于运行时契约，由对应服务的 resolver、event contract 或服务文档统一定义。
+- Go struct 字段、JSON 字段和数据库列允许命名不同，但必须通过 `json` tag、显式 mapper、SQL alias 或 adapter 转换固定映射，不依赖隐式命名猜测。
 
 ## 数据库和 migration
 
@@ -209,9 +223,11 @@ routing key: <domain>.<event>
 ```text
 content.post.published
 content.post.liked
-comment.comment.created
+comment.created
 user.profile.updated
 ```
+
+事件名称、payload 版本、envelope、outbox 和兼容性规则见 `docs/contracts/events.md`。
 
 关键跨服务事实必须使用 producer outbox：
 
@@ -225,7 +241,7 @@ user.profile.updated
 
 Consumer 要求：
 
-- 用 `event_id` 或业务唯一约束保证幂等。
+- 用事件 JSON 的 `eventId`，或落库后的 `event_id`、业务唯一约束保证幂等。
 - 容忍重复消息。
 - 容忍乱序和迟到消息。
 - 不在消费端直接修改 provider 写模型。
@@ -259,6 +275,12 @@ Go 服务可以在内部使用更清晰的 use case 和 port，但不能把 API 
 
 需要重做的 API 必须作为独立 API 演进任务处理。
 
+HTTP 协议层规则见 `docs/contracts/http.md`；错误响应和公开错误码见 `docs/contracts/errors.md`；时间、ID 和 JSON 字段序列化规则见 `docs/contracts/data-types.md`；分页、排序和过滤见 `docs/contracts/pagination.md`。
+
+## 错误处理
+
+Go 服务内部错误分层、底层错误翻译和 application 到 HTTP 的错误映射边界见 `docs/architecture/error-handling.md`。对外错误响应和公开错误码仍以 `docs/contracts/errors.md` 为准。
+
 ## 服务实现步骤
 
 每实现或迁移一个服务，按以下顺序推进：
@@ -275,5 +297,4 @@ Go 服务可以在内部使用更清晰的 use case 和 port，但不能把 API 
 ## 当前开放点
 
 - Upload 是否继续只适配外部 file-service，还是逐步拥有自己的文件元数据表。
-- Gateway 是自研 Go gateway 还是主要依赖 Kubernetes Ingress + 轻量认证网关。
 - 每个服务的第一版 migration 需要逐服务核对数据归属和目标表结构。
