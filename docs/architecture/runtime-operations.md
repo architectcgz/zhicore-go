@@ -47,7 +47,7 @@
 
 规则：
 
-- 启动路径不得自动执行 schema migration 或自动建表改表。
+- 启动路径不得自动执行 schema migration 或自动建表改表；正式 schema 演进由 `docs/architecture/migrations.md` 规定的 `golang-migrate` 流程负责。
 - 关键依赖不可用时，服务应启动失败或进入 not ready 状态；不要静默降级到错误行为。
 - 可选依赖必须在配置和日志中明确标记为 optional。
 - `cmd/server/main.go` 不承载业务 wiring，业务组装放在 `internal/<domain>/runtime`。

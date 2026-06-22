@@ -29,5 +29,5 @@
 ## 当前迁移状态
 
 - 已迁移：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向和 Go 落点。
-- 未完成：字段级 HTTP request/response schema、错误码对照、完整 migration SQL、服务级行为测试清单。
-- 下一步：按服务把 Java controller 和 DTO 提取到 `services/<service>/api/http` 的 contract 文件，再补 migration 草案。
+- 未完成：字段级 HTTP request/response schema、按 `docs/architecture/migrations.md` 落地的完整 migration SQL、服务级行为测试清单。
+- 下一步：按 `docs/contracts/http-schema-template.md`，逐服务把 Java controller 和 DTO 提取到 `services/<service>/api/http/README.md` 和 `services/<service>/api/http/endpoints/`；按 `docs/architecture/migrations.md` 补 migration 草案。

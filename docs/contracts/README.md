@@ -19,7 +19,9 @@ Contract 包括：
 | 专题 | 文档 | 负责内容 |
 | --- | --- | --- |
 | HTTP | `docs/contracts/http.md` | path、method、header、envelope、版本化和服务级 HTTP schema 放置规则。 |
+| HTTP schema 模板 | `docs/contracts/http-schema-template.md` | `services/<service>/api/http/` 下服务级 schema 和 endpoint 文档格式。 |
 | 错误 | `docs/contracts/errors.md` | 对外错误响应、公开错误码、HTTP status 映射和字段级校验错误形态。 |
+| 错误码 | `docs/contracts/error-codes.md` | Go 对外 `body.code` 的项目级错误码表。 |
 | 通用数据类型 | `docs/contracts/data-types.md` | 时间、ID、枚举、空值、数字、布尔和 JSON 字段命名规则。 |
 | 分页 | `docs/contracts/pagination.md` | page/cursor 分页、排序、过滤和返回形态。 |
 | 事件 | `docs/contracts/events.md` | RabbitMQ exchange/routing key、事件 envelope、outbox、幂等和事件兼容性。 |

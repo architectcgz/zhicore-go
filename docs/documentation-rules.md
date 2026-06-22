@@ -93,6 +93,15 @@
 编辑前阅读：`docs/architecture/repository-layout.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/id-strategy.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/migrations.md`
+类型：当前架构事实
+负责人：ZhiCore Go schema migration
+是否入口：否
+允许内容：`golang-migrate` 工具选择、migration 文件命名、up/down、事务、seed/reference data、GORM 边界、review 清单和执行命令
+禁止内容：单个服务完整 SQL、一次性数据修复日志、生产数据库连接串、未核对服务归属的表设计
+编辑前阅读：`docs/architecture/service-boundaries.md`、`docs/architecture/go-service-design.md`、`docs/architecture/id-strategy.md`、受影响服务 schema 来源、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/architecture/error-handling.md`
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
@@ -138,6 +147,15 @@
 编辑前阅读：`docs/contracts/README.md`、对应 Java controller、受影响的 `services/<service>/api/http`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/contracts/http-schema-template.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go HTTP API contract
+是否入口：否
+允许内容：服务级 HTTP schema 的文件布局、endpoint 文档模板、字段记录要求、状态标记和提取流程
+禁止内容：单个服务的完整字段级 schema、Go handler 实现、一次性提取记录、未核对来源的 endpoint 结论
+编辑前阅读：`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/data-types.md`、本文件；涉及具体服务时再读对应 Java controller / DTO / 测试
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/contracts/errors.md`
 类型：当前 contract 治理规则
 负责人：ZhiCore Go 错误 contract
@@ -145,6 +163,15 @@
 允许内容：对外错误响应、公开错误码、HTTP status 映射、字段级校验错误形态和错误码归属
 禁止内容：Go 内部错误分层实现、底层 driver 或 SDK 错误细节、服务私有 sentinel
 编辑前阅读：Java `ResultCode` / `ApiResponse`、受影响的服务 HTTP contract、本文件；涉及 Go 内部映射边界时再读 `docs/architecture/error-handling.md`
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/contracts/error-codes.md`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 错误 contract
+是否入口：否
+允许内容：Go 对外 `body.code` 的错误码表、错误码范围归属、历史例外和内部错误标识映射
+禁止内容：Go 内部错误类型实现、服务私有 sentinel、字段级 HTTP schema、一次性排障记录
+编辑前阅读：Java `ResultCode` / `ApiResponse` / `GlobalExceptionHandler`、受影响服务的 Java exception handler、本文件；涉及响应形态时再读 `docs/contracts/errors.md`
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/contracts/data-types.md`
@@ -173,6 +200,24 @@
 禁止内容：具体事件 payload 全量字段、consumer 私有处理策略、broker 部署运维细节
 编辑前阅读：`docs/architecture/go-service-design.md`、受影响的 `libs/contracts/events/...`、受影响的服务文档、本文件
 验证命令：`bash scripts/check-structure.sh`
+
+路径：`services/<service>/api/http/README.md`
+类型：当前 HTTP contract schema
+负责人：对应 Go 服务
+是否入口：是
+允许内容：服务级 HTTP schema 索引、Java/Go 来源、服务级公共规则、endpoint 索引和服务级公开错误码子集
+禁止内容：Go handler 实现说明、服务内 application 设计、数据库字段清单、临时迁移日志
+编辑前阅读：`docs/contracts/http-schema-template.md`、对应服务文档、对应 Java controller / DTO / 测试、本文件
+验证命令：最窄相关 `go test`；脚手架或索引变化时运行 `bash scripts/check-structure.sh`
+
+路径：`services/<service>/api/http/endpoints/`
+类型：当前 HTTP contract schema
+负责人：对应 Go 服务
+是否入口：否
+允许内容：单个 endpoint 的 path、method、request 字段、response `data` 字段、错误码、权限、分页、测试要求和兼容例外
+禁止内容：多个无关 endpoint 混写、Go handler 内部流程、repository 查询细节、未核对来源的字段
+编辑前阅读：`docs/contracts/http-schema-template.md`、对应服务 `api/http/README.md`、对应 Java controller / DTO / 测试、本文件
+验证命令：最窄相关 `go test`；脚手架或索引变化时运行 `bash scripts/check-structure.sh`
 
 路径：`docs/reviews/`
 类型：review 证据

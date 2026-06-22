@@ -1,6 +1,6 @@
 # HTTP 契约
 
-本文件只定义 HTTP 协议层规则。错误码见 `docs/contracts/errors.md`，时间和 ID 等通用类型见 `docs/contracts/data-types.md`。
+本文件只定义 HTTP 协议层规则。服务级字段 schema 模板见 `docs/contracts/http-schema-template.md`；错误码见 `docs/contracts/errors.md`，时间和 ID 等通用类型见 `docs/contracts/data-types.md`。
 
 ## 兼容基线
 
@@ -66,7 +66,8 @@ HTTP 成功响应使用 Java `ApiResponse` 兼容形态：
 字段级 HTTP contract 不写在本文件。每个服务自己的 schema 放在：
 
 ```text
-services/<service>/api/http/
+services/<service>/api/http/README.md
+services/<service>/api/http/endpoints/<operation>.md
 ```
 
 这些 schema 至少记录：
@@ -76,3 +77,5 @@ services/<service>/api/http/
 - response `data` 字段。
 - 可能的公开错误码。
 - 分页、排序、过滤和权限语义。
+
+具体模板和状态标记见 `docs/contracts/http-schema-template.md`。

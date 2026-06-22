@@ -1,6 +1,6 @@
 # 错误契约
 
-本文件定义对外 HTTP API、typed client 和跨服务调用中可见的错误模型。Go 内部错误分层和映射规则见 `docs/architecture/error-handling.md`。
+本文件定义对外 HTTP API、typed client 和跨服务调用中可见的错误模型。公开错误码表见 `docs/contracts/error-codes.md`；Go 内部错误分层和映射规则见 `docs/architecture/error-handling.md`。
 
 ## 基本原则
 
@@ -52,7 +52,7 @@ Java `ResultCode` 中历史上同时包含 `400`、`401`、`404`、`500` 等 HTT
 
 ## 错误码归属
 
-迁移阶段继续沿用 Java `ResultCode` 的数字码方向：
+Go 项目公开错误码使用下列范围；完整码值见 `docs/contracts/error-codes.md`。
 
 | 范围 | 归属 |
 | --- | --- |
