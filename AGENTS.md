@@ -8,12 +8,12 @@
 
 ## 常用命令
 
-- `make check`：运行脚手架检查、测试文件规模检查和所有 Go 模块测试。
+- `make check`：本地统一交付门禁，运行脚手架检查、测试文件规模检查和所有 Go 模块测试。
 - `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
 - `make test-size`：全量运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模；局部模式见 `docs/architecture/testing.md`。
 - `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
 
-当前还没有 CI 或 Git hook 强制校验。汇报脚手架或代码改动完成前，必须手动运行 `make check`。
+当前还没有 CI 或 Git hook 强制校验。CI 建立前以本地质量门禁为准；汇报脚手架或代码改动完成前，按 `docs/reviews/quality-gates.md` 选择并记录验证命令。
 
 ## 架构边界
 
@@ -40,7 +40,8 @@
 - 修改 contract 中的时间、ID、枚举、空值、数字、布尔或 JSON 字段命名前，先读 `docs/contracts/data-types.md`；涉及 ID 策略时同时读 `docs/architecture/id-strategy.md`。
 - 修改分页、排序、过滤或 cursor 语义前，先读 `docs/contracts/pagination.md`。
 - 修改 RabbitMQ 事件 contract、事件 envelope、routing key、outbox 或幂等规则前，先读 `docs/contracts/events.md`。
-- 修改 review 流程、完成标准、验证证据、finding 分级或技术债登记规则前，先读 `docs/reviews/README.md` 和 `docs/reviews/done-definition.md`。
+- 修改 `Makefile`、检查脚本、本地质量门禁、CI / Git hook、验证命令选择或交付前校验组合前，先读 `docs/reviews/quality-gates.md`；涉及测试策略时同时读 `docs/architecture/testing.md`。
+- 修改 review 流程、完成标准、验证证据、finding 分级或技术债登记规则前，先读 `docs/reviews/README.md`、`docs/reviews/done-definition.md` 和 `docs/reviews/quality-gates.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
 - 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。
@@ -70,6 +71,7 @@
 - 迁移计划放在 `docs/migration/`。
 - 正式 review 证据放在 `docs/reviews/`。
 - 交付完成门槛和 review 触发条件见 `docs/reviews/done-definition.md`。
+- 本地质量门禁、验证命令选择和未来 CI 最低要求见 `docs/reviews/quality-gates.md`。
 - 未解决技术债放在 `docs/todos/debt/`。
 
 ## 测试规则
@@ -87,4 +89,4 @@
 - 测试失败时先查 owner、contract、分层或实现语义，不要通过放宽断言、fixture 或 mock 迁就错误实现。
 - 测试是行为规格和回归保护。只有在信号重复、过时、过度耦合实现，或被迁移到更合适归属处时，才删除或合并。
 
-改动代码或测试后，先运行最窄相关的 `go test` 命令；当脚手架或共享边界发生变化时，交付前再运行 `make check`。
+改动代码或测试后，先运行最窄相关的 `go test` 命令；当脚手架或共享边界发生变化时，交付前再按 `docs/reviews/quality-gates.md` 运行本地质量门禁。

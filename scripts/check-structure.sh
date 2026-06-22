@@ -150,6 +150,7 @@ required_files=(
   "docs/migration/java-design-migration.md"
   "docs/reviews/README.md"
   "docs/reviews/done-definition.md"
+  "docs/reviews/quality-gates.md"
   "docs/reviews/backend/README.md"
 )
 

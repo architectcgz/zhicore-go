@@ -255,6 +255,15 @@
 编辑前阅读：`docs/architecture/testing.md`、`docs/reviews/README.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/reviews/quality-gates.md`
+类型：质量门禁规则
+负责人：实现和架构 review 流程
+是否入口：否
+允许内容：本地验证命令职责、命令选择规则、未来 CI / Git hook 最低要求和检查脚本维护规则
+禁止内容：单次任务验证记录、具体 CI 平台完整配置、服务私有测试清单、临时排障日志
+编辑前阅读：`docs/reviews/README.md`、`docs/reviews/done-definition.md`、`docs/architecture/testing.md`、`Makefile`、相关检查脚本、本文件
+验证命令：`make check`；仅路径索引调整时至少运行 `bash scripts/check-structure.sh`
+
 路径：`docs/todos/debt/`
 类型：未解决技术债跟踪
 负责人：迁移技术债管理

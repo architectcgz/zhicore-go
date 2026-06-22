@@ -35,6 +35,7 @@
 
 - `docs/reviews/`：review 规则、完成标准、review 证据和发现。
   - `docs/reviews/done-definition.md`：交付完成门槛、正式 review 触发条件、finding 分级、验证证据和技术债登记规则。
+  - `docs/reviews/quality-gates.md`：本地质量门禁、验证命令选择和未来 CI 最低要求。
 - `docs/todos/debt/`：迁移过程中不能丢失的未解决技术债。
 
 ## 部署说明

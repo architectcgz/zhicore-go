@@ -2,7 +2,7 @@
 
 本目录存放 review 规则、完成标准和正式 review 证据。
 
-完成门槛见 `docs/reviews/done-definition.md`。本文件负责 review 流程、记录格式和归档位置。
+完成门槛见 `docs/reviews/done-definition.md`，本地质量门禁和 CI 最低要求见 `docs/reviews/quality-gates.md`。本文件负责 review 流程、记录格式和归档位置。
 
 ## 适用范围
 
@@ -11,7 +11,7 @@
 - 公开 HTTP contract、错误码、分页、排序、过滤、事件 payload 或 typed client contract 变化。
 - database migration、数据归属、外部公开 ID、唯一约束或不可逆数据变化。
 - runtime、worker、consumer、goroutine、重试、幂等、事务、outbox / inbox / ledger 和跨资源一致性变化。
-- 跨服务边界、共享库、服务目录结构、脚本检查、AGENTS 路由或长期文档事实源变化。
+- 跨服务边界、共享库、服务目录结构、脚本检查、本地质量门禁、CI / Git hook、AGENTS 路由或长期文档事实源变化。
 - 安全敏感面，例如认证、授权、文件上传、外部 URL、密钥、审计日志和用户输入解析。
 
 低风险文档索引、注释、目录登记可以不写正式 review 记录，但仍要保留验证证据。
@@ -52,7 +52,7 @@ docs/reviews/architecture/2026-06-22-service-boundary-review-user.md
 - Residual risk：假设、未覆盖场景或明确延期项。
 - 技术债状态：是否触达已有 debt；是否已收口；若延期，链接到 `docs/todos/debt/` 条目。
 
-Finding 分级和不可交付状态以 `docs/reviews/done-definition.md` 为准。
+Finding 分级和不可交付状态以 `docs/reviews/done-definition.md` 为准；验证命令选择以 `docs/reviews/quality-gates.md` 为准。
 
 ## Review 要求
 
