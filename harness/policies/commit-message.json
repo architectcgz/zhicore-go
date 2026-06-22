@@ -1,0 +1,34 @@
+{
+  "allowed_types": [
+    "feat",
+    "fix",
+    "refactor",
+    "docs",
+    "test",
+    "chore",
+    "build",
+    "ci",
+    "perf",
+    "style",
+    "revert"
+  ],
+  "require_chinese_description": true,
+  "body": {
+    "min_detail_lines": 2,
+    "min_visible_chars": 20,
+    "ignored_prefixes": [
+      "Task:"
+    ]
+  },
+  "task": {
+    "required_when_active": true,
+    "line_prefix": "Task:"
+  },
+  "messages": {
+    "invalid_subject": "[commit-msg] 提交信息格式不符合约束。\n要求：英文类型 + 可选英文/模块 scope + 中文描述\n示例：\n  docs(配置): 确立环境变量规范\n  fix(upload): 修正文件删除错误映射\n  refactor(runtime): 拆分服务启动配置校验",
+    "missing_chinese_description": "[commit-msg] 提交描述必须包含中文说明。\n示例：\n  docs(门禁): 确立本地质量门禁规范",
+    "missing_detail_lines": "[commit-msg] 普通提交不能只有简短标题，必须补充详细正文。\n要求：\n  - 标题后保留空行\n  - 正文至少两行有效内容\n  - 建议直接使用多个 -m 组织提交信息\n示例：\n  git commit -m \"docs(配置): 确立环境变量规范\" \\\n    -m \"新增服务配置、环境变量命名和密钥处理规则。\" \\\n    -m \"同步 AGENTS 路由、文档索引和结构检查，避免后续规则漂移。\"",
+    "detail_too_short": "[commit-msg] 提交正文信息量不足，请补充更具体的变更说明。\n要求：\n  - 正文至少两行有效内容\n  - 正文总信息量至少达到 20 个非空白字符\n示例：\n  git commit -m \"docs(review): 收紧提交说明校验\" \\\n    -m \"要求普通提交必须携带详细正文，不能只写单行标题。\" \\\n    -m \"同步 hook 说明和仓库约定，减少后续提交漂移。\"",
+    "missing_task_binding": "[commit-msg] 当前 worktree 存在激活中的非琐碎任务 gate，提交正文必须显式带上 task slug。\n要求：\n  - 在正文单独写一行：{task_line_prefix} {task_slug}\n示例：\n  git commit -m \"refactor(runtime): 拆分启动依赖组装\" \\\n    -m \"把配置校验、依赖打开和模块构建拆到明确 owner，减少 main.go 职责。\" \\\n    -m \"同步补充 runtime 测试和运行期文档，固定后续服务实现模式。\" \\\n    -m \"{task_line_prefix} {task_slug}\""
+  }
+}

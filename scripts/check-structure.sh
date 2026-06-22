@@ -83,6 +83,8 @@ required_dirs=(
   "docs/migration"
   "docs/reviews"
   "docs/todos/debt"
+  ".githooks"
+  "harness/policies"
   "tests/architecture"
   "tests/system/http"
   "tests/runtime"
@@ -151,13 +153,32 @@ required_files=(
   "docs/migration/java-design-migration.md"
   "docs/reviews/README.md"
   "docs/reviews/done-definition.md"
+  "docs/reviews/commit-message.md"
   "docs/reviews/quality-gates.md"
   "docs/reviews/backend/README.md"
+  ".githooks/README.md"
+  ".githooks/commit-msg"
+  "harness/policies/commit-message.json"
+  "scripts/check-commit-message.sh"
+  "scripts/install-githooks.sh"
 )
 
 for file in "${required_files[@]}"; do
   if [[ ! -e "$ROOT/$file" ]]; then
     echo "missing file: $file" >&2
+    exit 1
+  fi
+done
+
+required_executables=(
+  ".githooks/commit-msg"
+  "scripts/check-commit-message.sh"
+  "scripts/install-githooks.sh"
+)
+
+for file in "${required_executables[@]}"; do
+  if [[ ! -x "$ROOT/$file" ]]; then
+    echo "file must be executable: $file" >&2
     exit 1
   fi
 done

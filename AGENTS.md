@@ -12,8 +12,10 @@
 - `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
 - `make test-size`：全量运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模；局部模式见 `docs/architecture/testing.md`。
 - `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
+- `bash scripts/check-commit-message.sh <message-file>`：按 `harness/policies/commit-message.json` 检查提交信息。
+- `bash scripts/install-githooks.sh`：安装本仓库版本化 Git hooks，当前只启用 `commit-msg` 检查。
 
-当前还没有 CI 或 Git hook 强制校验。CI 建立前以本地质量门禁为准；汇报脚手架或代码改动完成前，按 `docs/reviews/quality-gates.md` 选择并记录验证命令。
+当前还没有 CI。CI 建立前以本地质量门禁为准；提交信息由可安装的 `commit-msg` hook 检查，汇报脚手架或代码改动完成前按 `docs/reviews/quality-gates.md` 选择并记录验证命令。
 
 ## 架构边界
 
@@ -43,6 +45,7 @@
 - 修改 RabbitMQ 事件 contract、事件 envelope、routing key、outbox 或幂等规则前，先读 `docs/contracts/events.md`。
 - 修改 `Makefile`、检查脚本、本地质量门禁、CI / Git hook、验证命令选择或交付前校验组合前，先读 `docs/reviews/quality-gates.md`；涉及测试策略时同时读 `docs/architecture/testing.md`。
 - 修改 review 流程、完成标准、验证证据、finding 分级或技术债登记规则前，先读 `docs/reviews/README.md`、`docs/reviews/done-definition.md` 和 `docs/reviews/quality-gates.md`。
+- 修改提交信息格式、commit-msg hook、`harness/policies/commit-message.json`、`scripts/check-commit-message.sh` 或 `scripts/install-githooks.sh` 前，先读 `docs/reviews/commit-message.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
 - 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。
@@ -73,7 +76,15 @@
 - 正式 review 证据放在 `docs/reviews/`。
 - 交付完成门槛和 review 触发条件见 `docs/reviews/done-definition.md`。
 - 本地质量门禁、验证命令选择和未来 CI 最低要求见 `docs/reviews/quality-gates.md`。
+- 提交信息格式、commit-msg hook 和机械检查策略见 `docs/reviews/commit-message.md`。
 - 未解决技术债放在 `docs/todos/debt/`。
+
+## 提交规则
+
+- 提交前必须先走全局 `committing-changes` skill，并叠加本仓库 `docs/reviews/commit-message.md`。
+- 提交信息必须使用“标题 + 正文”两段结构；标题使用英文 type 和中文描述，例如 `docs(配置): 确立环境变量规范`。
+- 普通提交正文至少两行有效内容，说明改动点、原因、影响或验证中的关键信息。
+- 提交信息检查策略由 `harness/policies/commit-message.json` 维护；安装 hook 后由 `.githooks/commit-msg` 自动调用。
 
 ## 测试规则
 

@@ -264,13 +264,22 @@
 编辑前阅读：`docs/architecture/testing.md`、`docs/reviews/README.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/reviews/commit-message.md`
+类型：提交规范
+负责人：实现和架构 review 流程
+是否入口：否
+允许内容：提交信息格式、commit-msg hook、项目提交策略、Task 元数据和提交信息机械检查维护规则
+禁止内容：单次提交记录、完整 pre-commit 测试门禁、具体任务 review 发现
+编辑前阅读：`docs/reviews/quality-gates.md`、`harness/policies/commit-message.json`、`.githooks/README.md`、本文件
+验证命令：`bash scripts/check-structure.sh`；修改策略后运行 `bash scripts/check-commit-message.sh <message-file>`
+
 路径：`docs/reviews/quality-gates.md`
 类型：质量门禁规则
 负责人：实现和架构 review 流程
 是否入口：否
 允许内容：本地验证命令职责、命令选择规则、未来 CI / Git hook 最低要求和检查脚本维护规则
-禁止内容：单次任务验证记录、具体 CI 平台完整配置、服务私有测试清单、临时排障日志
-编辑前阅读：`docs/reviews/README.md`、`docs/reviews/done-definition.md`、`docs/architecture/testing.md`、`Makefile`、相关检查脚本、本文件
+禁止内容：提交信息格式细则、单次任务验证记录、具体 CI 平台完整配置、服务私有测试清单、临时排障日志
+编辑前阅读：`docs/reviews/README.md`、`docs/reviews/done-definition.md`、`docs/reviews/commit-message.md`、`docs/architecture/testing.md`、`Makefile`、相关检查脚本、本文件
 验证命令：`make check`；仅路径索引调整时至少运行 `bash scripts/check-structure.sh`
 
 路径：`docs/todos/debt/`

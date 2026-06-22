@@ -6,7 +6,7 @@
 
 - 质量门禁按风险选择，不把所有小改动都升级成完整回归。
 - `make check` 是统一交付前门禁，不是开发内循环里每次保存都必须运行的命令。
-- 当前仓库还没有 CI 或 Git hook 强制校验；在 CI 建立前，交付说明中的手动验证证据是权威依据。
+- 当前仓库还没有 CI；提供可安装的 `commit-msg` hook 用于提交信息检查。在 CI 建立前，交付说明中的手动验证证据仍是交付质量门禁的权威依据。
 - 新增或调整检查命令时，必须同步 `Makefile`、`AGENTS.md`、相关事实源文档和必要的结构检查。
 - 自动门禁不能替代人工判断。公开 contract、migration、runtime、并发、安全和跨服务边界变化仍按 `docs/reviews/done-definition.md` 判断是否需要正式 review。
 
@@ -21,6 +21,7 @@
 | `cd <module> && go test ./...` | 运行单个模块测试 | 服务或共享库的开发内循环 |
 | `cd <module> && go test ./path/...` | 运行最窄相关测试 | 单个 handler、service、repository、worker、adapter 或 contract 改动的首轮验证 |
 | `cd <module> && go test -race ./path/...` | 检查数据竞争 | 并发、worker、consumer、cache、共享状态或 goroutine 生命周期变化 |
+| `bash scripts/check-commit-message.sh <message-file>` | 检查提交信息格式 | commit-msg hook 或提交前手动验证提交信息 |
 
 ## 选择规则
 
@@ -35,9 +36,10 @@
 
 ## CI 和 Hook 要求
 
-当前没有 CI 或 Git hook。未来新增时遵守以下规则：
+当前没有 CI；仓库提供 `commit-msg` hook。未来新增或调整时遵守以下规则：
 
 - CI 至少运行 `make check`，可以拆分阶段，但不能绕过 `Makefile` 中的统一入口。
+- `commit-msg` hook 只负责提交信息格式，具体规则见 `docs/reviews/commit-message.md`。
 - Git hook 可以作为本地提醒或快速失败机制，但不能成为唯一验证来源。
 - CI 或 hook 新增、删除、重命名命令时，必须同步本文件、`AGENTS.md` 和 `docs/reviews/done-definition.md` 中的验证说明。
 - CI 失败不能通过放宽测试断言、删除检查或把失败命令移出 `make check` 来规避；需要修复根因，或在确认外部依赖故障时记录残余风险。
