@@ -61,7 +61,7 @@
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
 是否入口：否
-允许内容：仓库目录结构、服务目录模板、`api/http` 与 `internal` 边界、脚手架演进规则
+允许内容：仓库目录结构、服务目录模板、`api/http` 与 `internal` 边界、脚本入口和机械检查分层、脚手架演进规则
 禁止内容：服务内业务规则、单个服务实现计划、迁移过程临时日志
 编辑前阅读：Go 服务目录、`scripts/check-structure.sh`、本文件
 验证命令：`bash scripts/check-structure.sh`
@@ -124,7 +124,7 @@
 类型：当前架构事实
 负责人：ZhiCore Go 运行期架构
 是否入口：否
-允许内容：配置、启动流程、优雅停机、健康检查、HTTP server timeout、下游 client timeout、重试、熔断、幂等、worker/consumer 停机和运行完成标准
+允许内容：配置、启动流程、构造函数外部副作用、context 传播、优雅停机、健康检查、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机和运行完成标准
 禁止内容：单个服务的临时部署记录、具体环境密钥、完整 Helm/Kubernetes manifest、一次性排障日志
 编辑前阅读：`docs/architecture/go-service-design.md`、`docs/architecture/error-handling.md`、本文件；涉及对外 HTTP contract 时再读 `docs/contracts/http.md`
 验证命令：`bash scripts/check-structure.sh`

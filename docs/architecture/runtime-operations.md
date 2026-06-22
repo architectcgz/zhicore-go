@@ -30,6 +30,7 @@
 - 端口、超时、最大请求体、数据库连接池大小、Redis/RabbitMQ 地址、外部服务 base URL 都属于显式配置。
 - 不允许在业务代码中散写环境变量名；配置读取集中在 runtime 或 `libs/kit/config`。
 - 配置字段命名使用稳定前缀，例如 `ZHICORE_UPLOAD_HTTP_ADDR`、`ZHICORE_GATEWAY_JWT_SECRET`。
+- PostgreSQL 连接必须明确使用 UTC 会话时区；使用支持时区参数的 driver / DSN 时，连接串或初始化 SQL 必须显式设置 UTC。
 
 本地开发阶段可以使用 `.env.example`、`configs/local.example.*` 或 README 记录示例配置；真实 `.env` 和包含凭证的配置文件不得提交。
 
@@ -51,6 +52,21 @@
 - 关键依赖不可用时，服务应启动失败或进入 not ready 状态；不要静默降级到错误行为。
 - 可选依赖必须在配置和日志中明确标记为 optional。
 - `cmd/server/main.go` 不承载业务 wiring，业务组装放在 `internal/<domain>/runtime`。
+
+## 构造和外部副作用
+
+普通 `New...` / `NewService` / `NewRepository` 构造函数只接收已经解析好的依赖、配置和 identity，不主动访问外部世界。
+
+禁止在普通构造函数中隐藏以下行为：
+
+- 读取环境变量、hostname、文件、证书或本机网络状态。
+- 打开真实数据库、Redis、RabbitMQ、MongoDB、Elasticsearch、对象存储或 HTTP client 连接。
+- 读取当前时间、生成随机 secret / token / identity，或调用外部服务探测默认值。
+- 忽略外部读取错误后静默使用空值或默认值。
+
+需要外部事实时，必须放到名字和职责明确的 owner 层，例如 `cmd/server`、`runtime`、`Load*`、`Dial*`、`Open*`、`Build*` 或显式 factory。失败必须向上返回错误，或由调用方明确记录并决定 fallback。
+
+测试中通过依赖注入传入 clock、random、hostname、client、文件内容或配置值，不把本机环境变成行为断言的一部分。
 
 ## 优雅停机
 
@@ -119,6 +135,19 @@ GET /health/ready
 
 具体服务可以调整，但必须在服务 README 或服务级配置中说明理由。
 
+## Context 传播
+
+服务、repository、handler、job、worker、consumer、runner 和 checker 等运行边界必须显式接收并继续传递 `context.Context`。
+
+规则：
+
+- HTTP handler 从 `r.Context()` 进入 application、repository、cache、MQ 和下游 client。
+- 后台 worker / consumer 使用服务 lifecycle context，不把某个请求 context 存进 struct 或跨请求复用。
+- 正常 application / infrastructure 代码不得自行创建 `context.Background()` 或 `context.TODO()` 来补缺失参数。
+- `context.Background()` 只允许出现在进程根、框架入口、测试根或明确的生命周期根。
+- 派生 timeout / deadline / cancel context 后必须调用返回的 cancel 函数，通常使用 `defer cancel()`。
+- 需要脱离请求继续执行的异步任务，必须显式说明它使用的是 lifecycle context、任务 context 还是补偿任务 context。
+
 ## 重试
 
 重试只适用于明确可重试且具备幂等保障的操作。
@@ -143,6 +172,28 @@ GET /health/ready
 - 设置最大尝试次数和最大耗时。
 - 每次重试记录 provider、operation、attempt、durationMs 和最终结果。
 - 最终失败要按 `docs/architecture/error-handling.md` 的错误处置规则返回、上报或进入补偿。
+- retry / backoff / cancel / pacing 是控制流语义，不能依赖 logger、metrics、trace、debug flag 等可选观测组件是否存在。观测组件只能影响“记录什么”，不能影响“失败后怎么跑”。
+
+## 后台任务和 goroutine owner
+
+每个 goroutine、worker、consumer、dispatcher、poller 和 reconcile loop 必须先明确 owner：
+
+- 谁启动它。
+- 谁负责取消、等待和释放资源。
+- 错误如何传播或记录。
+- panic 后果是什么。
+
+panic recovery 只能放在明确 owner 边界内，不新增跨服务通用 `SafeGo` / `safe goroutine` 默认包装来替 owner 决定失败语义。
+
+常见语义：
+
+- HTTP 请求边界可以 recover，返回 500 并记录 request 上下文。
+- root 级关键后台任务 panic 通常是严重进程问题，应至少记录现场后重新 panic，不能静默退出。
+- 定时任务或 reconcile 单轮执行可以由 owner 本地 recover，但语义应是“本轮失败，下一轮可重试”。
+- 有业务状态的异步任务应把 panic 转成业务失败状态，例如导入任务、报表任务或批处理任务标记失败。
+- 只用于等待 `WaitGroup.Wait()` 的辅助 goroutine 保持最小显式写法，不挂 recover 语义。
+
+如果 goroutine 没有明确 logger、ctx、task name、业务失败状态或生命周期 owner，先修 owner 接线，不用 no-op logger、`context.Background()` 或共享 recover helper 掩盖问题。
 
 ## 熔断和降级
 
@@ -178,6 +229,7 @@ GET /health/ready
 - 每个可能重复提交的写 use case 必须明确幂等策略。
 - consumer 必须容忍重复消息、乱序和迟到消息。
 - outbox dispatcher 必须保证同一事件多次 publish 不会导致 consumer 产生不可恢复副作用。
+- outbox / inbox / saga / ledger 这类 durable journal 的状态迁移必须使用条件更新或等价 compare-and-set，例如只允许 `pending -> sent`、`pending -> failed`；不能让 stale worker 按 id 盲写，把已完成记录复活回待处理状态。
 - 幂等冲突应返回稳定错误码或返回已有结果，不能随机失败。
 
 ## 服务运行完成标准

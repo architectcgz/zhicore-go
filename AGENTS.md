@@ -19,7 +19,7 @@
 
 - `services/<service>` 是独立可部署、可测试、可构建的服务单元。
 - 每个服务拥有自己的 `go.mod`；不要添加根应用模块。
-- 修改仓库目录布局、服务目录模板、`api/http` 和 `internal` 落点前，先读 `docs/architecture/repository-layout.md`。
+- 修改仓库目录布局、服务目录模板、`api/http` / `internal` 落点、脚本入口或机械检查分层前，先读 `docs/architecture/repository-layout.md`。
 - `services/<service>/cmd/server` 只放进程入口和运行时装配。
 - `services/<service>/api/http` 放 HTTP 入站层和外部 API 兼容代码。
 - `services/<service>/internal` 是服务私有代码，其他服务不得导入。
@@ -31,7 +31,7 @@
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
 - 修改测试策略、测试目录归属、测试分层、验证命令或 test-first 要求前，先读 `docs/architecture/testing.md`。
-- 修改服务配置、启动流程、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、worker/consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`。
+- 修改服务配置、启动流程、构造函数外部副作用、context 传播、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
 - 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md` 和 `docs/contracts/http-schema-template.md`。

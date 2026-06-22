@@ -23,6 +23,8 @@
 - 读取时必须接受带 offset 的 RFC3339，例如 `2026-06-22T18:30:00+08:00`。
 - 不新增无时区的本地时间字符串。
 - 数据库存储优先使用 `TIMESTAMPTZ`，应用内统一按 UTC 处理。
+- 会写入数据库、Redis、JSON、审计日志、事件 payload，或参与跨请求比较的业务 `time.Time`，创建时使用 UTC，输出前归一到 UTC。
+- 纯运行时测量可以保留单进程内时间语义，例如耗时统计、deadline、timer、随机后缀和临时文件名；这类值不得作为业务时间返回给外部 contract。
 - 事件 JSON payload 使用 lowerCamelCase 时间字段，例如 `occurredAt` / `scheduledAt`。
 - 数据库、outbox 和 inbox 列名属于对应服务的 migration/schema；默认按 `docs/architecture/go-service-design.md` 的数据库命名规则处理。
 - 定时任务、延迟投递和事件的发生/计划时间必须使用业务时间，不使用发送时间或消费时间替代。

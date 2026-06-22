@@ -68,6 +68,7 @@ zhicore-go/
 │   └── kit/
 ├── docs/
 ├── deploy/
+├── scripts/
 └── tests/
 ```
 
@@ -79,6 +80,7 @@ zhicore-go/
 - `libs/kit`：小而稳定的跨服务技术原语，不放业务规则。
 - `docs/`：长期架构、契约、迁移和 review 事实源。
 - `deploy/`：Docker、Kubernetes 等部署资产。
+- `scripts/`：仓库级稳定命令入口，例如结构检查、测试规模检查和本地维护命令。
 - `tests/`：跨服务架构检查、黑盒 HTTP 场景、运行时测试和测试夹具。
 
 ## `api` 和 `internal` 的边界
@@ -115,3 +117,15 @@ zhicore-go/
 - 迁移某个服务的业务实现前，再补齐该服务的 `internal/<domain>` 分层目录。
 - 目录变更必须同步更新 `scripts/check-structure.sh`。
 - 如果目录变更影响服务内依赖方向，必须同步更新 `docs/architecture/go-service-design.md`。
+
+## 脚本和机械检查分层
+
+`scripts/` 是稳定入口层，不是所有检查逻辑的堆放点。
+
+规则：
+
+- `scripts/check-structure.sh` 只检查仓库结构、固定入口和必备路径，不承载测试规模、源码扫描、契约语义或运行时规则的具体实现。
+- 每类机械检查应有按职责命名的独立入口，例如 `scripts/check-test-size.py`；`make check` 负责组合这些入口。
+- 简单路径存在性检查可以继续用 shell；涉及递归扫描、解析、聚合错误、白名单、差异模式或后续扩展的检查优先使用 Python。
+- 新增检查脚本时同步更新 `Makefile`、`AGENTS.md` 和相关事实源文档；如果检查守住某个文档规则，文档要写明对应命令。
+- 不为“少一个文件”把多个不相关防线塞进同一个脚本；检查边界应按被守护的规则 owner 拆分。
