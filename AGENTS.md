@@ -36,6 +36,7 @@
 - 修改服务配置、环境变量、配置模板、`libs/kit/config`、密钥处理或配置校验前，先读 `docs/architecture/configuration.md`。
 - 修改启动流程、构造函数外部副作用、context 传播、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`；涉及配置时同时读 `docs/architecture/configuration.md`。
 - 修改日志、metrics、trace、`requestId` / `traceId`、operation 命名、脱敏、上报边界或 `libs/kit/observability` 前，先读 `docs/architecture/observability.md`；涉及错误处置时同时读 `docs/architecture/error-handling.md`。
+- 修改认证、授权、JWT、身份 header、角色、资源权限、Admin 审计、上传安全、外部 URL、敏感输入或 `libs/kit/auth` 前，先读 `docs/architecture/security.md`；涉及密钥时同时读 `docs/architecture/configuration.md`，涉及日志脱敏时同时读 `docs/architecture/observability.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
 - 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md` 和 `docs/contracts/http-schema-template.md`。

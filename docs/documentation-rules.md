@@ -111,6 +111,15 @@
 编辑前阅读：`docs/architecture/error-handling.md`、`docs/architecture/runtime-operations.md`、`docs/architecture/configuration.md`、`libs/kit/observability`、本文件
 验证命令：`bash scripts/check-structure.sh`；涉及可观测性代码时运行最窄相关 `go test`
 
+路径：`docs/architecture/security.md`
+类型：当前架构事实
+负责人：ZhiCore Go 安全与权限治理
+是否入口：否
+允许内容：认证、授权、JWT、身份传播、角色和资源权限、Admin 审计、上传安全、外部 URL、敏感输入、`libs/kit/auth` 边界和安全测试要求
+禁止内容：真实密钥、真实 token、生产账号、漏洞利用细节、完整审计日志 schema、服务私有权限清单
+编辑前阅读：`docs/architecture/service-boundaries.md`、`docs/architecture/configuration.md`、`docs/architecture/observability.md`、`docs/contracts/errors.md`、`libs/kit/auth`、本文件
+验证命令：`bash scripts/check-structure.sh`；涉及认证、授权或上传安全代码时运行最窄相关 `go test`
+
 路径：`docs/architecture/migrations.md`
 类型：当前架构事实
 负责人：ZhiCore Go schema migration

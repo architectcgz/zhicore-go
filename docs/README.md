@@ -17,6 +17,7 @@
   - `docs/architecture/go-service-design.md`：Go 服务内分层、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
   - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板、密钥处理和配置加载边界。
   - `docs/architecture/observability.md`：结构化日志、请求关联 ID、trace、metrics、脱敏和可观测性边界。
+  - `docs/architecture/security.md`：认证、授权、身份传播、审计、上传安全和敏感输入边界。
   - `docs/architecture/migrations.md`：`golang-migrate`、SQL migration 文件命名、事务、down migration、seed 和 GORM 边界。
   - `docs/architecture/testing.md`：风险分级测试策略、test-first 触发条件、测试写法、规模控制、测试放置和验证命令选择。
   - `docs/architecture/runtime-operations.md`：启动、健康检查、优雅停机、超时、重试、熔断、幂等和运行完成标准。
