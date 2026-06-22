@@ -1,0 +1,18 @@
+go 1.22
+
+use (
+	./libs/contracts
+	./libs/kit
+	./services/zhicore-admin
+	./services/zhicore-comment
+	./services/zhicore-content
+	./services/zhicore-gateway
+	./services/zhicore-id-generator
+	./services/zhicore-message
+	./services/zhicore-notification
+	./services/zhicore-ops
+	./services/zhicore-ranking
+	./services/zhicore-search
+	./services/zhicore-upload
+	./services/zhicore-user
+)
