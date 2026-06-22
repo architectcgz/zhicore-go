@@ -8,4 +8,4 @@
 - `readinessProbe` 和 `livenessProbe`
 - CPU/内存资源限制
 - 滚动发布和回滚策略
-- Java 与 Go 服务并存期间的路由和服务发现方式
+- Go 服务的路由和服务发现方式

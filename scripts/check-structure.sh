@@ -117,6 +117,7 @@ required_files=(
   "docs/README.md"
   "docs/documentation-rules.md"
   "docs/architecture/service-boundaries.md"
+  "docs/architecture/id-strategy.md"
   "docs/contracts/README.md"
   "docs/migration/README.md"
 )

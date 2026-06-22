@@ -3,7 +3,7 @@
 ## 项目概览
 
 - 本仓库是 ZhiCore 后端从 Java 迁移到 Go 的工作区。
-- 当前 Java 实现仍保留在 `../zhicore-microservice`，在对应 Go 服务完全替换前，Java 代码仍是接口和行为事实源。
+- 当前 Java 实现仍保留在 `../zhicore-microservice`，Java 代码只作为接口和行为事实源；迁移目标不规划 Java/Go 运行时并存。
 - 迁移必须按服务增量推进。除非用户明确要求批量迁移，否则不要一次重写多个服务。
 
 ## 常用命令
@@ -24,10 +24,11 @@
 - `libs/contracts/events` 放跨服务事件 payload 契约。
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
+- 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
-- 在前端、网关和调用方被明确调整前，保留现有 Java API 形态。
+- 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。
 
 ## 服务落点
 

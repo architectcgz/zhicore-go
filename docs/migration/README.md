@@ -6,6 +6,8 @@
 
 Java 事实源：`../zhicore-microservice`
 
+Java 代码只作为接口、行为和数据模型参考；迁移目标不规划 Java/Go 运行时并存。
+
 ## 可部署服务
 
 | Java 模块 | Go 服务模块 |
@@ -33,17 +35,20 @@ Java 事实源：`../zhicore-microservice`
 
 ## 推荐迁移顺序
 
-1. `zhicore-id-generator`：HTTP 面最小，适合验证 Go 服务部署链路。
-2. `zhicore-upload`：主要是代理/集成逻辑，API 边界相对清晰。
-3. `zhicore-search`：查询型服务，依赖 Elasticsearch 和 RabbitMQ consumer。
-4. `zhicore-ranking`：Redis 读模型和定时任务较多，适合在事件模型稳定后迁移。
-5. `zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
-6. `zhicore-message`、`zhicore-notification`：涉及 WebSocket、推送和事件 fanout。
-7. `zhicore-admin`、`zhicore-ops`、`zhicore-gateway`：在核心服务 contract 稳定后迁移。
+1. `zhicore-upload`：主要是代理/集成逻辑，API 边界相对清晰。
+2. `zhicore-search`：查询型服务，依赖 Elasticsearch 和 RabbitMQ consumer。
+3. `zhicore-ranking`：Redis 读模型和定时任务较多，适合在事件模型稳定后迁移。
+4. `zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
+5. `zhicore-message`、`zhicore-notification`：涉及 WebSocket、推送和事件 fanout。
+6. `zhicore-admin`、`zhicore-ops`、`zhicore-gateway`：在核心服务 contract 稳定后迁移。
+
+`zhicore-id-generator` 当前不作为默认核心依赖。内部主键默认使用各服务数据库 `BIGINT` sequence / identity，外部公开 ID 策略见 `docs/architecture/id-strategy.md`；只有未来重新确认集中发号需求时，再把该服务纳入实现顺序。
 
 ## 兼容规则
 
-- 在调用方被明确调整前，保留现有外部 API 路径和响应封装。
-- 迁移期间 Java 和 Go 服务并行存在。
-- 优先通过现有网关或部署路由逐个服务替换。
+- 前端暂时不修改。Go 服务替换 Java 服务时，必须保留现有外部 API 路径、请求参数、响应封装、字段语义、错误码和权限行为。
+- 当前开发阶段不做灰度。Gateway 可以切换本地或部署路由，但不能把 API 形态变化传递给前端。
+- 在所有调用方被明确调整并验证前，旧接口必须继续可用；需要重做的接口作为独立 API 演进任务处理。
+- 运行时不规划 Java/Go 并存；Go 服务按模块逐步替换对应 Java 实现。
+- 优先通过本地环境、网关或部署路由逐个服务接入 Go 目标实现。
 - 移除 Java 等价实现前，必须记录已迁移端点和验证证据。

@@ -57,6 +57,15 @@
 编辑前阅读：`../zhicore-microservice` Java 源码、Go 服务模块、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/id-strategy.md`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：否
+允许内容：内部主键、外部公开 ID、业务编号、发号服务定位和 ID 兼容约束
+禁止内容：具体服务私有字段清单、临时算法实验、未验证性能结论
+编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的服务 schema、受影响的 contract、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/contracts/`
 类型：当前 contract 治理规则
 负责人：ZhiCore Go 跨服务 contract
