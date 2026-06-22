@@ -2,6 +2,14 @@
 .env.*
 !.env.example
 
+services/*/configs/.env
+services/*/configs/.env.*
+services/*/configs/local.*
+services/*/configs/*.local.*
+services/*/configs/*secret*
+!services/*/configs/.env.example
+!services/*/configs/*.example.*
+
 bin/
 dist/
 coverage.out

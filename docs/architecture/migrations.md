@@ -56,17 +56,17 @@ migrate create -ext sql -dir services/<service>/migrations -format 2006010215040
 
 ## 执行命令
 
-每个服务使用自己的数据库 URL：
+每个服务使用自己的 PostgreSQL DSN：
 
 ```bash
-migrate -path services/<service>/migrations -database "$<SERVICE>_DATABASE_URL" up
-migrate -path services/<service>/migrations -database "$<SERVICE>_DATABASE_URL" down 1
+migrate -path services/<service>/migrations -database "$ZHICORE_<SERVICE>_POSTGRES_DSN" up
+migrate -path services/<service>/migrations -database "$ZHICORE_<SERVICE>_POSTGRES_DSN" down 1
 ```
 
 示例：
 
 ```bash
-migrate -path services/zhicore-user/migrations -database "$ZHICORE_USER_DATABASE_URL" up
+migrate -path services/zhicore-user/migrations -database "$ZHICORE_USER_POSTGRES_DSN" up
 ```
 
 规则：

@@ -18,6 +18,7 @@
 - `docs/migration/java-design-migration.md`：Java 侧设计迁移盘点。
 - `docs/architecture/repository-layout.md`：仓库目录、服务目录模板和 `api` / `internal` 边界。
 - `docs/architecture/go-service-design.md`：Go 服务分层、运行时依赖、migration、缓存和事件规则。
+- `docs/architecture/configuration.md`：服务配置、环境变量、配置模板和密钥处理规则。
 - `docs/architecture/id-strategy.md`：内部主键、外部公开 ID、业务编号和发号服务定位。
 
 ## 目标服务

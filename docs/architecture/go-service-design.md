@@ -130,7 +130,7 @@ libs/contracts/events/<domain>/
 
 ## 运行时依赖约定
 
-服务配置、启动、健康检查、优雅停机、超时、重试、熔断和幂等的详细规则见 `docs/architecture/runtime-operations.md`。
+服务配置和环境变量规则见 `docs/architecture/configuration.md`；启动、健康检查、优雅停机、超时、重试、熔断和幂等规则见 `docs/architecture/runtime-operations.md`。
 
 | 能力 | 约定 |
 | --- | --- |

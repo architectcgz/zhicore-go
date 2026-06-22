@@ -1,8 +1,8 @@
 # 运行期操作规则
 
-本文件定义 `zhicore-go` 服务运行期的配置、启动、健康检查、超时、重试和幂等规则。
+本文件定义 `zhicore-go` 服务运行期的启动、健康检查、超时、重试和幂等规则。
 
-仓库目录和服务内分层见 `docs/architecture/repository-layout.md` 和 `docs/architecture/go-service-design.md`。错误分层、日志和上报规则见 `docs/architecture/error-handling.md`。
+仓库目录和服务内分层见 `docs/architecture/repository-layout.md` 和 `docs/architecture/go-service-design.md`。配置和环境变量规则见 `docs/architecture/configuration.md`。错误分层、日志和上报规则见 `docs/architecture/error-handling.md`。
 
 ## 适用范围
 
@@ -15,24 +15,9 @@
 
 ## 配置规范
 
-配置来源优先级：
+服务配置、环境变量、配置模板、必填校验、密钥处理和 `libs/kit/config` 边界以 `docs/architecture/configuration.md` 为准。
 
-1. 启动参数或明确传入的测试配置。
-2. 环境变量。
-3. 本地开发配置文件模板。
-4. 代码内安全默认值。
-
-规则：
-
-- 生产密钥、JWT secret、数据库密码、对象存储凭证、外部服务 token 只能来自环境变量或 Secret，不写入仓库。
-- 配置模板可以提交，但只能包含示例值、空值或本地开发默认值。
-- 服务启动时必须校验必填配置，缺失时直接启动失败，并给出可操作错误信息。
-- 端口、超时、最大请求体、数据库连接池大小、Redis/RabbitMQ 地址、外部服务 base URL 都属于显式配置。
-- 不允许在业务代码中散写环境变量名；配置读取集中在 runtime 或 `libs/kit/config`。
-- 配置字段命名使用稳定前缀，例如 `ZHICORE_UPLOAD_HTTP_ADDR`、`ZHICORE_GATEWAY_JWT_SECRET`。
-- PostgreSQL 连接必须明确使用 UTC 会话时区；使用支持时区参数的 driver / DSN 时，连接串或初始化 SQL 必须显式设置 UTC。
-
-本地开发阶段可以使用 `.env.example`、`configs/local.example.*` 或 README 记录示例配置；真实 `.env` 和包含凭证的配置文件不得提交。
+运行期规则只依赖已经解析和校验过的配置。启动路径不得在 handler、domain、repository、client adapter 或普通构造函数中临时读取环境变量。
 
 ## 启动流程
 

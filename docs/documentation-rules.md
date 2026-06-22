@@ -93,6 +93,15 @@
 编辑前阅读：`docs/architecture/repository-layout.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/id-strategy.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/configuration.md`
+类型：当前架构事实
+负责人：ZhiCore Go 配置治理
+是否入口：否
+允许内容：服务配置、环境变量命名、配置来源优先级、必填校验、配置模板、密钥脱敏、`libs/kit/config` 边界和配置验证要求
+禁止内容：真实密钥、生产连接串、具体环境部署值、完整 Helm values、单个服务私有配置清单
+编辑前阅读：`docs/architecture/runtime-operations.md`、`docs/architecture/go-service-design.md`、`libs/kit/config`、受影响服务 `configs/`、本文件
+验证命令：`bash scripts/check-structure.sh`；涉及配置加载代码时运行最窄相关 `go test`
+
 路径：`docs/architecture/migrations.md`
 类型：当前架构事实
 负责人：ZhiCore Go schema migration
@@ -124,9 +133,9 @@
 类型：当前架构事实
 负责人：ZhiCore Go 运行期架构
 是否入口：否
-允许内容：配置、启动流程、构造函数外部副作用、context 传播、优雅停机、健康检查、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机和运行完成标准
-禁止内容：单个服务的临时部署记录、具体环境密钥、完整 Helm/Kubernetes manifest、一次性排障日志
-编辑前阅读：`docs/architecture/go-service-design.md`、`docs/architecture/error-handling.md`、本文件；涉及对外 HTTP contract 时再读 `docs/contracts/http.md`
+允许内容：启动流程、构造函数外部副作用、context 传播、优雅停机、健康检查、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机和运行完成标准
+禁止内容：配置命名细则、单个服务的临时部署记录、具体环境密钥、完整 Helm/Kubernetes manifest、一次性排障日志
+编辑前阅读：`docs/architecture/go-service-design.md`、`docs/architecture/configuration.md`、`docs/architecture/error-handling.md`、本文件；涉及对外 HTTP contract 时再读 `docs/contracts/http.md`
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/migration/java-design-migration.md`
