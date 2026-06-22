@@ -1,14 +1,14 @@
-# Migration Map
+# 迁移映射
 
-This file maps the Java ZhiCore modules to their Go landing zones.
+本文件记录 Java ZhiCore 模块到 Go 落点的映射。
 
-## Source Repository
+## 源仓库
 
-Java source of truth: `../zhicore-microservice`
+Java 事实源：`../zhicore-microservice`
 
-## Deployable Services
+## 可部署服务
 
-| Java module | Go service module |
+| Java 模块 | Go 服务模块 |
 | --- | --- |
 | `zhicore-gateway` | `services/zhicore-gateway` |
 | `zhicore-user` | `services/zhicore-user` |
@@ -23,27 +23,27 @@ Java source of truth: `../zhicore-microservice`
 | `zhicore-id-generator` | `services/zhicore-id-generator` |
 | `zhicore-ops` | `services/zhicore-ops` |
 
-## Shared Java Modules
+## Java 共享模块
 
-| Java module | Go landing zone | Notes |
+| Java 模块 | Go 落点 | 说明 |
 | --- | --- | --- |
-| `zhicore-common` | `libs/kit` | Response envelope, errors, auth, config, persistence, observability, infrastructure primitives. |
-| `zhicore-client` | `libs/contracts/clients` | Typed service clients and call contracts. |
-| `zhicore-integration` | `libs/contracts/events` | Cross-service event payloads and messaging contracts. |
+| `zhicore-common` | `libs/kit` | 响应封装、错误、认证、配置、持久化、可观测性、基础设施原语。 |
+| `zhicore-client` | `libs/contracts/clients` | typed service client 和同步调用契约。 |
+| `zhicore-integration` | `libs/contracts/events` | 跨服务事件 payload 和消息 contract。 |
 
-## Recommended Migration Order
+## 推荐迁移顺序
 
-1. `zhicore-id-generator`: smallest HTTP surface and useful for validating Go service deployment.
-2. `zhicore-upload`: mostly proxy/integration logic and a bounded API surface.
-3. `zhicore-search`: query-heavy service with Elasticsearch and RocketMQ consumers.
-4. `zhicore-ranking`: Redis-heavy read and scheduled workload.
-5. `zhicore-user`, `zhicore-comment`, `zhicore-content`: core write services with PostgreSQL, Redis, events, and cross-service calls.
-6. `zhicore-message`, `zhicore-notification`: WebSocket and push/event fanout services.
-7. `zhicore-admin`, `zhicore-ops`, `zhicore-gateway`: migrate after the core service contracts are stable.
+1. `zhicore-id-generator`：HTTP 面最小，适合验证 Go 服务部署链路。
+2. `zhicore-upload`：主要是代理/集成逻辑，API 边界相对清晰。
+3. `zhicore-search`：查询型服务，依赖 Elasticsearch 和 RabbitMQ consumer。
+4. `zhicore-ranking`：Redis 读模型和定时任务较多，适合在事件模型稳定后迁移。
+5. `zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
+6. `zhicore-message`、`zhicore-notification`：涉及 WebSocket、推送和事件 fanout。
+7. `zhicore-admin`、`zhicore-ops`、`zhicore-gateway`：在核心服务 contract 稳定后迁移。
 
-## Compatibility Rules
+## 兼容规则
 
-- Preserve existing external API paths and response envelopes until callers are intentionally changed.
-- Keep Java and Go services side by side during migration.
-- Prefer replacing one service at a time behind the existing gateway or deployment routing.
-- Record each migrated endpoint and its validation evidence before removing the Java equivalent.
+- 在调用方被明确调整前，保留现有外部 API 路径和响应封装。
+- 迁移期间 Java 和 Go 服务并行存在。
+- 优先通过现有网关或部署路由逐个服务替换。
+- 移除 Java 等价实现前，必须记录已迁移端点和验证证据。

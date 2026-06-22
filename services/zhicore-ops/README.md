@@ -1,3 +1,19 @@
 # zhicore-ops
 
-Independent Go service module for operational and migration tooling.
+`zhicore-ops` 是迁移运维和灰度工具服务的 Go 迁移模块。
+
+服务职责：
+
+- 拥有灰度配置、用户灰度标记、回滚记录、对账记录、CDC 修复和迁移期运维状态。
+- 为 Java 与 Go 并存迁移提供对账、回滚和灰度推进能力。
+
+数据归属：
+
+- Ops Redis key
+- 灰度配置和状态
+- 对账、回滚、CDC checkpoint 等迁移状态
+
+迁移注意点：
+
+- Ops 可以检查或修复业务数据，但不因此拥有业务数据。
+- 长期产品功能不应依赖 Ops 的迁移内部实现。

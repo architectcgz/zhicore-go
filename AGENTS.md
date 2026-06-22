@@ -1,35 +1,35 @@
-# ZhiCore Go Agents
+# ZhiCore Go Agent 规则
 
-## Project Overview
+## 项目概览
 
-- This repository is the Go migration workspace for the ZhiCore backend.
-- The current Java implementation remains in `../zhicore-microservice` and is the contract source until a Go service fully replaces the matching Java service.
-- Keep migration incremental. Do not rewrite multiple services in one slice unless the user explicitly asks for a broad migration batch.
+- 本仓库是 ZhiCore 后端从 Java 迁移到 Go 的工作区。
+- 当前 Java 实现仍保留在 `../zhicore-microservice`，在对应 Go 服务完全替换前，Java 代码仍是接口和行为事实源。
+- 迁移必须按服务增量推进。除非用户明确要求批量迁移，否则不要一次重写多个服务。
 
-## Commands
+## 常用命令
 
-- `make check`: run scaffold checks and Go tests.
-- `make test`: run `go test ./...` inside each Go workspace module.
-- `bash scripts/check-structure.sh`: verify required service entrypoints, module directories, documentation entrypoints, and agent entrypoints.
+- `make check`：运行脚手架检查和所有 Go 模块测试。
+- `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
+- `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
 
-There is no CI or git hook enforcement yet. Run `make check` manually before reporting scaffold or code changes as complete.
+当前还没有 CI 或 Git hook 强制校验。汇报脚手架或代码改动完成前，必须手动运行 `make check`。
 
-## Architecture Boundaries
+## 架构边界
 
-- `services/<service>` is the deployable, testable, and buildable unit.
-- Each service owns its own `go.mod`; do not add a root application module.
-- `services/<service>/cmd/server` contains process entrypoints and runtime wiring only.
-- `services/<service>/internal` is private to that service. Other services must not import it.
-- `libs/kit` is for small, stable cross-service technical primitives only. Do not put service-specific business rules there.
-- `libs/contracts/events` owns cross-service event payload contracts.
-- `libs/contracts/clients` owns typed client contracts for service-to-service calls.
-- Read `docs/architecture/service-boundaries.md` before changing cross-service data ownership, synchronous calls, facade routes, or contract placement.
-- Read `docs/contracts/README.md` before changing synchronous client contracts, event payloads, or externally visible API schemas.
-- Shared libraries must stay boring and explicit; prefer duplicating unstable service-local code over prematurely promoting it into `libs`.
-- Database schema evolution must stay explicit and reviewable. Do not add runtime auto-migration in service startup paths.
-- Preserve the existing Java API shape until the matching frontend, gateway, and callers are intentionally changed.
+- `services/<service>` 是独立可部署、可测试、可构建的服务单元。
+- 每个服务拥有自己的 `go.mod`；不要添加根应用模块。
+- `services/<service>/cmd/server` 只放进程入口和运行时装配。
+- `services/<service>/internal` 是服务私有代码，其他服务不得导入。
+- `libs/kit` 只放小而稳定的跨服务技术原语，不放服务特定业务规则。
+- `libs/contracts/events` 放跨服务事件 payload 契约。
+- `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
+- 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
+- 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
+- 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
+- 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
+- 在前端、网关和调用方被明确调整前，保留现有 Java API 形态。
 
-## Service Landing Zones
+## 服务落点
 
 - `zhicore-gateway` -> `services/zhicore-gateway`
 - `zhicore-user` -> `services/zhicore-user`
@@ -43,25 +43,27 @@ There is no CI or git hook enforcement yet. Run `make check` manually before rep
 - `zhicore-upload` -> `services/zhicore-upload`
 - `zhicore-id-generator` -> `services/zhicore-id-generator`
 - `zhicore-ops` -> `services/zhicore-ops`
-- Java `zhicore-common`, `zhicore-client`, and `zhicore-integration` map to `libs/kit` and `libs/contracts`; they are not deployable Go services by default.
+- Java `zhicore-common`、`zhicore-client`、`zhicore-integration` 映射到 `libs/kit` 和 `libs/contracts`，默认不是可部署的 Go 服务。
 
-## Documentation
+## 文档
 
-- Read `docs/documentation-rules.md` before creating, moving, or editing durable docs.
-- Use `docs/README.md` as the documentation index.
-- Keep migration planning in `docs/migration/`.
-- Keep formal review evidence under `docs/reviews/`.
-- Keep unresolved technical debt under `docs/todos/debt/`.
+- 创建、移动或编辑长期文档前，先读 `docs/documentation-rules.md`。
+- 使用 `docs/README.md` 作为文档索引。
+- 新建或初始化 README、docs、部署说明和 agent 规则时，正文默认使用中文；代码标识、包名、协议字段、命令、路径和错误文本保持原文。
+- 只有用户明确要求，或外部规范、上游模板、协议文档必须使用英文时，才为对应文档正文使用英文。
+- 迁移计划放在 `docs/migration/`。
+- 正式 review 证据放在 `docs/reviews/`。
+- 未解决技术债放在 `docs/todos/debt/`。
 
-## Testing Rules
+## 测试规则
 
-- Backend behavior changes require TDD: write the boundary test first, confirm it fails for the expected reason, then implement.
-- Package-local `*_test.go` files inside a service prove service-local behavior, handlers, services, repositories, workers, and adapters.
-- Library tests under `libs/*` prove shared contracts or kit primitives only.
-- `tests/architecture` is for source-level boundary checks.
-- `tests/system/http` is for black-box HTTP scenarios.
-- `tests/runtime` is for tests that need real services, containers, ports, or external dependencies.
-- `tests/testkit` is for reusable black-box fixtures and assertions.
-- TDD tests are maintained behavior specifications and regression guards. Remove or merge them only when the behavior signal is duplicated, obsolete, implementation-coupled, or intentionally moved to a better owner.
+- 后端行为变更需要 TDD：先写边界测试，确认按预期失败，再实现。
+- 服务内 `*_test.go` 用于验证服务本地 handler、service、repository、worker、adapter 等行为。
+- `libs/*` 下的测试只验证共享 contract 或 kit 原语。
+- `tests/architecture` 用于源码级架构边界检查。
+- `tests/system/http` 用于黑盒 HTTP 场景。
+- `tests/runtime` 用于需要真实服务、容器、端口或外部依赖的测试。
+- `tests/testkit` 用于可复用的黑盒测试 fixture 和断言。
+- TDD 测试是行为规格和回归保护。只有在信号重复、过时、过度耦合实现，或被迁移到更合适归属处时，才删除或合并。
 
-After changing code or tests, run the narrowest relevant `go test` command first, then run `make check` before handoff when the scaffold or shared boundaries changed.
+改动代码或测试后，先运行最窄相关的 `go test` 命令；当脚手架或共享边界发生变化时，交付前再运行 `make check`。

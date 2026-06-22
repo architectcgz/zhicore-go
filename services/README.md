@@ -1,8 +1,8 @@
-# Services
+# 服务目录
 
-Each directory under `services/` is an independently buildable, testable, and deployable Go service.
+`services/` 下的每个目录都是独立可构建、可测试、可部署的 Go 服务。
 
-Every service owns:
+每个服务固定拥有：
 
 - `go.mod`
 - `cmd/server/`
@@ -10,3 +10,5 @@ Every service owns:
 - `api/`
 - `configs/`
 - `migrations/`
+
+服务私有代码必须放在自己的 `internal/` 下。其他服务只能通过 `libs/contracts` 中的 contract 或对外 API 访问它，不允许导入另一个服务的 `internal`。

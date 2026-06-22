@@ -1,107 +1,107 @@
-# Contract Change Policy
+# Contract 变更规则
 
-This document defines how to change cross-service contracts in `zhicore-go`.
+本文件定义 `zhicore-go` 中跨服务 contract 的变更方式。
 
-## Scope
+## 范围
 
-Contracts include:
+Contract 包括：
 
-- Synchronous client contracts under `libs/contracts/clients/<provider-service>/`.
-- Event payload contracts under `libs/contracts/events/<domain>/`.
-- API schema documents under `services/<service>/api/` when they describe externally visible behavior.
+- `libs/contracts/clients/<provider-service>/` 下的同步 client contract。
+- `libs/contracts/events/<domain>/` 下的事件 payload contract。
+- `services/<service>/api/` 下描述外部可见行为的 API schema。
 
-Service-private DTOs, domain models, database entities, repository filters, and internal command/query structs are not contracts.
+服务私有 DTO、领域模型、数据库实体、仓储过滤条件、内部 command/query struct 不属于 contract。
 
-## Ownership
+## 归属
 
-The provider owns the contract.
+Provider 拥有 contract。
 
-Examples:
+例子：
 
-- Content-owned query DTOs and typed clients live under `libs/contracts/clients/content/`.
-- User-owned profile DTOs and typed clients live under `libs/contracts/clients/user/`.
-- Content domain events live under `libs/contracts/events/content/`.
+- Content 提供的查询 DTO 和 typed client 放在 `libs/contracts/clients/content/`。
+- User 提供的用户资料 DTO 和 typed client 放在 `libs/contracts/clients/user/`。
+- Content 的领域事件放在 `libs/contracts/events/content/`。
 
-Consumers may depend on a contract but must not redefine the provider's data model inside their own service.
+Consumer 可以依赖 contract，但不能在自己的服务里重新定义 provider 的数据模型。
 
-## Change Classification
+## 变更分类
 
-Before editing a contract, classify the change.
+修改 contract 前，必须先判断变更类型。
 
-### Compatible Changes
+### 兼容变更
 
-Compatible changes may be made in place when they do not break existing providers or consumers.
+不破坏现有 provider 或 consumer 的变更，可以原地修改。
 
-Allowed examples:
+允许的例子：
 
-- Add an optional response field.
-- Add a nullable field with a safe zero-value interpretation.
-- Add a new endpoint or client method without removing the old one.
-- Add a new event type.
-- Add an optional event field that old consumers can ignore.
+- 增加可选响应字段。
+- 增加 nullable 字段，并且零值语义安全。
+- 增加新 endpoint 或 client 方法，不删除旧方法。
+- 增加新事件类型。
+- 增加旧 consumer 可以忽略的可选事件字段。
 
-### Breaking Changes
+### 破坏性变更
 
-Breaking changes require versioning and staged rollout.
+破坏性变更必须版本化并分阶段发布。
 
-Breaking examples:
+破坏性例子：
 
-- Rename, remove, or change the meaning of a field.
-- Change a required field into a different type.
-- Change pagination, sorting, filtering, visibility, authorization, or idempotency semantics.
-- Reuse an event name while changing its meaning.
-- Remove an endpoint, client method, or event field that any consumer still uses.
+- 重命名、删除或改变字段含义。
+- 把必填字段改成不同类型。
+- 改变分页、排序、过滤、可见性、授权或幂等语义。
+- 复用同一个事件名但改变语义。
+- 删除仍被任何 consumer 使用的 endpoint、client 方法或事件字段。
 
-## Required Change Flow
+## 必需变更流程
 
-1. Identify the provider and all known consumers.
-2. Read `docs/architecture/service-boundaries.md`.
-3. Classify the change as compatible or breaking.
-4. Update the provider-owned contract in `libs/contracts/...` or `services/<service>/api/`.
-5. Add or update contract tests at the smallest owning boundary.
-6. Update the provider service implementation.
-7. Update consumers only after the provider-compatible path exists.
-8. Update documentation when ownership, semantics, or rollout behavior changes.
-9. Run the narrowest relevant service tests, then `make check`.
+1. 确认 provider 和所有已知 consumer。
+2. 阅读 `docs/architecture/service-boundaries.md`。
+3. 判断变更是兼容还是破坏性。
+4. 更新 `libs/contracts/...` 或 `services/<service>/api/` 中 provider 拥有的 contract。
+5. 在最小归属边界增加或更新 contract test。
+6. 更新 provider 服务实现。
+7. 只有在 provider 兼容路径存在后，才更新 consumer。
+8. 当归属、语义或发布行为变化时，更新文档。
+9. 先运行最窄相关服务测试，再运行 `make check`。
 
-## Breaking Change Flow
+## 破坏性变更流程
 
-Do not break consumers in place.
+不要原地破坏 consumer。
 
-Use one of these patterns:
+使用以下模式之一：
 
-- Add `v2` DTOs, client methods, endpoints, or event types.
-- Add a new field and keep the old field during the migration window.
-- Add a new endpoint while keeping the old endpoint until all consumers move.
-- Add a new event type while old consumers continue receiving the old event.
+- 增加 `v2` DTO、client 方法、endpoint 或事件类型。
+- 增加新字段，并在迁移窗口保留旧字段。
+- 增加新 endpoint，同时保留旧 endpoint 直到所有 consumer 迁移完成。
+- 增加新事件类型，同时让旧 consumer 继续接收旧事件。
 
-Then migrate in this order:
+迁移顺序：
 
-1. Add the new contract while preserving the old one.
-2. Deploy or merge the provider-compatible implementation.
-3. Move consumers to the new contract.
-4. Prove old contract usage is gone.
-5. Remove the old contract in a separate cleanup change.
+1. 增加新 contract，同时保留旧 contract。
+2. 部署或合并 provider 的兼容实现。
+3. 将 consumer 迁移到新 contract。
+4. 证明旧 contract 已无使用方。
+5. 在独立清理变更中删除旧 contract。
 
-## Event Contract Rules
+## 事件 contract 规则
 
-- Never change the meaning of an existing event type in place.
-- Prefer a new event type or explicit version when semantics change.
-- Event payloads should contain stable facts, not provider-private persistence details.
-- Consumers must tolerate unknown fields.
-- Additive fields must be optional unless every consumer is updated in the same controlled slice.
+- 不要原地改变已有事件类型的语义。
+- 语义变化时，优先增加新事件类型或显式版本。
+- 事件 payload 应包含 consumer 需要的稳定事实，不包含 provider 私有持久化细节。
+- Consumer 必须容忍未知字段。
+- 新增字段默认必须可选，除非所有 consumer 在同一个受控变更中同步更新。
 
-## Facade Contract Rules
+## Facade contract 规则
 
-Facade routes may expose a consumer-friendly shape, but they do not own provider data.
+Facade 路由可以暴露 consumer 友好的形态，但不拥有 provider 数据。
 
-For example, `GET /api/v1/users/{userId}/posts` may exist in the user service as a product-facing route. The data and authoritative query still belong to content, and the user route must delegate through the content contract.
+例如，`GET /api/v1/users/{userId}/posts` 可以作为 User 服务的产品侧路由存在。数据和权威查询仍属于 Content，该 User 路由必须通过 Content contract 委托。
 
-If the facade shape differs from the provider shape, document the reshaping at the facade boundary and keep it shallow.
+如果 facade 形态和 provider 形态不同，必须在 facade 边界记录浅层转换规则。
 
-## Do Not
+## 禁止事项
 
-- Do not import another service's `internal` package.
-- Do not copy provider-owned DTOs into a consumer service to avoid using `libs/contracts`.
-- Do not promote a service-private model into `libs/contracts` before it is a real cross-service contract.
-- Do not remove old contracts in the same change that introduces a replacement unless all consumers are proven in the same atomic change.
+- 不要导入另一个服务的 `internal` 包。
+- 不要为了绕过 `libs/contracts` 而把 provider DTO 复制到 consumer 服务。
+- 不要在某个模型真正成为跨服务 contract 前，把服务私有模型提升到 `libs/contracts`。
+- 不要在引入替代 contract 的同一个变更中删除旧 contract，除非能在同一个原子变更里证明所有 consumer 都已迁移。

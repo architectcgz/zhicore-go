@@ -1,3 +1,11 @@
-# Runtime Tests
+# 运行时测试
 
-Integration tests that need real infrastructure, containers, ports, or external processes.
+这里放需要真实基础设施的集成测试。
+
+适合放在这里的测试包括：
+
+- 需要 PostgreSQL、Redis、MongoDB、RabbitMQ、Elasticsearch 的场景
+- 需要真实端口或后台进程的服务启动验证
+- 需要容器编排的端到端依赖验证
+
+普通单元测试和服务内集成测试优先放在对应服务模块内。

@@ -1,3 +1,12 @@
-# Testkit
+# testkit
 
-Reusable test fixtures, builders, and assertions for black-box tests.
+这里放黑盒测试复用工具。
+
+适合放入这里的内容包括：
+
+- HTTP 测试客户端
+- 测试数据 builder
+- 响应断言辅助
+- 运行时测试 fixture
+
+不要在这里放服务私有业务逻辑。测试工具只能帮助构造和断言，不应该成为第二套业务实现。

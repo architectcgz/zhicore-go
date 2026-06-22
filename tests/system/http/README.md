@@ -1,3 +1,9 @@
-# HTTP System Tests
+# HTTP 系统测试
 
-Black-box HTTP scenarios for migrated services.
+这里放已迁移服务的黑盒 HTTP 场景。
+
+这些测试从外部 API 视角验证行为，重点覆盖：
+
+- Java 与 Go 迁移期间必须保持一致的路径、参数和响应结构
+- 网关或部署路由切到 Go 服务后的核心用户流程
+- 跨服务 facade 路由是否仍委托给正确的数据归属服务

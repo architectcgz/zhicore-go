@@ -1,3 +1,10 @@
 # Docker
 
-Docker deployment assets for Go services.
+这里放 Go 服务的 Docker 构建和本地编排资产。
+
+后续每个服务实现后，应至少补齐：
+
+- 服务镜像构建方式
+- 本地依赖编排方式
+- 环境变量示例
+- 与 Java 服务并存时的端口和网络说明

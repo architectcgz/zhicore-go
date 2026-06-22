@@ -1,91 +1,93 @@
-# Documentation Rules
+# 文档规则
 
-## Purpose
+## 目的
 
-This file defines documentation ownership, placement, path registration, and validation rules for `zhicore-go`.
+本文件定义 `zhicore-go` 的文档归属、放置位置、路径登记和验证规则。
 
-## Core Principles
+## 核心原则
 
-- Documentation is durable project memory, not current-task scratch space.
-- Each document should have one primary role: current fact, plan, review evidence, operations guide, external reference, or unresolved work.
-- Entry-point documents route readers; they do not duplicate full source-of-truth content.
-- Documentation changes must stay synchronized with code, contracts, scripts, tests, architecture boundaries, and migration status.
+- 文档是长期项目记忆，不是当前任务草稿。
+- 每个文档只承担一个主要角色：当前事实、计划、review 证据、运维指南、外部参考或未解决工作。
+- 入口文档负责路由读者，不重复完整事实源内容。
+- 项目文档正文默认使用中文；代码标识、API 字段、协议名、命令、路径、错误文本和外部专有名词保持原文。
+- 只有用户明确要求，或外部规范、上游模板、协议文档必须使用英文时，才为对应文档正文使用英文。
+- 文档变更必须和代码、契约、脚本、测试、架构边界、迁移状态保持同步。
 
-## No Circular References
+## 避免循环引用
 
-- This file is the documentation rule source.
-- `docs/README.md` is the documentation navigation index.
-- Project `AGENTS.md` routes agents to both files but must not duplicate the full rules.
+- 本文件是文档规则事实源。
+- `docs/README.md` 是文档导航索引。
+- 项目 `AGENTS.md` 可以路由到这两个文件，但不要重复完整规则。
 
-## Pre-Edit Reading
+## 编辑前阅读
 
-Before creating, moving, deleting, or editing documentation:
+创建、移动、删除或编辑文档前：
 
-1. Read this file unless the current task is creating it.
-2. Read `docs/README.md` or the nearest parent index.
-3. Read the current source of truth for the fact being changed, such as Java source, Go code, contracts, configuration, tests, or operations docs.
-4. Search references when adding, moving, renaming, or deleting paths.
+1. 先读本文件，除非当前任务正在创建本文件。
+2. 再读 `docs/README.md` 或最近的父级索引。
+3. 读取被修改事实的当前来源，例如 Java 源码、Go 代码、contract、配置、测试或运维文档。
+4. 新增、移动、重命名或删除路径时，搜索现有引用。
 
-## Registered Paths
+## 已登记路径
 
-Path: `docs/README.md`
-Type: navigation index
-Owner: repository documentation
-Active entry: yes
-Allowed: current documentation map, reading order, path routing
-Forbidden: long-form implementation notes
-Read before editing: this file
-Validation: `bash scripts/check-structure.sh`
+路径：`docs/README.md`
+类型：导航索引
+负责人：仓库文档
+是否入口：是
+允许内容：当前文档地图、阅读顺序、路径路由
+禁止内容：长篇实现说明
+编辑前阅读：本文件
+验证命令：`bash scripts/check-structure.sh`
 
-Path: `docs/migration/`
-Type: migration plan and map
-Owner: ZhiCore Java-to-Go migration
-Active entry: yes
-Allowed: service mapping, migration order, rollout notes, compatibility notes
-Forbidden: unverified claims that a service has been migrated
-Read before editing: Java source in `../zhicore-microservice`, Go module landing zone, this file
-Validation: `bash scripts/check-structure.sh`
+路径：`docs/migration/`
+类型：迁移计划和映射
+负责人：ZhiCore Java 到 Go 迁移
+是否入口：是
+允许内容：服务映射、迁移顺序、发布说明、兼容性说明
+禁止内容：未验证的“某服务已迁移”结论
+编辑前阅读：`../zhicore-microservice` Java 源码、Go 服务落点、本文件
+验证命令：`bash scripts/check-structure.sh`
 
-Path: `docs/architecture/`
-Type: current architecture fact
-Owner: ZhiCore Go service architecture
-Active entry: yes
-Allowed: service boundaries, data ownership, dependency direction, contract placement, long-lived technical constraints
-Forbidden: temporary task notes, unreviewed implementation plans, review evidence
-Read before editing: Java source in `../zhicore-microservice`, Go service modules, this file
-Validation: `bash scripts/check-structure.sh`
+路径：`docs/architecture/`
+类型：当前架构事实
+负责人：ZhiCore Go 服务架构
+是否入口：是
+允许内容：服务边界、数据归属、依赖方向、contract 放置规则、长期技术约束
+禁止内容：临时任务记录、未评审实现计划、review 证据
+编辑前阅读：`../zhicore-microservice` Java 源码、Go 服务模块、本文件
+验证命令：`bash scripts/check-structure.sh`
 
-Path: `docs/contracts/`
-Type: current contract governance
-Owner: ZhiCore Go cross-service contracts
-Active entry: yes
-Allowed: contract ownership, compatibility rules, versioning policy, change flow, rollout constraints
-Forbidden: service-private DTO details, temporary migration notes, review evidence
-Read before editing: `docs/architecture/service-boundaries.md`, affected `libs/contracts/...`, affected `services/<service>/api/`, this file
-Validation: `bash scripts/check-structure.sh`
+路径：`docs/contracts/`
+类型：当前 contract 治理规则
+负责人：ZhiCore Go 跨服务 contract
+是否入口：是
+允许内容：contract 归属、兼容性规则、版本策略、变更流程、发布约束
+禁止内容：服务私有 DTO 细节、临时迁移记录、review 证据
+编辑前阅读：`docs/architecture/service-boundaries.md`、受影响的 `libs/contracts/...`、受影响的 `services/<service>/api/`、本文件
+验证命令：`bash scripts/check-structure.sh`
 
-Path: `docs/reviews/`
-Type: review evidence
-Owner: implementation and architecture review process
-Active entry: yes
-Allowed: review findings, review rounds, validation notes
-Forbidden: current architecture facts that are not promoted into source-of-truth docs
-Read before editing: reviewed diff or commit, relevant code, this file
-Validation: link and path checks by inspection; run `bash scripts/check-structure.sh` when paths change
+路径：`docs/reviews/`
+类型：review 证据
+负责人：实现和架构 review 流程
+是否入口：是
+允许内容：review 发现、review 轮次、验证记录
+禁止内容：尚未提升到事实源文档的当前架构事实
+编辑前阅读：被 review 的 diff 或 commit、相关代码、本文件
+验证命令：路径和链接人工检查；路径变化时运行 `bash scripts/check-structure.sh`
 
-Path: `docs/todos/debt/`
-Type: unresolved debt tracking
-Owner: migration debt management
-Active entry: yes
-Allowed: unresolved technical debt with owner, impact, and exit condition
-Forbidden: generic task backlog or scratch notes
-Read before editing: nearest debt index and source code or review that created the debt
-Validation: `bash scripts/check-structure.sh`
+路径：`docs/todos/debt/`
+类型：未解决技术债跟踪
+负责人：迁移技术债管理
+是否入口：是
+允许内容：包含负责人、影响和退出条件的未解决技术债
+禁止内容：泛任务 backlog 或临时草稿
+编辑前阅读：最近的 debt 索引，以及产生 debt 的源码或 review
+验证命令：`bash scripts/check-structure.sh`
 
-## Validation
+## 验证
 
-When documentation paths, indexes, or facts change:
+当文档路径、索引或事实发生变化时：
 
-- Run `bash scripts/check-structure.sh`.
-- Search for stale references to renamed, moved, or deleted paths.
-- Verify links from the nearest parent index.
+- 运行 `bash scripts/check-structure.sh`。
+- 搜索被重命名、移动或删除路径的陈旧引用。
+- 从最近的父级索引检查链接是否仍然成立。

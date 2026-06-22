@@ -1,3 +1,18 @@
 # zhicore-upload
 
-Independent Go service module for the upload service migration.
+`zhicore-upload` 是上传服务的 Go 迁移模块。
+
+服务职责：
+
+- 拥有文件 ID、对象存储资源、访问级别、文件 URL 解析和删除能力。
+- 为用户头像、文章封面、评论图片、评论语音等场景提供统一文件能力。
+
+数据归属：
+
+- 对象存储资源
+- 上传服务本地文件元数据，如果后续确认需要落库
+
+迁移注意点：
+
+- 其他服务只保存 `file_id` 引用，不拥有文件资源本身。
+- 头像、封面、评论媒体等业务归属仍属于包含它们的业务服务。

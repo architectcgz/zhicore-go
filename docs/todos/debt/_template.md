@@ -1,18 +1,18 @@
-# Debt: <title>
+# 技术债：<标题>
 
-Status: open
-Priority: medium
-Owner: unassigned
-Source: <review, migration slice, or code path>
+状态：未处理
+优先级：中
+负责人：未分配
+来源：<review、migration slice 或 code path>
 
-## Impact
+## 影响
 
-Describe the operational, correctness, maintainability, or migration impact.
+说明该技术债对运行、正确性、维护性或迁移进度造成的影响。
 
-## Exit Condition
+## 退出条件
 
-Describe the concrete state that closes this debt.
+说明关闭该技术债所需达到的具体状态。
 
-## Notes
+## 备注
 
-Add supporting evidence and links.
+补充证据、链接和相关上下文。

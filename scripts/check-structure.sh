@@ -71,7 +71,7 @@ required_dirs=(
   "libs/kit/postgres"
   "libs/kit/redis"
   "libs/kit/mongo"
-  "libs/kit/rocketmq"
+  "libs/kit/rabbitmq"
   "libs/kit/es"
   "libs/contracts/events"
   "libs/contracts/clients"

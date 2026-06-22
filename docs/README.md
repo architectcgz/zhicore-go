@@ -1,27 +1,27 @@
-# Documentation Index
+# 文档索引
 
-This directory is the documentation entry point for `zhicore-go`.
+本目录是 `zhicore-go` 的文档入口。
 
-## Reading Order
+## 阅读顺序
 
-1. Read `docs/documentation-rules.md` for documentation ownership and placement rules.
-2. Use this index to find the relevant current source of truth.
-3. Verify facts against Java source, Go code, contracts, configuration, tests, or operations records before updating current documentation.
+1. 先读 `docs/documentation-rules.md`，确认文档归属和放置规则。
+2. 再通过本索引找到相关事实源。
+3. 修改当前事实前，用 Java 源码、Go 代码、contract、配置、测试或运维记录做核对。
 
-## Current Sources
+## 当前事实源
 
-- `docs/architecture/`: current service boundary and data ownership decisions.
-- `docs/contracts/`: cross-service contract ownership, compatibility, versioning, and change process.
-- `docs/migration/`: Java-to-Go service migration map, order, and rollout notes.
+- `docs/architecture/`：当前服务边界和数据归属决策。
+- `docs/contracts/`：跨服务 contract 归属、兼容性、版本和变更流程。
+- `docs/migration/`：Java 到 Go 的服务迁移映射、迁移顺序和发布说明。
 
-## Process And History
+## 流程和历史
 
-- `docs/reviews/`: review evidence and findings.
-- `docs/todos/debt/`: unresolved technical debt that should not be lost during migration.
+- `docs/reviews/`：review 证据和发现。
+- `docs/todos/debt/`：迁移过程中不能丢失的未解决技术债。
 
-## Deployment Notes
+## 部署说明
 
-Deployment assets live under `deploy/`:
+部署资产放在 `deploy/`：
 
 - `deploy/docker/`
 - `deploy/k8s/`

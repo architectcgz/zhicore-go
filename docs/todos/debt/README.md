@@ -1,5 +1,12 @@
-# Migration Debt
+# 迁移技术债
 
-Track unresolved technical debt that remains after a migration slice.
+这里跟踪迁移切片结束后仍未解决的技术债。
 
-Each debt entry should use `_template.md` and include the source, impact, owner, and exit condition.
+每个技术债条目应基于 `_template.md` 创建，并包含：
+
+- 来源
+- 影响
+- 负责人
+- 退出条件
+
+不要把普通任务 backlog 或临时想法放在这里。

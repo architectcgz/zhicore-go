@@ -1,3 +1,17 @@
 # kit
 
-Small shared technical primitives for services.
+`kit` 存放跨服务可复用的技术原语。
+
+适合放入这里的内容包括：
+
+- HTTP 响应和错误封装
+- 认证、鉴权上下文和 token 校验辅助
+- 配置加载
+- 日志、指标、链路追踪等可观测性基础设施
+- PostgreSQL、Redis、MongoDB、RabbitMQ、Elasticsearch 的轻量客户端封装
+
+不允许放入这里的内容包括：
+
+- 任何服务的业务规则
+- 领域模型、数据库实体、仓储接口
+- 只被一个服务使用且仍在变化的代码
