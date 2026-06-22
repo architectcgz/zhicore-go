@@ -8,8 +8,9 @@
 
 ## 常用命令
 
-- `make check`：运行脚手架检查和所有 Go 模块测试。
+- `make check`：运行脚手架检查、测试文件规模检查和所有 Go 模块测试。
 - `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
+- `make test-size`：运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模。
 - `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
 
 当前还没有 CI 或 Git hook 强制校验。汇报脚手架或代码改动完成前，必须手动运行 `make check`。
@@ -29,6 +30,7 @@
 - 修改单个服务职责、API 族、数据归属、事件、依赖或迁移风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
+- 修改测试策略、测试目录归属、测试分层、验证命令或 test-first 要求前，先读 `docs/architecture/testing.md`。
 - 修改服务配置、启动流程、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、worker/consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
@@ -70,13 +72,16 @@
 
 ## 测试规则
 
-- 后端行为变更需要 TDD：先写边界测试，确认按预期失败，再实现。
+- 本项目不强制所有代码改动采用严格 TDD；测试要求按 `docs/architecture/testing.md` 的风险分级执行。
+- 所有改动都必须有验证证据；行为变更必须有测试或明确的手动验证方式。
+- Bugfix、contract、权限、分页、事务、幂等、并发、worker / consumer 和 migration 属于高风险面，应优先先补失败用例或回归测试。
 - 服务内 `*_test.go` 用于验证服务本地 handler、service、repository、worker、adapter 等行为。
 - `libs/*` 下的测试只验证共享 contract 或 kit 原语。
 - `tests/architecture` 用于源码级架构边界检查。
 - `tests/system/http` 用于黑盒 HTTP 场景。
 - `tests/runtime` 用于需要真实服务、容器、端口或外部依赖的测试。
 - `tests/testkit` 用于可复用的黑盒测试 fixture 和断言。
-- TDD 测试是行为规格和回归保护。只有在信号重复、过时、过度耦合实现，或被迁移到更合适归属处时，才删除或合并。
+- 测试文件按行为、endpoint、use case、repository query 或 worker 场景拆分；不要把多个不相关场景堆进一个超大 `*_test.go`。
+- 测试是行为规格和回归保护。只有在信号重复、过时、过度耦合实现，或被迁移到更合适归属处时，才删除或合并。
 
 改动代码或测试后，先运行最窄相关的 `go test` 命令；当脚手架或共享边界发生变化时，交付前再运行 `make check`。

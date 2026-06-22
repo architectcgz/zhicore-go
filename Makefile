@@ -1,9 +1,12 @@
-.PHONY: check test structure
+.PHONY: check test test-size structure
 
-check: structure test
+check: structure test-size test
 
 structure:
 	bash scripts/check-structure.sh
+
+test-size:
+	python3 scripts/check-test-size.py --root .
 
 test:
 	@set -e; \

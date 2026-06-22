@@ -102,6 +102,15 @@
 编辑前阅读：`docs/architecture/service-boundaries.md`、`docs/architecture/go-service-design.md`、`docs/architecture/id-strategy.md`、受影响服务 schema 来源、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/testing.md`
+类型：当前架构事实
+负责人：ZhiCore Go 测试策略
+是否入口：否
+允许内容：风险分级测试策略、test-first 触发条件、测试写法和规模控制、测试目录归属、改动类型测试要求、验证命令选择和不新增测试时的说明规则
+禁止内容：单个任务的测试执行记录、具体服务完整测试清单、临时手动验证日志、与当前代码不符的覆盖率结论
+编辑前阅读：`tests/README.md`、受影响服务测试、相关 contract / architecture 文档、本文件
+验证命令：`make test-size`；路径或索引变化时再运行 `bash scripts/check-structure.sh`
+
 路径：`docs/architecture/error-handling.md`
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
