@@ -28,35 +28,38 @@ It does not own harness initialization, workflow installation, or documentation 
    - If the repo is truly greenfield and docs do not exist yet, grill the proposed structure and naming against the intended domain language and future documentation needs.
    - Stress-test the initial architecture as well: what should be a module now, what can stay simple for phase one, and which boundaries must not be crossed even in the first implementation.
    - Resolve major ambiguities here instead of baking them into the initial scaffold.
-3. Inspect the project before writing rules. Read the repository structure and the most relevant existing files, such as `README.md`, package manifests, build configs, test configs, framework configs, verification scripts, and any existing agent instructions.
-4. Decide which project code template family applies:
+3. Before choosing or applying templates, run the new-project preflight in `references/new-project-preflight.md`.
+   - Use it to decide which project facts, architecture boundaries, runtime rules, docs, tests, and mechanical checks must exist before first feature work.
+   - Capture explicit "not yet" decisions such as no Kubernetes, no gray release, no BFF aggregation, or no shared library extraction.
+4. Inspect the project before writing rules. Read the repository structure and the most relevant existing files, such as `README.md`, package manifests, build configs, test configs, framework configs, verification scripts, and any existing agent instructions.
+5. Decide which project code template family applies:
    - frontend-only
    - backend-only
    - combined stack
    - minimal AGENTS-only scaffold
-5. Use the relevant architecture skills to constrain template design:
+6. Use the relevant architecture skills to constrain template design:
    - frontend starter structures should follow the relevant frontend architecture skill
    - backend starter structures should follow the relevant backend architecture skill
-6. Generate or update a project-level `AGENTS.md` in Chinese by default. Keep code identifiers, commands, paths, package names, API/protocol fields, and vendor terms in their original form. Use another prose language only when the user or a stronger project rule explicitly requires it.
-7. Require the project root to keep `CLAUDE.md -> AGENTS.md` when Claude/Codex auto-discovery is part of the local workflow. Do not maintain two divergent entry files.
-8. Start from `assets/project-agents-template.md`, then remove irrelevant placeholders and specialize the rules to the actual project.
-9. Keep `AGENTS.md` as a repository navigation and routing file. Do not copy global preferences, skill indexes, full documentation taxonomies, or broad personal workflow rules into it.
-10. Preserve minimal-diff behavior. If an `AGENTS.md` already exists, patch it instead of replacing it wholesale unless the user explicitly asks for a rewrite.
-11. Add a project-specific testing prompt when the repository has tests or an obvious test surface. The prompt should tell future agents which test layers exist, to write or update the narrowest relevant tests first, and to run the smallest relevant test command after changing tests.
-12. Add test file placement rules when the repository has tests or an obvious test surface.
+7. Generate or update a project-level `AGENTS.md` in Chinese by default. Keep code identifiers, commands, paths, package names, API/protocol fields, and vendor terms in their original form. Use another prose language only when the user or a stronger project rule explicitly requires it.
+8. Require the project root to keep `CLAUDE.md -> AGENTS.md` when Claude/Codex auto-discovery is part of the local workflow. Do not maintain two divergent entry files.
+9. Start from `assets/project-agents-template.md`, then remove irrelevant placeholders and specialize the rules to the actual project.
+10. Keep `AGENTS.md` as a repository navigation and routing file. Do not copy global preferences, skill indexes, full documentation taxonomies, or broad personal workflow rules into it.
+11. Preserve minimal-diff behavior. If an `AGENTS.md` already exists, patch it instead of replacing it wholesale unless the user explicitly asks for a rewrite.
+12. Add a project-specific testing prompt when the repository has tests or an obvious test surface. The prompt should tell future agents which test layers exist, to write or update the narrowest relevant tests first, and to run the smallest relevant test command after changing tests.
+13. Add test file placement rules when the repository has tests or an obvious test surface.
    - Backend templates should distinguish package-local tests, internal test utilities, system/API tests, runtime/integration tests, architecture guardrails, and shared testkit helpers.
    - Frontend templates should distinguish colocated owner tests, feature/page/shared/API/store/router/runtime/config tests, root-level cross-cutting guard tests, and shared test setup/helpers.
    - The rule must say that TDD tests are maintained behavior specifications and regression guards, not disposable scaffolding after implementation.
-13. When the repository provides verification scripts such as `scripts/check-*.sh`, `scripts/check-*.py`, or another documented guard command, make the testing prompt require a follow-up script check after the test run. Prefer existing project scripts over generic advice.
-14. Do not stop at prompt text alone when the repository already has mechanical enforcement entry points. If `scripts/check-consistency.sh`, git hooks, CI checks, or another repository guardrail exists, require the relevant test-related script check to be wired into at least one enforced path. A prompt-only rule is not sufficient once enforcement infrastructure exists.
-15. If the repository has tests but no mechanical enforcement entry point yet, say so explicitly in `AGENTS.md` or the initialization report; do not pretend the test workflow is enforced already.
-16. When a repository would benefit from a repo-scoped task/spec/workspace workflow layer but does not already define one, mention Trellis installation as an optional recommendation in the initialization report or setup notes. Keep it clearly optional unless the repository already standardizes on Trellis, and do not invent `.trellis/` files silently.
-17. When the project should preserve post-delivery review evidence, keep raw or synthesized review reports under `docs/reviews/` and keep unresolved technical debt as separate files under `docs/todos/debt/`. Do not collapse recurring debt into a single root-level `DEBT.md`.
-18. If the template includes debt tracking, provide a `docs/todos/debt/README.md` index plus a reusable debt entry template that defines the file format, status, priority, owner, source review, impact, and exit condition fields.
-19. Validate the final file by checking that it is readable, internally consistent, and does not reference missing tools, scripts, or skills.
-20. If documentation scaffolding is needed, route to `documentation-architecture`; do not create documentation templates from this skill.
-21. If a harness should be initialized, route to `harness-engineering` or `bash ~/.agents/harness/init-project.sh ...`; do not absorb harness ownership into this skill.
-22. If a local entrypoint guard exists, require the initialization workflow to run it after creating the root files, for example `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh <project-root>`.
+14. When the repository provides verification scripts such as `scripts/check-*.sh`, `scripts/check-*.py`, or another documented guard command, make the testing prompt require a follow-up script check after the test run. Prefer existing project scripts over generic advice.
+15. Do not stop at prompt text alone when the repository already has mechanical enforcement entry points. If `scripts/check-consistency.sh`, git hooks, CI checks, or another repository guardrail exists, require the relevant test-related script check to be wired into at least one enforced path. A prompt-only rule is not sufficient once enforcement infrastructure exists.
+16. If the repository has tests but no mechanical enforcement entry point yet, say so explicitly in `AGENTS.md` or the initialization report; do not pretend the test workflow is enforced already.
+17. When a repository would benefit from a repo-scoped task/spec/workspace workflow layer but does not already define one, mention Trellis installation as an optional recommendation in the initialization report or setup notes. Keep it clearly optional unless the repository already standardizes on Trellis, and do not invent `.trellis/` files silently.
+18. When the project should preserve post-delivery review evidence, keep raw or synthesized review reports under `docs/reviews/` and keep unresolved technical debt as separate files under `docs/todos/debt/`. Do not collapse recurring debt into a single root-level `DEBT.md`.
+19. If the template includes debt tracking, provide a `docs/todos/debt/README.md` index plus a reusable debt entry template that defines the file format, status, priority, owner, source review, impact, and exit condition fields.
+20. Validate the final file by checking that it is readable, internally consistent, and does not reference missing tools, scripts, or skills.
+21. If documentation scaffolding is needed, route to `documentation-architecture`; do not create documentation templates from this skill.
+22. If a harness should be initialized, route to `harness-engineering` or `bash ~/.agents/harness/init-project.sh ...`; do not absorb harness ownership into this skill.
+23. If a local entrypoint guard exists, require the initialization workflow to run it after creating the root files, for example `bash ~/workspace/projects/scripts/check-agent-entrypoints.sh <project-root>`.
 ## Template Use
 
 Use the bundled template at:
@@ -70,6 +73,10 @@ Current built-in asset:
 - `assets/project-agents-template.md`
 - `assets/backend/go-backend-onion-template/`
 - `assets/frontend/vue-feature-sliced-template/`
+
+Reference:
+
+- `references/new-project-preflight.md`: project-start checklist for facts, boundaries, docs, runtime, tests, and mechanical checks before scaffolding or first feature work.
 
 Mechanical helper:
 
