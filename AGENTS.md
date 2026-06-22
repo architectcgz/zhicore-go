@@ -40,6 +40,7 @@
 - 修改 contract 中的时间、ID、枚举、空值、数字、布尔或 JSON 字段命名前，先读 `docs/contracts/data-types.md`；涉及 ID 策略时同时读 `docs/architecture/id-strategy.md`。
 - 修改分页、排序、过滤或 cursor 语义前，先读 `docs/contracts/pagination.md`。
 - 修改 RabbitMQ 事件 contract、事件 envelope、routing key、outbox 或幂等规则前，先读 `docs/contracts/events.md`。
+- 修改 review 流程、完成标准、验证证据、finding 分级或技术债登记规则前，先读 `docs/reviews/README.md` 和 `docs/reviews/done-definition.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
 - 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。
@@ -68,6 +69,7 @@
 - 只有用户明确要求，或外部规范、上游模板、协议文档必须使用英文时，才为对应文档正文使用英文。
 - 迁移计划放在 `docs/migration/`。
 - 正式 review 证据放在 `docs/reviews/`。
+- 交付完成门槛和 review 触发条件见 `docs/reviews/done-definition.md`。
 - 未解决技术债放在 `docs/todos/debt/`。
 
 ## 测试规则

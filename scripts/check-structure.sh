@@ -148,6 +148,9 @@ required_files=(
   "docs/contracts/events.md"
   "docs/migration/README.md"
   "docs/migration/java-design-migration.md"
+  "docs/reviews/README.md"
+  "docs/reviews/done-definition.md"
+  "docs/reviews/backend/README.md"
 )
 
 for file in "${required_files[@]}"; do

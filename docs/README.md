@@ -33,7 +33,8 @@
 
 ## 流程和历史
 
-- `docs/reviews/`：review 证据和发现。
+- `docs/reviews/`：review 规则、完成标准、review 证据和发现。
+  - `docs/reviews/done-definition.md`：交付完成门槛、正式 review 触发条件、finding 分级、验证证据和技术债登记规则。
 - `docs/todos/debt/`：迁移过程中不能丢失的未解决技术债。
 
 ## 部署说明

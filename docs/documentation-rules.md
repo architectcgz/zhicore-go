@@ -232,10 +232,28 @@
 类型：review 证据
 负责人：实现和架构 review 流程
 是否入口：是
-允许内容：review 发现、review 轮次、验证记录
-禁止内容：尚未提升到事实源文档的当前架构事实
-编辑前阅读：被 review 的 diff 或 commit、相关代码、本文件
+允许内容：review 分类目录、review 发现、review 轮次、验证记录
+禁止内容：尚未提升到事实源文档的当前架构事实、未核对 diff 的泛泛评价
+编辑前阅读：`docs/reviews/README.md`、被 review 的 diff 或 commit、相关代码、本文件
 验证命令：路径和链接人工检查；路径变化时运行 `bash scripts/check-structure.sh`
+
+路径：`docs/reviews/README.md`
+类型：review 流程规则
+负责人：实现和架构 review 流程
+是否入口：是
+允许内容：review 触发条件、记录位置、记录格式、finding 书写规则和事实提升规则
+禁止内容：单次 review 发现、具体实现计划、尚未确认的架构事实
+编辑前阅读：`docs/reviews/done-definition.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/reviews/done-definition.md`
+类型：完成标准
+负责人：实现和架构 review 流程
+是否入口：否
+允许内容：交付完成门槛、正式 review 触发条件、finding 分级、验证证据要求、不可交付状态和技术债登记规则
+禁止内容：单次任务验证记录、单个 review 发现、具体服务实现细节
+编辑前阅读：`docs/architecture/testing.md`、`docs/reviews/README.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/todos/debt/`
 类型：未解决技术债跟踪
