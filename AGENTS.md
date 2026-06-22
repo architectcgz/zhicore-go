@@ -35,11 +35,12 @@
 - 修改测试策略、测试目录归属、测试分层、验证命令或 test-first 要求前，先读 `docs/architecture/testing.md`。
 - 修改服务配置、环境变量、配置模板、`libs/kit/config`、密钥处理或配置校验前，先读 `docs/architecture/configuration.md`。
 - 修改启动流程、构造函数外部副作用、context 传播、健康检查、优雅停机、HTTP server timeout、下游 client timeout、重试、熔断、幂等、goroutine / worker / consumer 停机或运行期完成标准前，先读 `docs/architecture/runtime-operations.md`；涉及配置时同时读 `docs/architecture/configuration.md`。
+- 修改日志、metrics、trace、`requestId` / `traceId`、operation 命名、脱敏、上报边界或 `libs/kit/observability` 前，先读 `docs/architecture/observability.md`；涉及错误处置时同时读 `docs/architecture/error-handling.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
 - 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md` 和 `docs/contracts/http-schema-template.md`。
 - 修改对外错误响应、公开错误码、HTTP status 映射或字段级校验错误前，先读 `docs/contracts/errors.md` 和 `docs/contracts/error-codes.md`。
-- 修改 Go 服务内部错误分层、底层错误翻译、application 错误映射或 trace 记录规则前，先读 `docs/architecture/error-handling.md`。
+- 修改 Go 服务内部错误分层、底层错误翻译、application 错误映射或错误处置规则前，先读 `docs/architecture/error-handling.md`；涉及日志、trace 或上报字段时同时读 `docs/architecture/observability.md`。
 - 修改 contract 中的时间、ID、枚举、空值、数字、布尔或 JSON 字段命名前，先读 `docs/contracts/data-types.md`；涉及 ID 策略时同时读 `docs/architecture/id-strategy.md`。
 - 修改分页、排序、过滤或 cursor 语义前，先读 `docs/contracts/pagination.md`。
 - 修改 RabbitMQ 事件 contract、事件 envelope、routing key、outbox 或幂等规则前，先读 `docs/contracts/events.md`。

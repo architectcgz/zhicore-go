@@ -130,7 +130,7 @@ libs/contracts/events/<domain>/
 
 ## 运行时依赖约定
 
-服务配置和环境变量规则见 `docs/architecture/configuration.md`；启动、健康检查、优雅停机、超时、重试、熔断和幂等规则见 `docs/architecture/runtime-operations.md`。
+服务配置和环境变量规则见 `docs/architecture/configuration.md`；日志、metrics 和 trace 规则见 `docs/architecture/observability.md`；启动、健康检查、优雅停机、超时、重试、熔断和幂等规则见 `docs/architecture/runtime-operations.md`。
 
 | 能力 | 约定 |
 | --- | --- |
@@ -140,9 +140,9 @@ libs/contracts/events/<domain>/
 | 同步调用 | `libs/contracts/clients` + 调用方 `infrastructure/clients` 实现 |
 | 异步消息 | RabbitMQ topic exchange |
 | 限流和熔断 | Go middleware、client timeout/retry/circuit breaker、指标告警 |
-| 日志 | 结构化日志；生产环境默认 JSON，本地开发可用文本格式；字段和错误处置规则见 `docs/architecture/error-handling.md` |
+| 日志 | 结构化日志；生产环境默认 JSON，本地开发可用文本格式；字段和脱敏规则见 `docs/architecture/observability.md` |
 | 链路追踪 | 当前阶段至少传递 `X-Request-Id` / `X-Trace-Id`；进入统一观测后再接 OpenTelemetry |
-| 指标 | 当前阶段先在代码中保留稳定 operation 名称和错误分类；接入 Prometheus 后按服务、operation、status、errorCode 聚合 |
+| 指标 | 当前阶段先保留稳定 operation 名称和低基数标签；接入 Prometheus 后按服务、operation、status、errorCode 聚合 |
 | 数据访问 | 显式 SQL、repository 实现、必要时使用轻量 query helper |
 | 对象映射 | 显式 struct、构造函数和 mapper 函数 |
 | 内部主键 | PostgreSQL `BIGINT` sequence / identity，外部 ID 单独设计 |

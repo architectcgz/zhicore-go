@@ -16,10 +16,11 @@
   - `docs/architecture/services/`：各 Go 目标服务的模块级设计、API 族、数据归属、事件和迁移风险。
   - `docs/architecture/go-service-design.md`：Go 服务内分层、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
   - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板、密钥处理和配置加载边界。
+  - `docs/architecture/observability.md`：结构化日志、请求关联 ID、trace、metrics、脱敏和可观测性边界。
   - `docs/architecture/migrations.md`：`golang-migrate`、SQL migration 文件命名、事务、down migration、seed 和 GORM 边界。
   - `docs/architecture/testing.md`：风险分级测试策略、test-first 触发条件、测试写法、规模控制、测试放置和验证命令选择。
   - `docs/architecture/runtime-operations.md`：启动、健康检查、优雅停机、超时、重试、熔断、幂等和运行完成标准。
-  - `docs/architecture/error-handling.md`：Go 服务内部错误分层和对外错误映射边界。
+  - `docs/architecture/error-handling.md`：Go 服务内部错误分层、对外错误映射和错误处置边界。
   - `docs/architecture/id-strategy.md`：内部主键、外部公开 ID、业务编号和 `zhicore-id-generator` 定位。
 - `docs/contracts/`：跨服务 contract 归属、兼容性、版本和变更流程。
   - `docs/contracts/http.md`：HTTP path、method、header、envelope、版本化和服务级 HTTP schema 放置规则。

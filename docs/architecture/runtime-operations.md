@@ -2,7 +2,7 @@
 
 本文件定义 `zhicore-go` 服务运行期的启动、健康检查、超时、重试和幂等规则。
 
-仓库目录和服务内分层见 `docs/architecture/repository-layout.md` 和 `docs/architecture/go-service-design.md`。配置和环境变量规则见 `docs/architecture/configuration.md`。错误分层、日志和上报规则见 `docs/architecture/error-handling.md`。
+仓库目录和服务内分层见 `docs/architecture/repository-layout.md` 和 `docs/architecture/go-service-design.md`。配置和环境变量规则见 `docs/architecture/configuration.md`。日志、metrics 和 trace 规则见 `docs/architecture/observability.md`。错误分层和错误处置规则见 `docs/architecture/error-handling.md`。
 
 ## 适用范围
 

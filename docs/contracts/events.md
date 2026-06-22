@@ -50,6 +50,8 @@ user.profile.updated
   "aggregateVersion": 7,
   "correlationId": "optional",
   "causationId": "optional",
+  "requestId": "optional-request-id",
+  "traceId": "optional-trace-id",
   "payload": {}
 }
 ```
@@ -60,6 +62,8 @@ user.profile.updated
 - `occurredAt` 是业务事实发生时间，不是发送时间或消费时间。
 - `payloadVersion` 从 `1` 开始，破坏性变化必须新增版本或新事件类型。
 - `aggregateId` 可以是字符串，以兼容内部 bigint 和外部公开 ID。
+- `correlationId` / `causationId` 描述业务事件链路；`requestId` / `traceId` 只用于观测关联，规则见 `docs/architecture/observability.md`。
+- producer 有请求或任务上下文时应携带 `requestId` / `traceId`；consumer 必须容忍缺失，不能用它们做幂等、权限或业务分支判断。
 - 落库时 `eventId` 映射到 `event_id`，`occurredAt` 映射到 `occurred_at`，`payloadVersion` 映射到 `payload_version`。
 
 已有 Java 事件迁移时，如果 payload 已被 consumer 使用，先保持语义兼容，再逐步收敛到统一 envelope。
@@ -91,6 +95,7 @@ Consumer 要求：
 
 - 新增可选字段。
 - 新增 consumer 可忽略的 metadata。
+- 新增可选观测字段，例如 `requestId` 或 `traceId`。
 - 新增事件类型。
 
 破坏性变更：

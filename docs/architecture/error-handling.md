@@ -1,6 +1,6 @@
 # 错误处理架构
 
-本文件定义 Go 服务内部错误分层和对外错误映射。对外错误响应、错误码和 HTTP status 见 `docs/contracts/errors.md`。
+本文件定义 Go 服务内部错误分层、对外错误映射和错误处置分级。对外错误响应、错误码和 HTTP status 见 `docs/contracts/errors.md`；通用日志、metrics、trace 和脱敏规则见 `docs/architecture/observability.md`。
 
 ## 分层原则
 
@@ -70,11 +70,11 @@ HTTP handler 只处理：
 
 HTTP handler 不直接访问数据库、缓存、MQ 或外部 SDK。
 
-## 错误日志和 trace
+## 错误日志和观测字段
 
-- 每个请求应有 `traceId` 或 `requestId`。
-- 对外错误响应可以带 `traceId`。
-- 日志中记录底层错误、traceId、provider、operation 和关键业务 ID。
+- 每个请求应有 `traceId` 或 `requestId`，传播规则见 `docs/architecture/observability.md`。
+- 对外错误响应可以带 `traceId`，响应形态见 `docs/contracts/errors.md`。
+- 错误日志中记录底层错误摘要、traceId / requestId、provider、operation 和关键业务 ID。
 - 对外 `message` 不包含底层错误细节。
 
 ## 运行期错误处置
@@ -95,28 +95,13 @@ HTTP handler 不直接访问数据库、缓存、MQ 或外部 SDK。
 
 当前个人项目阶段，“上报”至少表示结构化 `ERROR` 日志和可统计的错误计数；接入 Sentry、OpenTelemetry Collector、Prometheus Alertmanager 或其他告警系统后，再把同一类事件接入外部告警。不要为了尚未接入告警系统而省略错误分类和关键字段。
 
-## 日志规则
+## 错误日志要求
 
-日志必须结构化，生产环境默认输出 JSON；本地开发可以使用可读文本格式，但字段语义保持一致。
-
-通用字段：
-
-- `service`：服务名，例如 `zhicore-upload`。
-- `env`：运行环境，例如 `local`、`dev`、`prod`。
-- `requestId` / `traceId`：入口请求或异步任务的关联 ID。
-- `operation`：稳定操作名，例如 `upload.image`、`content.post.publish`。
-- `errorCode`：公开错误码或内部稳定错误标识。
-- `durationMs`：请求、下游调用或任务执行耗时。
-- `userId`：已认证用户 ID；不能记录 token、密码、邮箱验证码或完整敏感载荷。
-- `resourceId`：关键业务 ID，例如 `postId`、`fileId`、`eventId`。
-
-日志内容要求：
-
-- 不记录 JWT、Authorization header、密码、验证码、Secret、完整请求 body 或完整文件 URL 中的敏感签名参数。
+- 通用日志字段、日志级别定义、脱敏规则和下游调用日志字段见 `docs/architecture/observability.md`。
 - 业务错误日志记录公开 message 和业务 ID；底层错误只进入内部日志字段，不进入对外响应。
 - 高频可预期分支不能刷 `ERROR`，避免真正故障被噪声淹没。
-- 下游调用日志必须包含 provider、operation、status、durationMs 和重试次数。
-- 异步消费日志必须包含 eventId、eventType、attempt、consumer 和幂等处理结果。
+- 下游调用失败必须包含 provider、operation、status、durationMs、attempt 和 errorCode。
+- 异步消费失败必须包含 eventId、eventType、attempt、consumer、幂等处理结果和下一步动作。
 
 ## 重试和降级
 

@@ -10,7 +10,7 @@
 - `libs/kit/config` 跨服务配置加载和校验原语。
 - PostgreSQL、Redis、RabbitMQ、MongoDB、Elasticsearch、对象存储、HTTP client、日志、追踪、健康检查和 worker 运行参数。
 
-运行时启动、健康检查、超时、重试、幂等和停机规则见 `docs/architecture/runtime-operations.md`。
+运行时启动、健康检查、超时、重试、幂等和停机规则见 `docs/architecture/runtime-operations.md`。日志字段、metrics、trace 和脱敏规则见 `docs/architecture/observability.md`。
 
 ## 配置来源优先级
 
@@ -140,7 +140,7 @@ ZHICORE_GATEWAY_JWT_SECRET=...
 - RabbitMQ：URL、exchange、queue、routing key、publish confirm timeout、consumer shutdown timeout。
 - MongoDB / Elasticsearch：URL、认证信息、request timeout、index / collection 名称。
 - HTTP client：base URL、timeout、retry policy、可重试错误分类。
-- 日志：level、format、service、env。
+- 日志：level、format、service、env；字段语义见 `docs/architecture/observability.md`。
 - worker / consumer：并发数、batch size、poll interval、lease timeout、retry / dead-letter 策略。
 
 这些值可以有本地开发默认值，但生产依赖地址和凭证必须来自环境注入。

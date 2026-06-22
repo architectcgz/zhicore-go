@@ -102,6 +102,15 @@
 编辑前阅读：`docs/architecture/runtime-operations.md`、`docs/architecture/go-service-design.md`、`libs/kit/config`、受影响服务 `configs/`、本文件
 验证命令：`bash scripts/check-structure.sh`；涉及配置加载代码时运行最窄相关 `go test`
 
+路径：`docs/architecture/observability.md`
+类型：当前架构事实
+负责人：ZhiCore Go 可观测性治理
+是否入口：否
+允许内容：结构化日志字段、日志级别、requestId / traceId 传播、operation 命名、metrics 标签、脱敏规则、上报边界和 `libs/kit/observability` 职责
+禁止内容：真实日志样本中的敏感数据、具体日志平台部署配置、完整告警策略、服务私有业务审计日志 schema
+编辑前阅读：`docs/architecture/error-handling.md`、`docs/architecture/runtime-operations.md`、`docs/architecture/configuration.md`、`libs/kit/observability`、本文件
+验证命令：`bash scripts/check-structure.sh`；涉及可观测性代码时运行最窄相关 `go test`
+
 路径：`docs/architecture/migrations.md`
 类型：当前架构事实
 负责人：ZhiCore Go schema migration
@@ -124,9 +133,9 @@
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
 是否入口：否
-允许内容：Go 服务内部错误分层、错误依赖方向、底层错误翻译、application 错误映射、日志和 trace 规则
+允许内容：Go 服务内部错误分层、错误依赖方向、底层错误翻译、application 错误映射和错误处置分级
 禁止内容：对外 HTTP 错误响应 schema、服务公开错误码清单、字段级 API 错误详情
-编辑前阅读：`docs/architecture/go-service-design.md`、本文件；涉及对外错误响应时再读 `docs/contracts/errors.md`
+编辑前阅读：`docs/architecture/go-service-design.md`、`docs/architecture/observability.md`、本文件；涉及对外错误响应时再读 `docs/contracts/errors.md`
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/architecture/runtime-operations.md`

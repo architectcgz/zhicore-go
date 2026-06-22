@@ -122,6 +122,7 @@ required_files=(
   "docs/architecture/repository-layout.md"
   "docs/architecture/go-service-design.md"
   "docs/architecture/configuration.md"
+  "docs/architecture/observability.md"
   "docs/architecture/migrations.md"
   "docs/architecture/testing.md"
   "docs/architecture/error-handling.md"
