@@ -11,9 +11,17 @@ Write comprehensive implementation plans assuming the engineer has zero context 
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
-**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
+**Announce at start:** say that you are using the `writing-plans` skill to create the implementation plan, in the user's/project's conversation language.
 
 **Context:** This should be run in a dedicated worktree (created by brainstorming skill).
+
+## Project Style And Language Gate
+
+Before writing or saving the plan, read the target repository's `AGENTS.md`, docs rules, and any user language preference that applies to durable Markdown. The plan's prose, headings, task labels, checkbox text, and handoff text MUST use the project's required documentation language.
+
+English in the examples below is semantic scaffolding, not output text. Translate labels such as `Task`, `Files`, `Step`, `Run`, `Expected`, `Verification`, and `Risks` into the target project's documentation language when the project requires non-English Markdown. Keep code identifiers, paths, commands, package names, SQL, API fields, error constants, protocol names, and external proper nouns in their original form.
+
+If project rules require Chinese Markdown, write the plan body in Chinese by default. Use mappings like `Task` -> `任务`, `Files` -> `文件`, `Step` -> `步骤`, `Run` -> `运行`, `Expected` -> `预期`, `Verification` -> `验证`, `Risks` -> `风险`, and `Architecture Fit Evaluation` -> `架构适配评估`. Before finalizing, run a quick residue scan for common template words such as `Task`, `Step`, `Files`, `Run:`, `Expected:`, `Risks`, and `Architecture Fit Evaluation`; revise any leftover template prose unless it is part of a command, code identifier, file path, test name, or quoted external text.
 
 **Save plans to the appropriate directory based on plan type.**
 
@@ -70,7 +78,7 @@ Every executable step must be represented by a checkbox. The executor is require
 
 ## Plan Document Header
 
-**Every plan MUST start with this header:**
+**Every plan MUST start with this semantic header, localized to the target project's documentation language:**
 
 ```markdown
 # [Feature Name] Implementation Plan
@@ -132,12 +140,14 @@ Check the repository's `AGENTS.md`, `CLAUDE.md`, or commit policy before writing
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
+- Project documentation language always overrides this skill's English examples
 
 ## Plan Review Loop
 
 After writing the complete plan:
 
 1. Run an explicit architecture-fit evaluation on the written plan before any implementation handoff. Check:
+   - whether the plan follows the target project's documentation language and does not leak English template labels into prose
    - whether the target architecture boundary is explicit
    - whether shared layers, owners, reuse points, and abstraction landing zones are named
    - whether the plan is only aligning output behavior while quietly deferring structural convergence
