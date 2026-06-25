@@ -22,6 +22,25 @@ Default every service, repository, handler, job, worker, checker, runner, and ot
 - Do not store request contexts in structs; pass `ctx` to each operation that needs cancellation, deadlines, or request-scoped values.
 - When deriving a context with timeout, deadline, or cancel, call the returned cancel function, normally with `defer cancel()`.
 - For HTTP handlers, propagate `r.Context()` into downstream database, cache, RPC, and worker calls unless a lifecycle context is intentionally required.
+- Treat `context.Context` as lifecycle control, not a business parameter bag.
+- Use `context.Value` only for request-scoped infrastructure metadata such as trace ID, request ID, and narrowly scoped auth claims injected by middleware.
+- Do not pass business inputs through `context.Value`, including user IDs used for business branching, pagination, sort options, feature flags, dry-run flags, skip-audit flags, tenant filters, or domain objects.
+- When middleware stores auth claims or principal metadata in context, convert it at the transport/application boundary into an explicit typed actor/request object before entering business logic.
+- Define context keys and accessors in one infrastructure-owned package. Do not use raw string keys or scatter package-local keys across business packages.
+- Whoever owns the business rhythm owns the timeout budget. Use-case/application orchestration owns the total business timeout budget; derive narrower child budgets only when a dependency needs an explicit protective cap. Handlers may enforce transport/request caps but should not own business dependency budgets.
+- Timeout budgets must come from named configuration or injected policy. Apply the configuration rules below instead of hard-coding duration literals.
+- Downstream DB, cache, RPC, or HTTP calls should only derive shorter child deadlines for explicit dependency caps. They must not loosen the parent deadline or invent unrelated hard-coded timeouts.
+- Do not pass request contexts into goroutines that must continue after the request returns. Use an independent bounded lifecycle context and copy only required infrastructure metadata.
+- Do not use bare goroutines for critical side effects that require retry, recovery, observability, or process-crash durability. Use worker pools plus durable queueing, MQ, or outbox-style persistence when reliability matters.
+
+## Configuration Rules
+
+- Keep typed config structs, default values, and external loading/parsing separate.
+- Defaults should be pure functions with no I/O.
+- Load environment, file, or flag values at the process root by overlaying them onto defaults, then validate before wiring dependencies.
+- Inject narrow typed config or policy structs into use cases, clients, workers, and adapters.
+- Do not read environment variables, config files, package-global mutable config, or feature flags from business methods, repositories, or deep client calls.
+- Timeout budgets, retry limits, backoff, queue sizes, pool sizes, dependency endpoints, and runtime limits must be named and validated configuration.
 
 ## Database and Transaction Rules
 
@@ -83,6 +102,8 @@ Default every service, repository, handler, job, worker, checker, runner, and ot
 
 ## References
 
+- Read `references/configuration-defaults-and-loading.md` when touching runtime configuration, defaults, env/file/flag loading, timeout/retry/backoff/pool settings, dependency endpoints, or dependency wiring.
+- Read `references/context-lifecycle-and-timeout.md` when touching `context.Value`, timeout/deadline placement, request-scoped metadata, goroutines launched from handlers, long-lived workers, or async side effects.
 - Read `references/repository-interface-splitting.md` when a repository interface starts mixing unrelated query, command, profile, auth, report, or transaction methods, or when a tx closure currently receives a wide repo.
 - In `backend-engineer`, read `references/concurrency-context-and-idempotency.md` for async workers, retries, duplicate execution, cancellation, timeout, and scheduled work.
 - In `backend-engineer`, read `references/ctf-go-runtime-context-image-contracts.md` when working in the CTF repo on Go context propagation, runtime provisioning, image management, config safety, or review-driven backend debt.
