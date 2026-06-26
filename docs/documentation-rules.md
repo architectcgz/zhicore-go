@@ -93,6 +93,24 @@
 编辑前阅读：`docs/architecture/services/README.md`、`docs/architecture/services/_overview/service-design.drawio`、对应服务文档、本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`docs/architecture/services/<service>/service-detail.drawio`
+类型：当前架构事实的 reviewable 图表源
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：对应服务的详细设计图源文件，覆盖入口、owner、guard、数据、副作用、运行依赖和禁止路径
+禁止内容：跨服务总览、临时截图、未在服务文档中确认的服务/队列/缓存/中间件
+编辑前阅读：`docs/architecture/services/README.md`、对应服务文档、本文件
+验证命令：`bash scripts/check-structure.sh`；导出图片时用 draw.io CLI 验证 XML 可读
+
+路径：`docs/architecture/services/<service>/service-detail.png`
+类型：当前架构事实的辅助渲染图
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：对应服务详细设计图的导出图片
+禁止内容：没有 `service-detail.drawio` 源文件的唯一事实源、其他服务图片、临时截图
+编辑前阅读：`docs/architecture/services/<service>/service-detail.drawio`、对应服务文档、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/architecture/services/_overview/`
 类型：跨服务设计图源和总览导出
 负责人：ZhiCore Go 服务架构

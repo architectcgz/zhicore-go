@@ -16,23 +16,25 @@
 ```text
 docs/architecture/services/<service>/
 ├── README.md
-└── service-design.<service>.png
+├── service-design.<service>.png
+├── service-detail.drawio
+└── service-detail.png
 ```
 
-| 服务 | 文档 | 设计图 |
-| --- | --- | --- |
-| Gateway | `gateway/README.md` | `gateway/service-design.gateway.png` |
-| User | `user/README.md` | `user/service-design.user.png` |
-| Content | `content/README.md` | `content/service-design.content.png` |
-| Comment | `comment/README.md` | `comment/service-design.comment.png` |
-| Message | `message/README.md` | `message/service-design.message.png` |
-| Notification | `notification/README.md` | `notification/service-design.notification.png` |
-| Search | `search/README.md` | `search/service-design.search.png` |
-| Ranking | `ranking/README.md` | `ranking/service-design.ranking.png` |
-| Admin | `admin/README.md` | `admin/service-design.admin.png` |
-| Upload | `upload/README.md` | `upload/service-design.upload.png` |
-| ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` |
-| Ops | `ops/README.md` | `ops/service-design.ops.png` |
+| 服务 | 文档 | 设计图 | 详细图源 | 详细图 |
+| --- | --- | --- | --- | --- |
+| Gateway | `gateway/README.md` | `gateway/service-design.gateway.png` | `gateway/service-detail.drawio` | `gateway/service-detail.png` |
+| User | `user/README.md` | `user/service-design.user.png` | `user/service-detail.drawio` | `user/service-detail.png` |
+| Content | `content/README.md` | `content/service-design.content.png` | `content/service-detail.drawio` | `content/service-detail.png` |
+| Comment | `comment/README.md` | `comment/service-design.comment.png` | `comment/service-detail.drawio` | `comment/service-detail.png` |
+| Message | `message/README.md` | `message/service-design.message.png` | `message/service-detail.drawio` | `message/service-detail.png` |
+| Notification | `notification/README.md` | `notification/service-design.notification.png` | `notification/service-detail.drawio` | `notification/service-detail.png` |
+| Search | `search/README.md` | `search/service-design.search.png` | `search/service-detail.drawio` | `search/service-detail.png` |
+| Ranking | `ranking/README.md` | `ranking/service-design.ranking.png` | `ranking/service-detail.drawio` | `ranking/service-detail.png` |
+| Admin | `admin/README.md` | `admin/service-design.admin.png` | `admin/service-detail.drawio` | `admin/service-detail.png` |
+| Upload | `upload/README.md` | `upload/service-design.upload.png` | `upload/service-detail.drawio` | `upload/service-detail.png` |
+| ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` | `id-generator/service-detail.drawio` | `id-generator/service-detail.png` |
+| Ops | `ops/README.md` | `ops/service-design.ops.png` | `ops/service-detail.drawio` | `ops/service-detail.png` |
 
 ## 服务设计图
 
