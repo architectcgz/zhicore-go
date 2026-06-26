@@ -11,20 +11,52 @@
 
 ## 服务文档
 
-| 服务 | 文档 |
+每个服务使用独立目录归档长期设计正文和导出图：
+
+```text
+docs/architecture/services/<service>/
+├── README.md
+└── service-design.<service>.png
+```
+
+| 服务 | 文档 | 设计图 |
+| --- | --- | --- |
+| Gateway | `gateway/README.md` | `gateway/service-design.gateway.png` |
+| User | `user/README.md` | `user/service-design.user.png` |
+| Content | `content/README.md` | `content/service-design.content.png` |
+| Comment | `comment/README.md` | `comment/service-design.comment.png` |
+| Message | `message/README.md` | `message/service-design.message.png` |
+| Notification | `notification/README.md` | `notification/service-design.notification.png` |
+| Search | `search/README.md` | `search/service-design.search.png` |
+| Ranking | `ranking/README.md` | `ranking/service-design.ranking.png` |
+| Admin | `admin/README.md` | `admin/service-design.admin.png` |
+| Upload | `upload/README.md` | `upload/service-design.upload.png` |
+| ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` |
+| Ops | `ops/README.md` | `ops/service-design.ops.png` |
+
+## 服务设计图
+
+图表源文件：
+
+- `_overview/service-design.drawio`：服务设计图集源文件，包含总览页和每个服务的目标设计页。
+
+渲染图片：
+
+| 视角 | 图片 |
 | --- | --- |
-| Gateway | `gateway.md` |
-| User | `user.md` |
-| Content | `content.md` |
-| Comment | `comment.md` |
-| Message | `message.md` |
-| Notification | `notification.md` |
-| Search | `search.md` |
-| Ranking | `ranking.md` |
-| Admin | `admin.md` |
-| Upload | `upload.md` |
-| ID Generator | `id-generator.md` |
-| Ops | `ops.md` |
+| 总览 | `_overview/service-design.overview.png` |
+| Gateway | `gateway/service-design.gateway.png` |
+| User | `user/service-design.user.png` |
+| Content | `content/service-design.content.png` |
+| Comment | `comment/service-design.comment.png` |
+| Message | `message/service-design.message.png` |
+| Notification | `notification/service-design.notification.png` |
+| Search | `search/service-design.search.png` |
+| Ranking | `ranking/service-design.ranking.png` |
+| Admin | `admin/service-design.admin.png` |
+| Upload | `upload/service-design.upload.png` |
+| ID Generator | `id-generator/service-design.id-generator.png` |
+| Ops | `ops/service-design.ops.png` |
 
 ## 当前迁移状态
 

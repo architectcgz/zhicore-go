@@ -70,9 +70,36 @@
 类型：当前架构事实
 负责人：ZhiCore Go 服务架构
 是否入口：是
-允许内容：各服务职责、API 族、数据归属、事件、跨服务依赖、Go 落点、迁移风险和下一步实现切片
+允许内容：各服务职责、API 族、数据归属、事件、跨服务依赖、Go 落点、迁移风险、下一步实现切片和服务设计图索引
 禁止内容：字段级 HTTP schema、完整 SQL migration、单次任务临时日志、未核对来源的“已实现”结论
 编辑前阅读：`docs/architecture/service-boundaries.md`、`docs/architecture/repository-layout.md`、`docs/architecture/go-service-design.md`、对应 Java controller/schema/contract、本文档
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/<service>/README.md`
+类型：当前架构事实
+负责人：对应 Go 目标服务
+是否入口：是
+允许内容：单个服务的模块级设计、职责边界、DDD 目标设计、数据归属、事件、跨服务依赖、迁移风险和下一步实现切片
+禁止内容：其他服务的完整设计、字段级 HTTP schema、完整 SQL migration、单次任务临时日志、未核对来源的“已实现”结论
+编辑前阅读：`docs/architecture/services/README.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/repository-layout.md`、`docs/architecture/go-service-design.md`、对应 Java controller/schema/contract、本文档
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/<service>/service-design.<service>.png`
+类型：当前架构事实的辅助渲染图
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：对应服务设计图的导出图片
+禁止内容：没有 reviewable 源文件的唯一事实源、其他服务图片、临时截图
+编辑前阅读：`docs/architecture/services/README.md`、`docs/architecture/services/_overview/service-design.drawio`、对应服务文档、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/_overview/`
+类型：跨服务设计图源和总览导出
+负责人：ZhiCore Go 服务架构
+是否入口：否
+允许内容：跨服务总览图、服务设计图集源文件和总览导出图片
+禁止内容：单个服务正文、临时截图、没有服务归属的零散图片
+编辑前阅读：`docs/architecture/services/README.md`、`docs/architecture/service-boundaries.md`、本文件
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/architecture/id-strategy.md`

@@ -25,7 +25,7 @@ services/<service>/api/http/
 
 为某个服务补 HTTP schema 时按以下顺序：
 
-1. 读取该服务文档：`docs/architecture/services/<service>.md`。
+1. 读取该服务文档：`docs/architecture/services/<service>/README.md`。
 2. 读取通用 contract：`docs/contracts/README.md`、`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md`。
 3. 从 Java controller、DTO、exception handler 和测试中提取 path、method、字段、响应和错误。
 4. 将公共规则写入 `services/<service>/api/http/README.md`。
@@ -45,7 +45,7 @@ services/<service>/api/http/
 - Java controller：`../zhicore-microservice/<module>/src/main/java/...`
 - Java DTO：`../zhicore-microservice/<module>/src/main/java/...`
 - Java 测试：`../zhicore-microservice/<module>/src/test/java/...`
-- 服务设计：`docs/architecture/services/<service>.md`
+- 服务设计：`docs/architecture/services/<service>/README.md`
 
 ## 公共规则
 

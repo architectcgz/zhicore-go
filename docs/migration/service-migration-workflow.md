@@ -31,7 +31,7 @@
 
 - `docs/migration/README.md`
 - `docs/migration/java-design-migration.md`
-- `docs/architecture/services/<service>.md`
+- `docs/architecture/services/<service>/README.md`
 - `docs/architecture/service-boundaries.md`
 - `docs/architecture/go-service-design.md`
 - `docs/contracts/http-schema-template.md`
