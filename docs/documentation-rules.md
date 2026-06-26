@@ -39,6 +39,15 @@
 编辑前阅读：本文件
 验证命令：`bash scripts/check-structure.sh`
 
+路径：`CONTEXT-MAP.md`
+类型：限界上下文术语入口
+负责人：仓库文档
+是否入口：是
+允许内容：各服务/上下文的 `CONTEXT.md` 路由和上下文关系
+禁止内容：实现方案、架构决策正文、临时讨论记录
+编辑前阅读：对应上下文 `CONTEXT.md`、本文件
+验证命令：`bash scripts/check-structure.sh`
+
 路径：`docs/migration/`
 类型：迁移计划和映射
 负责人：ZhiCore Java 到 Go 迁移
@@ -82,6 +91,33 @@
 允许内容：单个服务的模块级设计、职责边界、DDD 目标设计、数据归属、事件、跨服务依赖、迁移风险和下一步实现切片
 禁止内容：其他服务的完整设计、字段级 HTTP schema、完整 SQL migration、单次任务临时日志、未核对来源的“已实现”结论
 编辑前阅读：`docs/architecture/services/README.md`、`docs/architecture/service-boundaries.md`、`docs/architecture/repository-layout.md`、`docs/architecture/go-service-design.md`、对应 Java controller/schema/contract、本文档
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/<service>/*.md`
+类型：当前架构事实的服务专题文档
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：对应服务 README 拆分出的长期专题事实，例如 `CONTEXT.md` 术语表、领域模型、应用流程、正文存储、数据事件契约、实现切片和迁移风险
+禁止内容：其他服务完整设计、字段级 HTTP schema、完整 SQL migration、单次任务临时日志、未登记的新顶层文档入口
+编辑前阅读：对应服务 `README.md`、`docs/architecture/services/README.md`、本文档；涉及跨服务边界时同时读 `docs/architecture/service-boundaries.md`
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/<service>/adr/`
+类型：服务内架构决策记录
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：该服务内难以逆转、容易被后续读者质疑、且有真实取舍的架构决策及其原因
+禁止内容：跨服务全局决策、普通实现细节、临时讨论记录、没有取舍的事实说明、完整设计文档替代品
+编辑前阅读：对应服务 `README.md`、对应服务 `CONTEXT.md`、相关专题文档、本文件
+验证命令：`bash scripts/check-structure.sh`
+
+路径：`docs/architecture/services/<service>/decision-log/`
+类型：服务内设计讨论复盘记录
+负责人：对应 Go 目标服务
+是否入口：否
+允许内容：从设计压测、grill-with-docs 或重要评审中重建的问题、结论、原因、修正和链接到 ADR / 专题文档的复盘记录
+禁止内容：未沉淀结论的聊天流水账、临时任务执行日志、与当前设计文档冲突且未标注 superseded 的旧结论
+编辑前阅读：对应服务 `README.md`、对应服务 `CONTEXT.md`、相关 ADR 和专题文档、本文件
 验证命令：`bash scripts/check-structure.sh`
 
 路径：`docs/architecture/services/<service>/service-design.<service>.png`

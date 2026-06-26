@@ -10,10 +10,12 @@
 
 ## 当前事实源
 
+- `CONTEXT-MAP.md`：服务限界上下文术语表索引，当前包含 Content 上下文。
 - `docs/architecture/`：当前服务边界和数据归属决策。
   - `docs/architecture/repository-layout.md`：仓库目录、服务目录模板和 `api` / `internal` 边界。
   - `docs/architecture/service-boundaries.md`：服务边界、数据归属、依赖方向和 contract 放置规则。
   - `docs/architecture/services/`：各 Go 目标服务的模块级设计、API 族、数据归属、事件和迁移风险。
+  - `docs/architecture/services/<service>/adr/`：服务内架构决策记录，记录难逆、需要复盘、且有真实取舍的决策。
   - `docs/architecture/go-service-design.md`：Go 服务内分层、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
   - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板、密钥处理和配置加载边界。
   - `docs/architecture/observability.md`：结构化日志、请求关联 ID、trace、metrics、脱敏和可观测性边界。

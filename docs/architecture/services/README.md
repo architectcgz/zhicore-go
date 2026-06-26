@@ -16,6 +16,7 @@
 ```text
 docs/architecture/services/<service>/
 ├── README.md
+├── <topic>.md
 ├── service-design.<service>.png
 ├── service-detail.drawio
 └── service-detail.png
@@ -35,6 +36,19 @@ docs/architecture/services/<service>/
 | Upload | `upload/README.md` | `upload/service-design.upload.png` | `upload/service-detail.drawio` | `upload/service-detail.png` |
 | ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` | `id-generator/service-detail.drawio` | `id-generator/service-detail.png` |
 | Ops | `ops/README.md` | `ops/service-design.ops.png` | `ops/service-detail.drawio` | `ops/service-detail.png` |
+
+Content 服务文档已经拆成专题文件：
+
+| 专题 | 文档 |
+| --- | --- |
+| 入口和关键结论 | `content/README.md` |
+| 术语表 | `content/CONTEXT.md` |
+| 架构决策记录 | `content/adr/` |
+| 设计问答复盘 | `content/decision-log/` |
+| 领域模型 | `content/domain-model.md` |
+| 正文存储与发布 | `content/body-storage-and-publishing.md` |
+| Application、Ports 与实现切片 | `content/application-and-ports.md` |
+| 数据、事件和契约 | `content/data-events-contracts.md` |
 
 ## 服务设计图
 

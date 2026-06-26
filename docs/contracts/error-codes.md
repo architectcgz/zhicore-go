@@ -108,6 +108,18 @@
 | `4010` | `POST_ALREADY_FAVORITED` | 已收藏该文章 | 重复收藏。 |
 | `4011` | `POST_NOT_FAVORITED` | 未收藏该文章 | 取消收藏但未收藏。 |
 | `4012` | `CATEGORY_NOT_FOUND` | 分类不存在 | 分类不存在。 |
+| `4013` | `BODY_SCHEMA_INVALID` | i18n: `content.body.schema_invalid` | 正文 blocks schema 不合法；字段级详情放在 `data.details[].code`。 |
+| `4014` | `BLOCK_TYPE_NOT_ENABLED` | i18n: `content.body.block_type_not_enabled` | 请求包含当前阶段未启用的 block 类型，例如 `mention`、`poll`、`custom_widget`。 |
+| `4015` | `BODY_TOO_LARGE` | i18n: `content.body.too_large` | 正文超过单篇大小限制。 |
+| `4016` | `BODY_TEXT_TOO_SHORT` | i18n: `content.body.text_too_short` | 发布时正文有效文本不足，例如普通文章少于 10 个有效 rune。 |
+| `4017` | `DRAFT_CONFLICT` | i18n: `content.draft.conflict` | `post_version`、`draft_body_id` 或 `draft_body_hash` 不匹配，草稿已被其他保存或发布修改。 |
+| `4018` | `CONTENT_BODY_UNAVAILABLE` | i18n: `content.body.unavailable` | `published_body_id` 指向的 MongoDB 正文不可读；应创建 repair task 并告警。 |
+| `4019` | `CONTENT_BODY_INCONSISTENT` | i18n: `content.body.inconsistent` | PostgreSQL body hash 与 MongoDB body hash 不一致，或发布前 draft body 不可信。 |
+| `4020` | `EXTERNAL_EMBED_PROVIDER_NOT_ALLOWED` | i18n: `content.body.external_embed_provider_not_allowed` | `external_embed` provider 不在白名单内。 |
+| `4021` | `MEDIA_REF_INVALID` | i18n: `content.body.media_ref_invalid` | 正文中的 Upload `file_id`、附件、图片或媒体引用格式/权限/状态不合法。 |
+| `4022` | `VALIDATION_ERROR_LIMIT_EXCEEDED` | i18n: `validation.error_limit_exceeded` | 字段级或 block 级校验错误超过返回上限。 |
+| `4023` | `COVER_UNAVAILABLE` | i18n: `content.cover.unavailable` | 草稿封面引用已经不可用或不可发布；封面非必填，为空不触发该错误。 |
+| `4024` | `BODY_SCHEMA_UNSUPPORTED` | i18n: `content.body.schema_unsupported` | MongoDB body 的 `schemaVersion` 当前服务不可读。 |
 
 ## Comment 错误
 

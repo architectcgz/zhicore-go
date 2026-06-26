@@ -118,6 +118,33 @@ Java common 当前对 `BusinessException` 和 `DomainException` 使用 HTTP `200
 
 字段级错误不是默认要求；只有前端或 consumer 需要精确定位字段时再引入。
 
+复杂结构校验（例如 Content 正文 blocks）可以在 `data.details` 返回路径级错误：
+
+```json
+{
+  "code": 4013,
+  "data": {
+    "details": [
+      {
+        "path": "blocks[3].children[1].latex",
+        "code": "MATH_LATEX_TOO_LONG",
+        "messageKey": "content.body.math_latex_too_long"
+      }
+    ]
+  },
+  "timestamp": 1782112892184,
+  "traceId": "optional-trace-id"
+}
+```
+
+路径级错误规则：
+
+- `details[].code` 使用稳定英文机器码，前端或 consumer 不能依赖中文文本做分支判断。
+- `details[].messageKey` 可选，用于 i18n；前端应以 `code` 为主建立本地文案映射。
+- `details[].path` 使用稳定 JSON path / dot path，指向请求体里的具体字段或 block。
+- 后端不得把中文用户文案硬编码为协议事实；`message` 只保留 Java 兼容和兜底展示语义。
+- 单次响应最多返回有限数量的路径级错误，例如 20 个；超过上限时返回 `VALIDATION_ERROR_LIMIT_EXCEEDED`。
+
 ## 外部依赖错误
 
 - 下游超时、连接失败、熔断打开：对外通常映射为 `503`。
