@@ -35,8 +35,7 @@
   - `docs/contracts/data-types.md`：时间、ID、枚举、空值、数字、布尔和 JSON 字段命名规则。
   - `docs/contracts/pagination.md`：page/cursor 分页、排序、过滤和返回形态。
   - `docs/contracts/events.md`：RabbitMQ 事件 contract、envelope、outbox 和兼容性规则。
-- `docs/migration/`：既有实现参考、服务替换顺序和发布说明。
-  - `docs/migration/java-design-migration.md`：既有 Java 设计的参考价值、需要改写的点和废弃项盘点。
+- `docs/migration/`：既有实现参考映射、已发布行为核对和服务替换流程。
   - `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族实现前的事实核对、contract、migration、测试、实现和交付流程。
 
 ## 流程和历史

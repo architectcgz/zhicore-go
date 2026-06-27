@@ -30,7 +30,6 @@
 开始实现前至少读取：
 
 - `docs/migration/README.md`
-- `docs/migration/java-design-migration.md`
 - `docs/architecture/services/<service>/README.md`
 - `docs/architecture/service-boundaries.md`
 - `docs/architecture/go-service-design.md`
@@ -76,6 +75,7 @@
 规则：
 
 - 不用猜测替代事实核对；找不到来源时记录“待核对”，不要写成已确认。
+- 需要核对既有行为时直接读取 `../zhicore-microservice` 的 controller、DTO、schema 或测试；不要依赖过期的 Java 迁移盘点文档。
 - 既有行为可能保留、改写或废弃，决策必须落到相应架构或 contract 文档。
 - 不把既有全量初始化 SQL 原样复制到 Go 服务，必须按服务数据归属拆分。
 

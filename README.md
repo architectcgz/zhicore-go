@@ -14,9 +14,8 @@
 - `libs/contracts`：跨服务 client 契约和事件契约。
 - `libs/kit`：小型共享技术原语，例如响应封装、认证、配置、可观测性、数据库、缓存、RabbitMQ 客户端封装。
 - `deploy/`：Docker 和 Kubernetes 部署资产。
-- `docs/migration/`：迁移映射、迁移顺序和分阶段替换说明。
-- `docs/migration/java-design-migration.md`：Java 侧设计迁移盘点。
-- `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族迁移实施流程。
+- `docs/migration/`：既有实现参考映射、已发布行为核对和服务替换流程。
+- `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族实施流程。
 - `docs/architecture/repository-layout.md`：仓库目录、服务目录模板和 `api` / `internal` 边界。
 - `docs/architecture/go-service-design.md`：Go 服务分层、运行时依赖、migration、缓存和事件规则。
 - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板和密钥处理规则。

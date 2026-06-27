@@ -1,8 +1,6 @@
 # 既有实现参考映射
 
-本文件记录既有 ZhiCore 模块到 Go 服务落点的参考映射。
-
-详细设计参考盘点见 `docs/migration/java-design-migration.md`。该文档记录既有设计中哪些保留、哪些改写、哪些废弃，以及逐服务实现风险。
+本文件记录既有 ZhiCore 模块到 Go 服务落点的参考映射。Go 目标设计、Go contract 和 Go 代码是当前事实源；既有 Java 代码只在需要核对已发布外部行为、历史 DTO 或历史 schema 时作为参考。
 
 实现单个服务或服务内 API 族前，先读 `docs/migration/service-migration-workflow.md`，按目标事实固定、HTTP contract、schema migration、测试策略、Go 实现和交付验证的顺序推进。
 
@@ -10,14 +8,15 @@
 
 既有实现参考源：`../zhicore-microservice`
 
-既有代码只作为接口、行为和数据模型参考；当前目标不规划 Java/Go 运行时并存。
+既有代码只作为接口、行为和历史数据模型参考；当前目标不规划 Java/Go 运行时并存，也不维护长期 Java 设计迁移盘点。
 
 ## 可部署服务
 
 | Java 模块 | Go 服务模块 |
 | --- | --- |
 | `zhicore-gateway` | `services/zhicore-gateway` |
-| `zhicore-user` | `services/zhicore-user` |
+| `zhicore-user` 的认证账号能力 | `services/zhicore-auth` |
+| `zhicore-user` 的用户资料、关系和签到能力 | `services/zhicore-user` |
 | `zhicore-content` | `services/zhicore-content` |
 | `zhicore-comment` | `services/zhicore-comment` |
 | `zhicore-message` | `services/zhicore-message` |
@@ -42,7 +41,7 @@
 1. `zhicore-upload`：主要是代理/集成逻辑，API 边界相对清晰。
 2. `zhicore-search`：查询型服务，依赖 Elasticsearch 和 RabbitMQ consumer。
 3. `zhicore-ranking`：Redis 读模型和定时任务较多，适合在事件模型稳定后迁移。
-4. `zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
+4. `zhicore-auth`、`zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
 5. `zhicore-message`、`zhicore-notification`：涉及 WebSocket、推送和事件 fanout。
 6. `zhicore-admin`、`zhicore-ops`、`zhicore-gateway`：在核心服务 contract 稳定后实现。
 
