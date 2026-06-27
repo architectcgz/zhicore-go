@@ -34,7 +34,7 @@ Content HTTP API 分为五组：
 | `title` | string | 是 | 标题。 |
 | `summary` | string | 否 | 摘要。 |
 | `coverFileId` | string | 否 | 封面文件引用。 |
-| `coverUrl` | string | 否 | 封面展示 URL。 |
+| `coverUrl` | string | 否 | 封面展示 URL；运行时派生字段，不作为 Content 持久化事实。 |
 | `status` | string | 是 | `DRAFT`、`PUBLISHED`、`SCHEDULED`、`DELETED`。公开列表只返回 `PUBLISHED`。 |
 | `publishedAt` | string | 否 | RFC3339。 |
 | `createdAt` | string | 是 | RFC3339。 |
@@ -64,6 +64,8 @@ Content HTTP API 分为五组：
 | `createdAt` | string | 是 | RFC3339。 |
 
 可发布 block 类型：`paragraph`、`heading`、`quote`、`list`、`code_block`、`table`、`collapsible`、`math`、`image`、`external_embed`、`attachment_gallery`。预留但不可发布：`mention`、`poll`、`custom_widget`。
+
+系统内上传文件的正文 block 必须保存 Upload / File Service 返回的 `fileId`；如响应中包含 `url`，它只能作为运行时解析出的展示派生值。第三方外部资源必须使用 `external_embed` 或显式外部 URL 字段，不和系统内文件引用混用。
 
 ### `Tag`
 

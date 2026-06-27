@@ -625,6 +625,7 @@ Go 目标消息模型使用 RabbitMQ：
 - 保存其他服务的 ID 作为 opaque reference，例如 `author_id`、`post_id`、`file_id`、`target_id`。
 - 保存本地聚合需要的快照，例如 Content 中的文章作者昵称和头像。
 - 保存本地聚合拥有的派生计数和 read model，例如 `post_stats`、`comment_stats`、ranking score、search index。
+- 对 Upload / File Service 托管的系统内文件，只保存 `file_id` / `*FileId` 引用；可展示 URL 由 Upload / File Service 在读取时解析或缓存派生。
 
 禁止：
 
@@ -633,6 +634,7 @@ Go 目标消息模型使用 RabbitMQ：
 - 把另一个服务的 persistence model 复制进 consumer 服务。
 - 把本地快照当成权威源数据。
 - 添加跨服务 SQL 外键。
+- 把系统内文件的 CDN URL、对象存储 key、签名 URL 或 URL 生成规则作为业务服务的持久化事实。
 
 ## 跨服务读取模式选择
 

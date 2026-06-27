@@ -40,6 +40,17 @@
 - 跨服务内部 contract 可以使用 `int64` / JSON number 表示内部引用 ID，但字段必须明确归属服务。
 - 不把数据库自增序列的数量暴露问题交给 Base64/Base62 直接编码解决；需要隐藏时使用独立公开 ID 或可逆混淆方案。
 
+## 文件引用和展示 URL
+
+系统内由 Upload / File Service 托管的文件资源，长期事实字段必须保存文件引用 ID，而不是 CDN URL：
+
+- 持久化、事件和 typed client 中使用 `coverFileId`、`avatarFileId`、`imageFileIds`、`voiceFileId`、`attachmentFileId` 等字段。
+- HTTP response 可以额外返回 `coverUrl`、`avatarUrl`、`imageUrls`、`voiceUrl` 等展示字段，但这些 URL 是运行时解析或缓存的派生值，不是业务真相源。
+- 业务服务不得把 Upload 返回的 URL、对象存储 key、签名 URL 或 CDN path 当成长期引用保存。
+- 外部第三方 URL 必须单独建模，例如 `externalImageUrl`、`externalEmbedUrl`、`linkUrl`，不能和系统内上传文件共用同一个 `imageUrl` 字段语义。
+
+选择文件 ID 作为事实的原因是 CDN 域名、路径规则、签名策略、缩略图/转码变体、文件下架和对象存储迁移都属于文件服务治理范围。文章、评论、用户资料等业务服务只拥有“引用了哪个文件”的事实，不拥有“当前如何访问这个文件”的规则。
+
 ## 枚举
 
 - 对外枚举默认使用大写字符串，例如 `PUBLIC`、`PRIVATE`、`PUBLISHED`。
