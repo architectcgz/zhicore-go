@@ -59,6 +59,7 @@
 ## 服务落点
 
 - `zhicore-gateway` -> `services/zhicore-gateway`
+- `zhicore-auth` -> `services/zhicore-auth`
 - `zhicore-user` -> `services/zhicore-user`
 - `zhicore-content` -> `services/zhicore-content`
 - `zhicore-comment` -> `services/zhicore-comment`

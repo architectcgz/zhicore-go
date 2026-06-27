@@ -27,6 +27,7 @@
 ## 目标服务
 
 - `zhicore-gateway`
+- `zhicore-auth`
 - `zhicore-user`
 - `zhicore-content`
 - `zhicore-comment`

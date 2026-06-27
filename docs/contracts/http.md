@@ -57,7 +57,7 @@ Authorization: Bearer <access-token>
 
 规则：
 
-- `Authorization` 只由 Gateway 和明确拥有凭证语义的 User endpoint 解析。普通业务服务不得从 `Authorization` 解析 JWT 作为当前用户身份。
+- `Authorization` 只由 Gateway 和明确拥有凭证语义的 Auth endpoint 解析。普通业务服务不得从 `Authorization` 解析 JWT 作为当前用户身份。
 - Gateway 校验 JWT 后，先移除客户端传入的同名内部身份 header，再重新写入下游可信身份 header。
 - 下游服务只消费 Gateway 注入的可信身份上下文，并把它映射成 application input，例如 `Actor`、`AuthContext` 或 `Principal`。
 - 缺少可信身份上下文的登录态 endpoint 返回认证失败；不得通过解析 `Authorization` 做服务内 fallback。

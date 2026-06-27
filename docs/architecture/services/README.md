@@ -25,6 +25,7 @@ docs/architecture/services/<service>/
 | 服务 | 文档 | 设计图 | 详细图源 | 详细图 |
 | --- | --- | --- | --- | --- |
 | Gateway | `gateway/README.md` | `gateway/service-design.gateway.png` | `gateway/service-detail.drawio` | `gateway/service-detail.png` |
+| Auth | `auth/README.md` | 待补 | 待补 | 待补 |
 | User | `user/README.md` | `user/service-design.user.png` | `user/service-detail.drawio` | `user/service-detail.png` |
 | Content | `content/README.md` | `content/service-design.content.png` | `content/service-detail.drawio` | `content/service-detail.png` |
 | Comment | `comment/README.md` | `comment/service-design.comment.png` | `comment/service-detail.drawio` | `comment/service-detail.png` |
@@ -62,6 +63,7 @@ Content 服务文档已经拆成专题文件：
 | --- | --- |
 | 总览 | `_overview/service-design.overview.png` |
 | Gateway | `gateway/service-design.gateway.png` |
+| Auth | 待补 |
 | User | `user/service-design.user.png` |
 | Content | `content/service-design.content.png` |
 | Comment | `comment/service-design.comment.png` |

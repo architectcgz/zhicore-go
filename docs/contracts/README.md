@@ -55,6 +55,7 @@ Provider 拥有 contract。
 例子：
 
 - Content 提供的查询 DTO 和 typed client 放在 `libs/contracts/clients/content/`。
+- Auth 提供的认证主体、账号状态和角色 DTO / typed client 放在 `libs/contracts/clients/auth/`。
 - User 提供的用户资料 DTO 和 typed client 放在 `libs/contracts/clients/user/`。
 - Content 的领域事件放在 `libs/contracts/events/content/`。
 
