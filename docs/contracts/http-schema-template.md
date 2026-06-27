@@ -1,6 +1,6 @@
 # 服务级 HTTP Schema 模板
 
-本文件定义每个服务在 `services/<service>/api/http/` 下记录字段级 HTTP contract 的格式。通用 HTTP envelope、header、版本化和错误规则分别见 `docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md` 和 `docs/contracts/pagination.md`。
+本文件定义每个服务在 `services/<service>/api/http/` 下记录字段级 HTTP contract 的格式。API 背后设计、HTTP contract 和实现追踪的分层结构见 `docs/contracts/api-design-documentation.md`；通用 HTTP envelope、header、版本化和错误规则分别见 `docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md` 和 `docs/contracts/pagination.md`。
 
 ## 放置规则
 
@@ -26,17 +26,18 @@ services/<service>/api/http/
 
 为某个服务补 HTTP schema 时按以下顺序：
 
-1. 读取该服务文档：`docs/architecture/services/<service>/README.md`。
-2. 读取通用 contract：`docs/contracts/README.md`、`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md`。
-3. 从服务设计、目标产品语义和已发布外部 contract 固定 path、method、字段、响应和错误；需要核对既有行为时再参考 Java controller、DTO、exception handler 和测试。
-4. 将公共规则写入 `services/<service>/api/http/README.md`。
-5. 每个 endpoint 写入独立 `endpoints/<operation>.md`。
-6. 实现或修改 Go handler 前，先补对应 contract test。
-7. 变更后运行最窄相关测试；脚手架或索引变更时运行 `bash scripts/check-structure.sh`。
+1. 读取该服务总览：`docs/architecture/services/<service>/README.md`。
+2. 读取对应模块设计：`docs/architecture/module/<module>/README.md`、`api.md`、`service.md`、`domain.md`、`ports.md` 或 `data-events.md`；既有设计尚未迁移时，读取 `docs/architecture/services/<service>/` 下对应专题文档。
+3. 读取通用 contract：`docs/contracts/README.md`、`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md`。
+4. 从模块设计、目标产品语义和已发布外部 contract 固定 path、method、字段、响应和错误；需要核对既有行为时再参考 Java controller、DTO、exception handler 和测试。
+5. 将公共规则写入 `services/<service>/api/http/README.md`。
+6. 每个 endpoint 写入独立 `endpoints/<operation>.md`。
+7. 实现或修改 Go handler 前，先补对应 contract test。
+8. 变更后运行最窄相关测试；脚手架或索引变更时运行 `bash scripts/check-structure.sh`。
 
 ## 服务 README 模板
 
-“来源”默认列出服务设计、目标 Go schema、Go handler / test 落点；需要承接已发布行为时，可附加 Java controller / DTO / 测试作为参考来源。
+“来源”默认列出服务总览、模块设计、目标 Go schema、Go handler / test 落点；需要承接已发布行为时，可附加 Java controller / DTO / 测试作为参考来源。
 
 ```markdown
 # <service> HTTP Schema
@@ -45,7 +46,8 @@ services/<service>/api/http/
 
 ## 来源
 
-- 服务设计：`docs/architecture/services/<service>/README.md`
+- 服务总览：`docs/architecture/services/<service>/README.md`
+- 模块设计：`docs/architecture/module/<module>/README.md`
 - Go handler：`services/<service>/api/http/...`
 - Go contract test：`services/<service>/...`
 - 参考来源：`../zhicore-microservice/<module>/...`（仅在需要核对既有行为时填写）
@@ -73,14 +75,16 @@ services/<service>/api/http/
 
 ## Endpoint 模板
 
-Endpoint 来源默认列出服务设计、当前 API schema 和 Go handler / test 落点；需要承接已发布行为时，可附加 Java 来源作为参考。
+Endpoint 来源默认列出服务总览、模块设计、当前 API schema 和 Go handler / test 落点；需要承接已发布行为时，可附加 Java 来源作为参考。
 
 ```markdown
 # <operation>
 
 ## 来源
 
-- 服务设计：`docs/architecture/services/<service>/README.md`
+- 服务总览：`docs/architecture/services/<service>/README.md`
+- 模块 API 设计：`docs/architecture/module/<module>/api.md`
+- 模块 service 设计：`docs/architecture/module/<module>/service.md`
 - 当前 API schema：`services/<service>/api/http/README.md`
 - Go handler：`services/<service>/api/http/...`
 - Go contract test：`services/<service>/...`

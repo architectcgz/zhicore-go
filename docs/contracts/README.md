@@ -19,6 +19,7 @@ Contract 包括：
 | 专题 | 文档 | 负责内容 |
 | --- | --- | --- |
 | HTTP | `docs/contracts/http.md` | path、method、header、envelope、版本化和服务级 HTTP schema 放置规则。 |
+| API 设计文档 | `docs/contracts/api-design-documentation.md` | API 背后设计、HTTP contract、endpoint 文档和实现追踪的分层结构。 |
 | HTTP schema 模板 | `docs/contracts/http-schema-template.md` | `services/<service>/api/http/` 下服务级 schema 和 endpoint 文档格式。 |
 | 错误 | `docs/contracts/errors.md` | 对外错误响应、公开错误码、HTTP status 映射和字段级校验错误形态。 |
 | 错误码 | `docs/contracts/error-codes.md` | Go 对外 `body.code` 的项目级错误码表。 |

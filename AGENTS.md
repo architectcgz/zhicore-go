@@ -31,6 +31,7 @@
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
 - 修改单个服务职责、API 族、数据归属、事件、依赖或实现风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
+- 修改模块内部 API 背后设计、application service、domain、ports、数据或事件细节前，先读 `docs/architecture/module/README.md` 和对应模块文档。
 - 修改服务替换实施顺序、既有事实核对流程、服务完成标准或交付切片规则前，先读 `docs/migration/service-migration-workflow.md`。
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
@@ -41,7 +42,8 @@
 - 修改认证、授权、JWT、身份 header、角色、资源权限、Admin 审计、上传安全、外部 URL、敏感输入或 `libs/kit/auth` 前，先读 `docs/architecture/security.md`；涉及密钥时同时读 `docs/architecture/configuration.md`，涉及日志脱敏时同时读 `docs/architecture/observability.md`。
 - 修改内部主键、外部公开 ID、业务编号或发号服务定位前，先读 `docs/architecture/id-strategy.md`。
 - 修改同步 client contract、事件 payload 或对外 API schema 前，先读 `docs/contracts/README.md`。
-- 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md` 和 `docs/contracts/http-schema-template.md`。
+- 修改 API 背后设计闭合关系、服务级 HTTP schema、endpoint 文档结构、API 到 use case 追踪或 contract 状态前，先读 `docs/contracts/api-design-documentation.md`。
+- 修改 HTTP path、method、header、响应 envelope、版本化或服务级 HTTP schema 前，先读 `docs/contracts/http.md`、`docs/contracts/api-design-documentation.md` 和 `docs/contracts/http-schema-template.md`。
 - 修改对外错误响应、公开错误码、HTTP status 映射或字段级校验错误前，先读 `docs/contracts/errors.md` 和 `docs/contracts/error-codes.md`。
 - 修改 Go 服务内部错误分层、底层错误翻译、application 错误映射或错误处置规则前，先读 `docs/architecture/error-handling.md`；涉及日志、trace 或上报字段时同时读 `docs/architecture/observability.md`。
 - 修改 contract 中的时间、ID、枚举、空值、数字、布尔或 JSON 字段命名前，先读 `docs/contracts/data-types.md`；涉及 ID 策略时同时读 `docs/architecture/id-strategy.md`。
