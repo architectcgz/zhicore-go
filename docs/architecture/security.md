@@ -34,7 +34,7 @@
 规则：
 
 - 密码只存 hash，不记录明文、hash 原文或可逆摘要。
-- 登录失败对外返回稳定错误码，不区分“用户不存在”和“密码错误”的内部细节，除非 Java 兼容契约已有明确差异。
+- 登录失败对外返回稳定错误码，不区分“用户不存在”和“密码错误”的内部细节，除非服务级 contract 已明确登记历史差异。
 - 禁用用户、角色变更、密码重置和 token 全量失效必须由 User 提供 command contract；其他服务不能自行修改用户身份状态。
 - refresh token、临时授权 token 或高风险操作 token 不作为资源 ID 使用；编码和加密边界见 `docs/architecture/id-strategy.md`。
 
@@ -54,7 +54,7 @@
 - Gateway 转发给下游的身份 header 必须先清理客户端同名 header，再由 Gateway 重新写入。
 - Gateway 是普通业务 HTTP 请求的唯一 JWT 校验点。下游业务服务不得为了直连、调试或兼容再从 `Authorization` 解析 JWT。
 - Gateway 转发业务请求时不要求下游依赖原始 `Authorization`。如果某个 endpoint 确实需要接收原始凭证，必须在服务级 HTTP contract 中显式登记，并且不得把它当作当前用户身份来源。
-- 认证失败使用 `docs/contracts/error-codes.md` 的认证授权错误码，并保持 Java 兼容响应 envelope。
+- 认证失败使用 `docs/contracts/error-codes.md` 的认证授权错误码，并保持 ZhiCore 响应 envelope。
 - Gateway 可以做入口级限流、CORS、body size 和请求 ID 注入，但不做“文章是否属于当前用户”这类资源权限判断。
 
 ## 身份上下文传播

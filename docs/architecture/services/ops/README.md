@@ -45,7 +45,7 @@ Ops 不拥有业务事实表。
 - Infrastructure：`postgres`、`clients`
 - Runtime：`services/zhicore-ops/internal/ops/runtime/module.go`
 
-## 迁移风险
+## 实现风险
 
 - 把灰度接口迁移到 Go 会引入与当前目标相反的复杂度。
 - Ops 工具若能写业务库，必须通过归属服务 contract 或受控 repair 任务，不能绕过服务边界随意改表。

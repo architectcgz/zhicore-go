@@ -56,9 +56,9 @@ Search 消费：
 - Infrastructure：`es`、`redis`、`rabbitmq`、`clients`
 - Runtime：`services/zhicore-search/internal/search/runtime/module.go`
 
-## 迁移风险
+## 实现风险
 
-- 搜索排序、分页和高亮字段容易影响前端展示，字段级 contract 必须从 Java DTO 提取。
+- 搜索排序、分页和高亮字段容易影响前端展示，字段级 contract 必须由目标 Go schema 固定；需要核对已发布行为时再参考既有 DTO。
 - 索引事件可能乱序，删除事件必须覆盖旧的更新事件。
 - 回源 Content 不能变成每次搜索都同步 N+1 调用。
 

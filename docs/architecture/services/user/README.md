@@ -10,7 +10,7 @@
 
 `zhicore-user` 拥有用户身份、用户资料、角色、关注、拉黑、签到和用户资料摘要查询。
 
-User 不拥有文章、评论、通知或私信。用户主页里“某用户发表的文章”可以作为 User facade 路由存在，但必须委托 Content 查询。
+User 不拥有文章、评论、通知或私信。当前不提供用户文章 facade；用户主页里“某用户发表的文章”直接调用 Content 作者过滤接口。
 
 ## DDD 目标设计
 
@@ -158,7 +158,7 @@ User 领域层优先用值对象表达有业务含义的基础值，避免在业
 
 | 值对象 | 约束 |
 | --- | --- |
-| `Username` | 必填、唯一，长度和字符集按 Java DTO / HTTP contract 提取后固定 |
+| `Username` | 必填、唯一，长度和字符集按服务级 HTTP contract 固定 |
 | `Email` | 必填或兼容 Java 现状的可空语义；作为登录邮箱时必须满足邮箱格式并唯一 |
 | `PasswordHash` | 必填，只保存 hash，不在 domain / logs / events 中暴露明文密码 |
 | `NickName` | 默认取 `Username`；非空更新时最大长度 50 |
@@ -208,13 +208,13 @@ User application 层按命令、查询分层组织 use case。application 拥有
 - `GetStrangerMessageSetting`。
 - `GetCheckInStats`、`GetMonthlyCheckInBitmap`。
 - `ListAdminUsers`。
-- `ListUserPostsFacade`：User facade 路由，必须委托 Content contract，不查询 Content 数据库。
+- 用户文章列表不属于 User 查询用例；调用方直接使用 Content 作者过滤接口。
 
 **命令和查询分离**：
 
 - 命令用例修改状态，返回简单成功/失败、用户 ID 或 token DTO。
 - 查询用例只读取，返回 DTO 或视图模型。
-- 复杂列表、管理端查询和用户文章 facade 不进入领域层。
+- 复杂列表和管理端查询不进入领域层；跨服务聚合查询优先由数据归属服务提供。
 
 ### 错误映射
 
@@ -293,7 +293,7 @@ Ports 放在 `services/zhicore-user/internal/user/ports`，按能力和用例族
 | `UserCacheStore` | 用户详情、简单资料、陌生人消息设置缓存 |
 | `FollowStatsCacheStore` | 关注统计缓存和失效 |
 | `CheckInBitmapStore` | 月度签到 bitmap |
-| `ContentPostClient` | 用户文章 facade 调用 Content |
+| `ContentPostClient` | User 需要读取 Content 事实时调用 Content contract |
 | `FileDeletionClient` | 事务提交后删除旧头像文件引用 |
 | `FileURLResolver` | 如查询响应需要头像 URL，由 adapter 调用 Upload 解析文件 URL |
 
@@ -485,7 +485,7 @@ User 第一轮建议选“注册、登录、更新资料和资料更新事件”
 - `/api/v1/users/{userId}/check-in`：签到、统计、月度记录。
 - `/api/v1/admin/users`：管理端用户查询、禁用、启用、token 失效。
 
-字段级 request/response 需要后续从 Java DTO 提取到 `services/zhicore-user/api/http`。
+字段级 request/response 需要后续按目标 Go schema 固定到 `services/zhicore-user/api/http`；需要核对已发布行为时再参考既有 DTO。
 
 ## 数据归属
 
@@ -605,7 +605,7 @@ Admin 服务不直接导入 User `internal` 包，也不复制用户状态变更
 - Infrastructure：`services/zhicore-user/internal/user/infrastructure`
 - Runtime：`services/zhicore-user/internal/user/runtime/module.go`
 
-## 迁移风险
+## 实现风险
 
 - Java 中部分 ID 依赖 `IdGeneratorFeignClient`；Go 目标不默认迁移该依赖。
 - 用户资料更新会影响 Content 作者快照，必须通过事件和版本号处理，不允许 Content 直接读 User 数据库。
@@ -634,6 +634,6 @@ Admin 服务不直接导入 User `internal` 包，也不复制用户状态变更
 2. **资料版本显式建模**：`profileVersion` 由数据库原子递增，保证 `user.profile.updated` 能被 Content 按版本顺序应用。
 3. **Auth 运行机制不污染领域层**：JWT、Refresh Token 白名单和 Redis 失败策略属于 application / infrastructure。
 4. **关系写模型有明确事务边界**：关注、拉黑和统计修正必须在本地事务内收口。
-5. **User facade 不复制跨服务数据**：用户文章列表只能委托 Content contract。
+5. **User 不复制跨服务数据**：用户文章列表直接走 Content contract，当前不提供 User facade。
 6. **端口按能力分组**：避免把 repository、token、cache、lock、client 混成宽泛 `UserService`。
 7. **分层依赖方向符合 Onion Architecture**：domain 不依赖 HTTP、Redis、PostgreSQL、JWT 或 RabbitMQ。

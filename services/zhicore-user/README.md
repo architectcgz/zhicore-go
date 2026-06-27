@@ -1,6 +1,6 @@
 # zhicore-user
 
-`zhicore-user` 是用户服务的 Go 迁移模块。
+`zhicore-user` 是用户服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -20,7 +20,7 @@
 - `user_check_in_stats`
 - user 服务自己的 `outbox_events`
 
-迁移注意点：
+Go 设计注意点：
 
 - User 不拥有文章、评论、私信、通知或文件资源。
-- `GET /api/v1/users/{userId}/posts` 这类用户中心 facade 可以存在，但必须委托给 Content。
+- 当前不提供 `GET /api/v1/users/{userId}/posts` 这类用户中心文章 facade；用户文章列表直接调用 Content 作者过滤接口。

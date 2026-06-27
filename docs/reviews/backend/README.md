@@ -1,6 +1,6 @@
 # 后端 Review
 
-这里存放 Go 迁移切片的后端 review 证据。
+这里存放 Go 服务交付切片的后端 review 证据。
 
 统一完成标准见 `docs/reviews/done-definition.md`，review 记录格式见 `docs/reviews/README.md`。
 

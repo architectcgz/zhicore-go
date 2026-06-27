@@ -1,6 +1,6 @@
 # zhicore-search
 
-`zhicore-search` 是搜索服务的 Go 迁移模块。
+`zhicore-search` 是搜索服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -13,7 +13,7 @@
 - Elasticsearch index
 - 搜索服务本地的 suggestion/history 存储
 
-迁移注意点：
+Go 设计注意点：
 
 - Search 返回的是派生读模型，文章详情和可见性仍由 Content 决定。
 - RabbitMQ 消费者需要处理重复投递、乱序事件和重建索引场景。

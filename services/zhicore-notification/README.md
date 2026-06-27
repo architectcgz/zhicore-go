@@ -1,6 +1,6 @@
 # zhicore-notification
 
-`zhicore-notification` 是通知服务的 Go 迁移模块。
+`zhicore-notification` 是通知服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -21,7 +21,7 @@
 - `global_announcements`
 - `assistant_messages`
 
-迁移注意点：
+Go 设计注意点：
 
 - Notification 不拥有触发通知的原始用户、文章、评论或私信。
 - 通知 payload 可保存来源快照，但事实仍以来源服务为准。

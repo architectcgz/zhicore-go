@@ -1,6 +1,6 @@
 # zhicore-ranking
 
-`zhicore-ranking` 是排行榜服务的 Go 迁移模块。
+`zhicore-ranking` 是排行榜服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -14,7 +14,7 @@
 - Ranking MongoDB 归档
 - Ranking PostgreSQL ledger/snapshot 表，如果后续正式落库
 
-迁移注意点：
+Go 设计注意点：
 
 - Ranking 拥有分数计算和排序结果，不拥有文章、点赞、收藏、评论、用户或标签。
 - 事件消费必须幂等，避免重复投递造成分数累加错误。

@@ -66,7 +66,7 @@ user.profile.updated
 - producer 有请求或任务上下文时应携带 `requestId` / `traceId`；consumer 必须容忍缺失，不能用它们做幂等、权限或业务分支判断。
 - 落库时 `eventId` 映射到 `event_id`，`occurredAt` 映射到 `occurred_at`，`payloadVersion` 映射到 `payload_version`。
 
-已有 Java 事件迁移时，如果 payload 已被 consumer 使用，先保持语义兼容，再逐步收敛到统一 envelope。
+承接已发布事件时，如果 payload 已被 consumer 使用，先保持语义兼容，再逐步收敛到统一 envelope；Java 事件定义只作为核对历史语义的参考。
 
 ## 可靠性
 

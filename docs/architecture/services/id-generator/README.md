@@ -41,7 +41,7 @@ Go 第一阶段不要求业务服务继续依赖这些接口。是否保留 HTTP
 - Infrastructure：`postgres`、`redis`
 - Runtime：`services/zhicore-id-generator/internal/idgenerator/runtime/module.go`
 
-## 迁移风险
+## 实现风险
 
 - 直接迁移 Java 的 `IdGeneratorFeignClient` 会把所有服务重新耦合到中心发号服务，这和当前 Go ID 决策冲突。
 - 如果对外保留 snowflake 接口，需要明确 worker id 分配、时钟回拨和多实例部署策略。

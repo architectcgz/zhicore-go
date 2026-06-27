@@ -46,7 +46,7 @@
 | `services/<service>/**/*_test.go` | 服务本地 handler、application/use case、domain、repository、adapter、worker、consumer 行为。 |
 | `libs/*/**/*_test.go` | 共享 contract 或 kit 原语，不测试服务私有业务。 |
 | `tests/architecture` | 源码级架构边界检查，例如禁止跨服务导入 `internal`、`libs/kit` 不依赖服务私有包。 |
-| `tests/system/http` | 黑盒 HTTP 场景，验证已迁移服务的外部 API contract 和核心流程。 |
+| `tests/system/http` | 黑盒 HTTP 场景，验证已实现服务的外部 API contract 和核心流程。 |
 | `tests/runtime` | 需要真实服务、容器、端口、PostgreSQL、Redis、RabbitMQ、MongoDB、Elasticsearch 等基础设施的测试。 |
 | `tests/testkit` | 黑盒测试 fixture、builder、HTTP client、断言辅助；不能承载业务规则。 |
 
@@ -75,7 +75,7 @@
 
 - 新 endpoint 必须先有 `services/<service>/api/http/README.md` 和 `endpoints/<operation>.md` schema。
 - Handler test 验证 path、method、请求字段、响应 envelope、`data` 字段、公开错误码和鉴权边界。
-- Java 兼容入口或历史例外必须在 endpoint schema 中写明，并用测试锁定。
+- 历史入口或兼容例外必须在 endpoint schema 中写明，并用测试锁定。
 
 ### Application / use case
 

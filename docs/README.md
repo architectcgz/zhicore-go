@@ -6,7 +6,7 @@
 
 1. 先读 `docs/documentation-rules.md`，确认文档归属和放置规则。
 2. 再通过本索引找到相关事实源。
-3. 修改当前事实前，用 Java 源码、Go 代码、contract、配置、测试或运维记录做核对。
+3. 修改当前事实前，优先核对 Go 设计、Go 代码、contract、配置、测试或运维记录；需要确认既有行为时再参考 Java 源码。
 
 ## 当前事实源
 
@@ -14,7 +14,7 @@
 - `docs/architecture/`：当前服务边界和数据归属决策。
   - `docs/architecture/repository-layout.md`：仓库目录、服务目录模板和 `api` / `internal` 边界。
   - `docs/architecture/service-boundaries.md`：服务边界、数据归属、依赖方向和 contract 放置规则。
-  - `docs/architecture/services/`：各 Go 目标服务的模块级设计、API 族、数据归属、事件和迁移风险。
+  - `docs/architecture/services/`：各 Go 目标服务的模块级设计、API 族、数据归属、事件和实现风险。
   - `docs/architecture/services/<service>/adr/`：服务内架构决策记录，记录难逆、需要复盘、且有真实取舍的决策。
   - `docs/architecture/go-service-design.md`：Go 服务内分层、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
   - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板、密钥处理和配置加载边界。
@@ -33,9 +33,9 @@
   - `docs/contracts/data-types.md`：时间、ID、枚举、空值、数字、布尔和 JSON 字段命名规则。
   - `docs/contracts/pagination.md`：page/cursor 分页、排序、过滤和返回形态。
   - `docs/contracts/events.md`：RabbitMQ 事件 contract、envelope、outbox 和兼容性规则。
-- `docs/migration/`：Java 到 Go 的服务迁移映射、迁移顺序和发布说明。
-  - `docs/migration/java-design-migration.md`：Java 侧设计的保留、改写、废弃和服务迁移盘点。
-  - `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族迁移的事实提取、contract、migration、测试、实现和交付流程。
+- `docs/migration/`：既有实现参考、服务替换顺序和发布说明。
+  - `docs/migration/java-design-migration.md`：既有 Java 设计的参考价值、需要改写的点和废弃项盘点。
+  - `docs/migration/service-migration-workflow.md`：单服务或服务内 API 族实现前的事实核对、contract、migration、测试、实现和交付流程。
 
 ## 流程和历史
 
@@ -43,7 +43,7 @@
   - `docs/reviews/done-definition.md`：交付完成门槛、正式 review 触发条件、finding 分级、验证证据和技术债登记规则。
   - `docs/reviews/quality-gates.md`：本地质量门禁、验证命令选择和未来 CI 最低要求。
   - `docs/reviews/commit-message.md`：提交信息格式、commit-msg hook 和机械检查策略。
-- `docs/todos/debt/`：迁移过程中不能丢失的未解决技术债。
+- `docs/todos/debt/`：Go 服务交付过程中不能丢失的未解决技术债。
 
 ## 部署说明
 

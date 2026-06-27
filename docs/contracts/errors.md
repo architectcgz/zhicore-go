@@ -4,8 +4,8 @@
 
 ## 基本原则
 
-- 迁移阶段保持 Java 外部错误语义兼容。
-- 已有 Java endpoint、controller advice 或 gateway/filter 已经定义的 HTTP status 和 body `code` 是迁移事实源，优先级高于本文件的默认映射表。
+- Go 服务错误 contract 优先由服务级 HTTP schema 和本错误码表定义。
+- 承接已发布接口时，既有 HTTP status 和 body `code` 是外部 contract，优先级高于本文件的默认映射表；Java endpoint、controller advice 或 gateway/filter 只作为核对既有行为的参考来源。
 - 对外错误只暴露稳定错误码、用户可理解消息和必要定位信息。
 - 不暴露 SQL、Redis、RabbitMQ、外部 SDK、堆栈、内部 sentinel 或服务内部包名。
 - 错误码属于 provider；consumer 只能依赖 provider 公布的错误码。
@@ -26,29 +26,29 @@ HTTP API 使用统一 envelope：
 字段规则：
 
 - `code`：公开稳定的数字错误码，属于业务/契约错误码，不等同于 HTTP status。
-- `message`：兼容 Java 当前语义的错误信息。
+- `message`：面向调用方的兜底展示信息；机器分支必须依赖 `code`。
 - `data`：错误响应默认不返回；只有字段级校验错误等明确需要结构化细节时才返回。
 - `timestamp`：Unix epoch milliseconds。
 - `traceId`：有链路 ID 时返回；没有时可省略。
 
 ## `code` 与 HTTP status
 
-响应 body 里的 `code` 是调用方用于业务分支和错误识别的稳定错误码；HTTP status 只表达传输层和粗粒度请求结果。Go 新实现不得为了方便把 HTTP status 直接写入 body `code`，除非对应 Java 既有接口已经把同一个数字作为公开 `code` 暴露，并且服务级 HTTP contract 明确记录这是兼容行为。
+响应 body 里的 `code` 是调用方用于业务分支和错误识别的稳定错误码；HTTP status 只表达传输层和粗粒度请求结果。Go 新实现不得为了方便把 HTTP status 直接写入 body `code`，除非已发布外部接口已经把同一个数字作为公开 `code` 暴露，并且服务级 HTTP contract 明确记录这是兼容行为。
 
-迁移和新增实现按以下顺序选择 body `code`：
+Go 实现按以下顺序选择 body `code`：
 
-1. 对应 Java `ResultCode` 或既有 Java endpoint 实际返回的公开错误码。
+1. 已发布外部接口实际返回、且服务级 contract 明确承接的公开错误码。
 2. 服务级 HTTP contract 中登记的公开错误码。
 3. 本文件的错误码范围分配出来的新业务错误码。
 
 示例：
 
 - 参数校验失败：HTTP status 可以是 `400`，body `code` 应优先使用 `1001`。
-- 未登录：HTTP status 可以是 `401`，body `code` 应优先使用 `2006` 或对应 Java 兼容码。
+- 未登录：HTTP status 可以是 `401`，body `code` 应优先使用 `2006` 或服务级 contract 已登记的既有错误码。
 - 文件类型不允许：HTTP status 可以是 `400`，body `code` 应优先使用 `8002`。
-- 未分类服务端错误：HTTP status 可以是 `500`，body `code` 应优先使用 `1000` 或 Java 兼容的 `500` 例外。
+- 未分类服务端错误：HTTP status 可以是 `500`，body `code` 应优先使用 `1000`；只有服务级 contract 已登记历史例外时才保留 `500` 作为 body `code`。
 
-Java `ResultCode` 中历史上同时包含 `400`、`401`、`404`、`500` 等 HTTP 风格数字和 `1xxx`-`8xxx` 业务错误码。Go 侧不能继续扩大这种混用；保留 HTTP 风格数字只用于兼容已经发布的接口，新服务错误优先使用业务错误码范围。
+历史错误码中同时存在 `400`、`401`、`404`、`500` 等 HTTP 风格数字和 `1xxx`-`8xxx` 业务错误码。Go 侧不能继续扩大这种混用；保留 HTTP 风格数字只用于服务级 contract 已登记的已发布接口，新服务错误优先使用业务错误码范围。
 
 ## 错误码归属
 
@@ -65,23 +65,23 @@ Go 项目公开错误码使用下列范围；完整码值见 `docs/contracts/err
 | `7xxx` | Notification |
 | `8xxx` | Upload |
 
-HTTP status 可以作为粗分类，但不能替代稳定业务错误码。历史接口如果 Java 当前只返回 HTTP status 作为 `code`，Go 迁移必须先保持兼容，并在服务级 HTTP contract 中标记为兼容例外；后续要改成业务码时，作为独立 API 演进任务处理。
+HTTP status 可以作为粗分类，但不能替代稳定业务错误码。已发布接口如果当前只返回 HTTP status 作为 `code`，Go 服务必须在服务级 HTTP contract 中标记为历史例外；后续要改成业务码时，作为独立 API 演进任务处理。
 
-服务内部可以有 `UPLOAD_001` 这类内部错误标识，但除非 Java 外部接口已经暴露，否则不要直接作为公开 `code` 输出。
+服务内部可以有 `UPLOAD_001` 这类内部错误标识，但除非服务级 contract 明确登记，否则不要直接作为公开 `code` 输出。
 
-## HTTP status 兼容优先级
+## HTTP status 确定顺序
 
-迁移已有接口时，按以下顺序确定 HTTP status：
+承接已发布接口时，按以下顺序确定 HTTP status：
 
-1. 对应 Java controller、exception handler、gateway filter 的实际 HTTP status。
-2. 服务级 HTTP contract 中记录的兼容 status。
+1. 服务级 HTTP contract 中记录的既有 status。
+2. 已发布接口实际返回的 status；需要时参考 Java controller、exception handler 或 gateway/filter 核对。
 3. 本文件的默认映射表。
 
-Java common 当前对 `BusinessException` 和 `DomainException` 使用 HTTP `200` + body `code` 表达业务失败；Go 迁移这些接口时必须保持现状。后续如果要改成更标准的 4xx/5xx，必须作为独立 API 演进任务处理。
+已发布接口如果使用 HTTP `200` + body `code` 表达业务失败，Go 服务承接时必须在服务级 HTTP contract 中记录该历史形态。后续如果要改成更标准的 4xx/5xx，必须作为独立 API 演进任务处理。
 
 ## HTTP status 映射
 
-下表只作为新接口或 Java 无明确处理时的默认规则。
+下表只作为新接口或服务级 schema 未明确记录时的默认规则。
 
 | HTTP status | 场景 |
 | --- | --- |
@@ -91,14 +91,14 @@ Java common 当前对 `BusinessException` 和 `DomainException` 使用 HTTP `200
 | `404` | 归属服务确认资源不存在 |
 | `405` | HTTP method 不支持 |
 | `409` | 幂等冲突、重复操作、状态冲突 |
-| `413` | payload 过大、对象存储或文件服务配额超限；例如 Java Upload 的 `QuotaExceededException` |
+| `413` | payload 过大、对象存储或文件服务配额超限 |
 | `429` | 限流 |
 | `500` | 未分类服务端错误 |
 | `503` | 下游依赖不可用、服务降级、超时且可重试 |
 
 ## 参数校验错误
 
-已有接口保持 Java 当前错误响应。新接口如需要字段级错误，可以在 `data` 中返回结构化详情：
+承接已发布接口时保持当前错误响应。新接口如需要字段级错误，可以在 `data` 中返回结构化详情：
 
 ```json
 {
@@ -142,7 +142,7 @@ Java common 当前对 `BusinessException` 和 `DomainException` 使用 HTTP `200
 - `details[].code` 使用稳定英文机器码，前端或 consumer 不能依赖中文文本做分支判断。
 - `details[].messageKey` 可选，用于 i18n；前端应以 `code` 为主建立本地文案映射。
 - `details[].path` 使用稳定 JSON path / dot path，指向请求体里的具体字段或 block。
-- 后端不得把中文用户文案硬编码为协议事实；`message` 只保留 Java 兼容和兜底展示语义。
+- 后端不得把中文用户文案硬编码为协议事实；`message` 只保留兜底展示语义。
 - 单次响应最多返回有限数量的路径级错误，例如 20 个；超过上限时返回 `VALIDATION_ERROR_LIMIT_EXCEEDED`。
 
 ## 外部依赖错误

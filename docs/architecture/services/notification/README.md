@@ -704,7 +704,7 @@ CREATE INDEX idx_consumed_events_expires_at
 
 全局公告、小助手消息、摘要任务表和多通道 provider 不进入前三个最小切片，除非字段级 contract 证明前端首屏必须依赖。公告和小助手归入后续 Announcement / Assistant 切片；如果要做人群广播，再复用 campaign 作为投递计划，不改变公告/小助手自己的数据归属。
 
-## 迁移风险
+## 实现风险
 
 - 高粉作者发布作品不能逐粉丝同步写库，必须使用 campaign + shard + bounded batch。
 - 未读数和聚合状态即使同步维护，也必须提供从 `notifications` 回源重建的 use case，防止历史 bug、手工修复或缓存异常导致的计数问题。

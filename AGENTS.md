@@ -2,10 +2,10 @@
 
 ## 项目概览
 
-- 本仓库是 ZhiCore 后端从 Java 迁移到 Go 的工作区。
-- 当前 Java 实现仍保留在 `../zhicore-microservice`，Java 代码只作为接口和行为事实源；迁移目标不规划 Java/Go 运行时并存。
-- 迁移必须按服务增量推进。除非用户明确要求批量迁移，否则不要一次重写多个服务。
-- 执行单服务迁移或服务内 API 族迁移前，先读 `docs/migration/service-migration-workflow.md`。
+- 本仓库是 ZhiCore Go 后端工作区，目标是按 Go 服务设计重建后端能力。
+- `../zhicore-microservice` 只作为既有业务能力、已发布接口行为和历史数据结构的参考来源；Go 设计文档、Go contract 和 Go 代码才是本仓库事实源。
+- Go 服务必须按服务或明确 API 族增量推进。除非用户明确要求批量处理，否则不要一次重写多个服务。
+- 执行单服务实现或服务内 API 族实现前，先读 `docs/migration/service-migration-workflow.md`，用它核对既有事实来源和交付顺序。
 
 ## 常用命令
 
@@ -24,14 +24,14 @@
 - 每个服务拥有自己的 `go.mod`；不要添加根应用模块。
 - 修改仓库目录布局、服务目录模板、`api/http` / `internal` 落点、脚本入口或机械检查分层前，先读 `docs/architecture/repository-layout.md`。
 - `services/<service>/cmd/server` 只放进程入口和运行时装配。
-- `services/<service>/api/http` 放 HTTP 入站层和外部 API 兼容代码。
+- `services/<service>/api/http` 放 HTTP 入站层、服务级 HTTP schema 和必要的外部 API adapter。
 - `services/<service>/internal` 是服务私有代码，其他服务不得导入。
 - `libs/kit` 只放小而稳定的跨服务技术原语，不放服务特定业务规则。
 - `libs/contracts/events` 放跨服务事件 payload 契约。
 - `libs/contracts/clients` 放服务间同步调用的 typed client 契约。
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
-- 修改单个服务职责、API 族、数据归属、事件、依赖或迁移风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
-- 修改服务迁移实施顺序、Java 事实提取流程、服务迁移完成标准或迁移切片规则前，先读 `docs/migration/service-migration-workflow.md`。
+- 修改单个服务职责、API 族、数据归属、事件、依赖或实现风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
+- 修改服务替换实施顺序、既有事实核对流程、服务完成标准或交付切片规则前，先读 `docs/migration/service-migration-workflow.md`。
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
 - 修改测试策略、测试目录归属、测试分层、验证命令或 test-first 要求前，先读 `docs/architecture/testing.md`。
@@ -52,7 +52,7 @@
 - 修改提交信息格式、commit-msg hook、`harness/policies/commit-message.json`、`scripts/check-commit-message.sh` 或 `scripts/install-githooks.sh` 前，先读 `docs/reviews/commit-message.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
-- 默认保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 属于该例外。
+- 默认不破坏已发布外部 API contract；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把未登记的 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 属于该例外。
 
 ## 服务落点
 
@@ -68,7 +68,7 @@
 - `zhicore-upload` -> `services/zhicore-upload`
 - `zhicore-id-generator` -> `services/zhicore-id-generator`
 - `zhicore-ops` -> `services/zhicore-ops`
-- Java `zhicore-common`、`zhicore-client`、`zhicore-integration` 映射到 `libs/kit` 和 `libs/contracts`，默认不是可部署的 Go 服务。
+- 旧共享模块 `zhicore-common`、`zhicore-client`、`zhicore-integration` 中的稳定技术原语和 contract 参考落到 `libs/kit` 与 `libs/contracts`，默认不是可部署的 Go 服务。
 
 ## 文档
 
@@ -76,7 +76,7 @@
 - 使用 `docs/README.md` 作为文档索引。
 - 新建或初始化 README、docs、部署说明和 agent 规则时，正文默认使用中文；代码标识、包名、协议字段、命令、路径和错误文本保持原文。
 - 只有用户明确要求，或外部规范、上游模板、协议文档必须使用英文时，才为对应文档正文使用英文。
-- 迁移计划和服务迁移实施流程放在 `docs/migration/`。
+- 既有实现参考、服务替换流程和历史映射放在 `docs/migration/`。
 - 正式 review 证据放在 `docs/reviews/`。
 - 交付完成门槛和 review 触发条件见 `docs/reviews/done-definition.md`。
 - 本地质量门禁、验证命令选择和未来 CI 最低要求见 `docs/reviews/quality-gates.md`。

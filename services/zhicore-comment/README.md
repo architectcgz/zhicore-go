@@ -1,6 +1,6 @@
 # zhicore-comment
 
-`zhicore-comment` 是评论服务的 Go 迁移模块。
+`zhicore-comment` 是评论服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -15,7 +15,7 @@
 - `comment_likes`
 - comment 服务自己的 `outbox_events`
 
-迁移注意点：
+Go 设计注意点：
 
 - Comment 拥有评论树，Content 拥有文章。
 - 创建评论前可以调用 Content 验证文章事实。

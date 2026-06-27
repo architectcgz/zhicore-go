@@ -2,11 +2,11 @@
 
 本文件只定义 HTTP 协议层规则。服务级字段 schema 模板见 `docs/contracts/http-schema-template.md`；错误码见 `docs/contracts/errors.md`，时间和 ID 等通用类型见 `docs/contracts/data-types.md`。
 
-## 兼容基线
+## HTTP Contract 基线
 
-迁移阶段默认保留 Java 外部接口，除非服务级 HTTP schema 明确登记为 Go-first API reset。当前 `zhicore-content` 已登记为 Go-first API reset，Content 的 Go HTTP schema 是新事实源，Java 只作为业务能力参考。
+Go HTTP contract 优先由服务级 schema 固定。未登记 Go-first API reset 的服务在替换既有实现时不得破坏已发布外部接口；Java 只作为核对既有行为的参考来源。当前 `zhicore-content` 已登记为 Go-first API reset，Content 的 Go HTTP schema 是新事实源，Java 只作为业务能力参考。
 
-默认兼容迁移需要保留：
+已发布外部接口需要保留：
 
 - path
 - HTTP method
@@ -17,11 +17,11 @@
 - 字段名、字段类型和空值语义
 - 错误码和错误信息语义
 
-需要重做的接口必须作为独立 API 演进任务处理，不能夹在服务迁移里顺手改变。
+需要重做的接口必须作为独立 API 演进任务处理，不能夹在服务实现里顺手改变。
 
 ## 成功响应
 
-HTTP 成功响应使用 ZhiCore 统一 envelope。默认兼容迁移保持 Java `ApiResponse` 形态；Go-first API reset 服务仍使用同一 envelope 语义，但 `data` 字段以服务级 schema 为准：
+HTTP 成功响应使用 ZhiCore 统一 envelope。承接已发布接口的服务保持当前 envelope 语义；Go-first API reset 服务仍使用同一 envelope 语义，但 `data` 字段以服务级 schema 为准：
 
 ```json
 {
@@ -36,15 +36,15 @@ HTTP 成功响应使用 ZhiCore 统一 envelope。默认兼容迁移保持 Java 
 规则：
 
 - 普通成功响应使用 HTTP `200`，不使用 `204`，避免破坏前端对 envelope 的解析。
-- 默认兼容迁移中 `data` 是否出现以 Java 当前行为为准；Go-first API reset 服务按自己的服务级 schema 记录。
+- 承接已发布接口时，`data` 是否出现以服务级 schema 和既有外部行为为准；Go-first API reset 服务按自己的服务级 schema 记录。
 - `timestamp` 使用 Unix epoch milliseconds。
 - `traceId` 有则返回，没有则可省略。
 
 ## 请求
 
 - `Content-Type: application/json` 用于 JSON body。
-- `multipart/form-data` 用于上传。默认兼容迁移字段名保持 Java controller 现状；Go-first API reset 服务按服务级 schema 记录。
-- 默认兼容迁移中 path variable 和 query 参数名保持 Java controller 现状；Go-first API reset 服务按服务级 schema 记录。
+- `multipart/form-data` 用于上传。承接已发布接口时字段名保持既有外部 contract；Go-first API reset 服务按服务级 schema 记录。
+- path variable 和 query 参数名以服务级 schema 为准；承接已发布接口时不得无登记改名。
 - 不用 Gateway 做参数重命名或响应形态转换。
 
 ## 认证和内部身份 Header
@@ -79,7 +79,7 @@ Authorization: Bearer <access-token>
 
 - JSON 响应使用 `Content-Type: application/json; charset=utf-8`。
 - 如果存在请求 ID / trace ID，优先接受 `X-Request-Id` 或 `X-Trace-Id`，响应可回传同名或统一后的 `X-Request-Id`。
-- 鉴权相关 header 保持当前前端约定，不因服务迁移改名。
+- 鉴权相关 header 保持当前前端约定，不因服务内部实现改名。
 
 ## 版本化
 
@@ -89,7 +89,7 @@ Authorization: Bearer <access-token>
 
 - 新增并行 endpoint。
 - 新增版本化 endpoint，例如 `/api/v2/...`。
-- 新增字段并保留旧字段，等所有 consumer 迁移后再独立清理。
+- 新增字段并保留旧字段，等所有 consumer 切换后再独立清理。
 
 ## 服务级 HTTP schema
 

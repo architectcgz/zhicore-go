@@ -4,7 +4,7 @@
 
 ## 放置规则
 
-每个已开始迁移 HTTP API 的服务必须维护：
+每个已开始设计或实现 HTTP API 的服务必须维护：
 
 ```text
 services/<service>/api/http/
@@ -20,7 +20,7 @@ services/<service>/api/http/
 - `<operation>` 使用小写短横线命名，例如 `upload-image.md`、`login.md`、`list-comments.md`。
 - 默认一个文档只记录一个 endpoint。兼容别名 endpoint 可以放在同一文档中，但必须明确主路径和别名路径。
 - 如果某个服务明确登记为 Go-first API reset，且一次设计需要固定完整 API 面，可以使用 `endpoints/<family>.md` 记录一个 API family 或完整服务 API 面；服务 README 必须索引该文件。后续实现单个 handler 时，可以再按 endpoint 拆出更窄文档。
-- 如果 endpoint 尚未从 Java controller / DTO 提取，不要创建“占位完成”的 schema；在服务 README 或迁移文档中记录待提取即可。
+- 如果 endpoint 尚未固定 Go 目标 schema，不要创建“占位完成”的 schema；在服务 README 或后续切片文档中记录待设计即可。
 
 ## 提取流程
 
@@ -28,7 +28,7 @@ services/<service>/api/http/
 
 1. 读取该服务文档：`docs/architecture/services/<service>/README.md`。
 2. 读取通用 contract：`docs/contracts/README.md`、`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md`。
-3. 默认兼容迁移从 Java controller、DTO、exception handler 和测试中提取 path、method、字段、响应和错误；Go-first API reset 服务从服务设计和目标产品语义固定新 schema，Java 只作为业务能力参考。
+3. 从服务设计、目标产品语义和已发布外部 contract 固定 path、method、字段、响应和错误；需要核对既有行为时再参考 Java controller、DTO、exception handler 和测试。
 4. 将公共规则写入 `services/<service>/api/http/README.md`。
 5. 每个 endpoint 写入独立 `endpoints/<operation>.md`。
 6. 实现或修改 Go handler 前，先补对应 contract test。
@@ -36,7 +36,7 @@ services/<service>/api/http/
 
 ## 服务 README 模板
 
-默认兼容迁移可以在“来源”列出 Java controller / DTO / 测试；Go-first API reset 服务应把来源改成服务设计、目标 Go schema 和业务能力参考。
+“来源”默认列出服务设计、目标 Go schema、Go handler / test 落点；需要承接已发布行为时，可附加 Java controller / DTO / 测试作为参考来源。
 
 ```markdown
 # <service> HTTP Schema
@@ -45,10 +45,10 @@ services/<service>/api/http/
 
 ## 来源
 
-- Java controller：`../zhicore-microservice/<module>/src/main/java/...`
-- Java DTO：`../zhicore-microservice/<module>/src/main/java/...`
-- Java 测试：`../zhicore-microservice/<module>/src/test/java/...`
 - 服务设计：`docs/architecture/services/<service>/README.md`
+- Go handler：`services/<service>/api/http/...`
+- Go contract test：`services/<service>/...`
+- 参考来源：`../zhicore-microservice/<module>/...`（仅在需要核对既有行为时填写）
 
 ## 公共规则
 
@@ -73,17 +73,18 @@ services/<service>/api/http/
 
 ## Endpoint 模板
 
-默认兼容迁移可以列出 Java 来源；Go-first API reset endpoint 应把来源改成服务设计、当前 API schema 和 Go handler / test 落点。
+Endpoint 来源默认列出服务设计、当前 API schema 和 Go handler / test 落点；需要承接已发布行为时，可附加 Java 来源作为参考。
 
 ```markdown
 # <operation>
 
 ## 来源
 
-- Java controller：`../zhicore-microservice/<module>/src/main/java/...`
-- Java DTO：`../zhicore-microservice/<module>/src/main/java/...`
-- Java 测试：`../zhicore-microservice/<module>/src/test/java/...`
+- 服务设计：`docs/architecture/services/<service>/README.md`
+- 当前 API schema：`services/<service>/api/http/README.md`
 - Go handler：`services/<service>/api/http/...`
+- Go contract test：`services/<service>/...`
+- 参考来源：`../zhicore-microservice/<module>/...`（仅在需要核对既有行为时填写）
 
 ## 请求
 
@@ -146,7 +147,7 @@ Endpoint 文档状态只允许使用：
 
 | 状态 | 含义 |
 | --- | --- |
-| 草案 | 已从 Java、服务设计或 Go-first API reset 方案提取，但尚未由 Go handler/test 验证。 |
+| 草案 | 已从服务设计、目标 Go schema 或已发布 contract 核对中提取，但尚未由 Go handler/test 验证。 |
 | 已验证 | 已有 Go handler contract test 或 system HTTP test 证明。 |
 | 兼容例外 | 明确保留历史 path、字段、HTTP status 或错误码例外；必须写明原因。 |
-| 废弃候选 | 保留旧入口但计划迁移；必须有替代 endpoint 和删除条件。 |
+| 废弃候选 | 保留旧入口但计划切换；必须有替代 endpoint 和删除条件。 |

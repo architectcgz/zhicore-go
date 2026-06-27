@@ -1,6 +1,6 @@
 # zhicore-message
 
-`zhicore-message` 是私信服务的 Go 迁移模块。
+`zhicore-message` 是私信服务的 Go 目标服务模块。
 
 服务职责：
 
@@ -14,7 +14,7 @@
 - `messages`
 - `message_outbox_task`
 
-迁移注意点：
+Go 设计注意点：
 
 - 私信未读数归 Message，通知未读数归 Notification，两者不能混为一个聚合。
 - 发送私信前可以调用 User 判断拉黑关系、陌生人消息权限和用户摘要。

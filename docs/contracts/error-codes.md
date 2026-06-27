@@ -5,24 +5,21 @@
 ## 来源与定位
 
 - 本文件是 Go 项目公开错误码的事实源。
-- Java `ResultCode` 只作为初始编号和语义参考，路径为 `../zhicore-microservice/zhicore-common/src/main/java/com/zhicore/common/result/ResultCode.java`。
-- Java 响应封装：`../zhicore-microservice/zhicore-common/src/main/java/com/zhicore/common/result/ApiResponse.java`。
-- Java 通用异常映射：`../zhicore-microservice/zhicore-common/src/main/java/com/zhicore/common/exception/GlobalExceptionHandler.java`。
-- Java Upload 内部错误标识：`../zhicore-microservice/zhicore-upload/src/main/java/com/zhicore/upload/exception/ErrorCodes.java`。
+- 既有错误编号和语义可参考 `../zhicore-microservice` 中的 `ResultCode`、`ApiResponse`、`GlobalExceptionHandler` 和 Upload 内部错误标识，但 Go 服务公开错误码以本文件和服务级 HTTP schema 为准。
 
 ## 使用规则
 
 - Go 服务新增或重写 endpoint 时，优先按本文件选择 `body.code`。
-- 只有某个 endpoint 明确要求保持 Java 旧行为时，才在服务级 HTTP schema 中登记兼容例外。
+- 只有某个 endpoint 明确要求承接已发布历史行为时，才在服务级 HTTP schema 中登记兼容例外。
 - 服务级 HTTP schema 必须从本表中选择该服务公开的错误码子集，并补充 endpoint 级触发条件。
 - HTTP status 风格数字只作为历史例外保留；Go 新增错误优先使用 `1xxx` 到 `8xxx` 业务错误码。
-- Upload 的 `UPLOAD_001` 这类字符串是 Java 服务内部错误标识，不作为 Go 对外 `body.code`。
+- Upload 的 `UPLOAD_001` 这类字符串是旧实现内部错误标识，不作为 Go 对外 `body.code`。
 
 ## 范围归属
 
 | 范围 | 归属 | 说明 |
 | --- | --- | --- |
-| `200` | 成功 | Java `ApiResponse.success` 兼容值。 |
+| `200` | 成功 | ZhiCore envelope 成功值。 |
 | `400`-`503` | HTTP status 风格例外码 | 只在服务级 contract 明确登记时使用。 |
 | `1xxx` | 通用错误 | 参数、内部错误、降级、通用业务拒绝。 |
 | `2xxx` | 认证授权 | token、登录、角色、资源访问。 |
@@ -35,7 +32,7 @@
 
 ## HTTP 风格例外码
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `200` | `SUCCESS` | 操作成功 | 成功响应固定值。 |
 | `400` | `BAD_REQUEST` | 请求参数错误 | 不作为 Go 新增错误默认值；参数错误优先用 `1001`。 |
@@ -50,12 +47,12 @@
 
 ## 通用错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `1000` | `INTERNAL_ERROR` | 服务器内部错误 | 未分类内部错误；不要暴露底层错误细节。 |
 | `1001` | `PARAM_ERROR` | 参数校验失败 | 参数缺失、格式错误、枚举非法、分页游标非法等通用参数错误。 |
 | `1002` | `PARAM_MISSING` | 缺少必要参数 | 需要区分“缺少参数”时使用；否则可归并到 `1001`。 |
-| `1003` | `REQUEST_TOO_FREQUENT` | 请求过于频繁 | 业务层频控；网关/Sentinel 限流兼容接口可能仍用 `429`。 |
+| `1003` | `REQUEST_TOO_FREQUENT` | 请求过于频繁 | 业务层频控；网关或限流层的历史接口可能仍用 `429`。 |
 | `1004` | `SERVICE_DEGRADED` | 服务暂时不可用 | 下游降级、fallback、核心依赖短暂不可用。 |
 | `1005` | `DATA_NOT_FOUND` | 数据不存在 | 通用数据不存在；有服务专属 not found 时优先用专属码。 |
 | `1006` | `DATA_ALREADY_EXISTS` | 数据已存在 | 通用重复数据；有服务专属 already exists 时优先用专属码。 |
@@ -64,7 +61,7 @@
 
 ## 认证授权错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `2001` | `TOKEN_INVALID` | Token无效 | token 解析失败、签名无效或 refresh token 无效。 |
 | `2002` | `TOKEN_EXPIRED` | Token已过期 | token 过期。 |
@@ -77,11 +74,11 @@
 
 ## User 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `3001` | `USER_NOT_FOUND` | 用户不存在 | 用户查询、管理、关注、拉黑、签到等目标用户不存在。 |
 | `3002` | `USER_ALREADY_EXISTS` | 用户已存在 | 用户重复创建。 |
-| `3003` | `PASSWORD_ERROR` | 密码错误 | 密码校验失败；登录接口 Java 当前多用 `2003`。 |
+| `3003` | `PASSWORD_ERROR` | 密码错误 | 密码校验失败；登录接口优先按服务级 schema 选择是否归并到 `2003`。 |
 | `3004` | `EMAIL_ALREADY_EXISTS` | 邮箱已被注册 | 注册或资料修改时邮箱冲突。 |
 | `3005` | `USERNAME_ALREADY_EXISTS` | 用户名已被使用 | 注册或资料修改时用户名冲突。 |
 | `3006` | `USER_DISABLED` | 用户已被禁用 | 用户已禁用且不可执行业务操作。 |
@@ -94,7 +91,7 @@
 
 ## Content 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `4001` | `POST_NOT_FOUND` | 文章不存在 | 文章不存在或不可见时的专属错误。 |
 | `4002` | `POST_ALREADY_PUBLISHED` | 文章已发布 | 重复发布。 |
@@ -123,7 +120,7 @@
 
 ## Comment 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `5001` | `COMMENT_NOT_FOUND` | 评论不存在 | 评论不存在。 |
 | `5002` | `COMMENT_ALREADY_DELETED` | 评论已删除 | 操作已删除评论。 |
@@ -136,7 +133,7 @@
 
 ## Message 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `6001` | `MESSAGE_NOT_FOUND` | 消息不存在 | 消息不存在。 |
 | `6002` | `CONVERSATION_NOT_FOUND` | 会话不存在 | 会话不存在或当前用户不可见。 |
@@ -149,13 +146,13 @@
 
 ## Notification 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `7001` | `NOTIFICATION_NOT_FOUND` | 通知不存在 | 通知不存在或当前用户不可见。 |
 
 ## Upload 错误
 
-| code | Java symbol | 默认 message | Go 迁移使用 |
+| code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `8001` | `FILE_TOO_LARGE` | 文件过大 | 文件大小超过业务限制。 |
 | `8002` | `FILE_TYPE_NOT_ALLOWED` | 文件类型不允许 | 文件 MIME type 或扩展名不允许。 |
@@ -163,7 +160,7 @@
 
 ## Upload 内部错误标识
 
-这些标识来自 Java Upload `ErrorCodes`，用于日志、异常分类或内部映射。Go 对外响应不要把这些字符串放进 `body.code`；如需暴露给调用方，必须先映射到上面的数字码并写入服务级 HTTP schema。
+这些标识来自既有 Upload 内部错误分类，用于日志、异常分类或内部映射。Go 对外响应不要把这些字符串放进 `body.code`；如需暴露给调用方，必须先映射到上面的数字码并写入服务级 HTTP schema。
 
 | internal code | 含义 | 建议对外数字码 |
 | --- | --- | --- |

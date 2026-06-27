@@ -51,9 +51,9 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 - **正文使用结构化 blocks，不允许 raw HTML**：blocks 便于媒体引用、字数统计、审核、搜索抽取、AI summary 和 schema migration；raw HTML 会扩大 XSS 和样式污染风险。
 - **链接预览第一阶段不做**：后续如果做，必须由后端异步生成并使用 SSRF-safe fetcher。
 
-## 当前迁移状态
+## 当前设计状态
 
-- 已迁移：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
+- 已明确：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
 - 已设计草案：Content Go-first HTTP contract，见 `services/zhicore-content/api/http/`；该 contract 是 Go 侧新事实源，不承诺兼容 Java path / DTO，且尚未由 Go handler/test 验证。
 - 未完成：完整 migration SQL、服务级行为测试清单、Go handler / application / repository 实现。
 

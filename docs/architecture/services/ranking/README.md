@@ -796,7 +796,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 - HTTP 补 `/api/v1/ranking/posts/hot/candidates` 和 `/posts/hot/details`。
 - 补 Content 批量详情 client、Mongo archive 和月榜冷数据回源。
 
-## 迁移风险
+## 实现风险
 
 - `bucket` flush 如果按整桶总量物化，会重复放大计数；必须使用 `applied_*` 只刷 pending delta。
 - RabbitMQ 没有 RocketMQ `hashKey` 的同等默认语义，可以用 routing key、consistent hash exchange 或 consumer 本地 post 分片降低同一内部 `post_id` 的并发冲突；正确性仍必须容忍重复、乱序和迟到事件。

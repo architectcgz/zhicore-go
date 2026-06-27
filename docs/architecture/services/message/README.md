@@ -74,9 +74,9 @@ Message 生产：
 - Infrastructure：`postgres`、`redis`、`rabbitmq`、`clients`
 - Runtime：`services/zhicore-message/internal/message/runtime/module.go`
 
-## 迁移风险
+## 实现风险
 
-- Java 现状存在“新消息不再沉淀本地 messages 明细，但召回仍依赖本地消息表”的裂缝。Go 迁移必须明确召回真相源。
+- 既有实现存在“新消息不再沉淀本地 messages 明细，但召回仍依赖本地消息表”的裂缝。Go 设计必须明确召回真相源。
 - 历史消息 provider 未接入前，接口可返回空列表，但前端兼容行为必须验证。
 - 私信权限涉及 User 多个事实，不能在 Message 中复制用户关系表。
 

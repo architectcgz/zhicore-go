@@ -4,7 +4,7 @@
 
 ## 定位
 
-Content API 不再按旧 Java path / DTO 做兼容迁移。Java 只作为业务能力参考，用来确认“有哪些文章、草稿、标签、互动、presence、管理端能力”，不作为 Go 对外 contract 的 path、字段或分页形态约束。
+Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Java 只作为业务能力参考，用来确认“有哪些文章、草稿、标签、互动、presence、管理端能力”，不作为 Go 对外 contract 的 path、字段或分页形态约束。
 
 本目录是 Content 对外 HTTP 事实源；字段级详情见 [endpoints/content-api.md](endpoints/content-api.md)。
 
