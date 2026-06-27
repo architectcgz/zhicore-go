@@ -129,6 +129,73 @@ postgres.post.insert
 - route 使用模板，例如 `/api/v1/posts/{id}`，不要使用原始 path。
 - error label 使用稳定错误码或错误分类，不使用动态错误字符串。
 
+指标命名采用 Prometheus 风格语义；如果未来接入其他平台，也要保持同等语义映射：
+
+| 指标 | 类型 | 标签 | 含义 |
+| --- | --- | --- | --- |
+| `zhicore_http_requests_total` | counter | `service`、`env`、`operation`、`method`、`route`、`status`、`errorCode` | HTTP 请求结果计数 |
+| `zhicore_http_request_duration_seconds` | histogram | `service`、`env`、`operation`、`method`、`route` | HTTP 请求耗时 |
+| `zhicore_http_inflight` | gauge | `service`、`env`、`operation`、`method`、`route` | 正在处理的 HTTP 请求数 |
+| `zhicore_client_requests_total` | counter | `service`、`env`、`provider`、`operation`、`status`、`errorCode` | 下游 client 调用结果计数 |
+| `zhicore_client_request_duration_seconds` | histogram | `service`、`env`、`provider`、`operation`、`status` | 下游 client 调用耗时 |
+| `zhicore_client_retries_total` | counter | `service`、`env`、`provider`、`operation`、`reason` | 下游 client retry 次数 |
+| `zhicore_client_circuit_state` | gauge | `service`、`env`、`provider`、`operation` | 熔断状态，`0=closed`、`1=open`、`2=half_open` |
+| `zhicore_client_circuit_open_total` | counter | `service`、`env`、`provider`、`operation`、`reason` | 熔断打开次数 |
+| `zhicore_client_degraded_total` | counter | `service`、`env`、`provider`、`operation`、`strategy` | 降级执行次数 |
+| `zhicore_client_inflight` | gauge | `service`、`env`、`provider`、`operation` | 正在执行的下游调用数 |
+| `zhicore_worker_jobs_total` | counter | `service`、`env`、`worker`、`operation`、`status` | worker / job 处理结果计数 |
+| `zhicore_worker_job_duration_seconds` | histogram | `service`、`env`、`worker`、`operation`、`status` | worker / job 处理耗时 |
+| `zhicore_mq_consumer_lag` | gauge | `service`、`env`、`consumer`、`eventType` | consumer backlog / lag 摘要 |
+| `zhicore_mq_dead_letter_total` | counter | `service`、`env`、`consumer`、`eventType`、`reason` | dead-letter 计数 |
+
+`status` 标签必须使用稳定枚举。下游 client 推荐值：
+
+```text
+success
+timeout
+canceled
+network_error
+rate_limited
+dependency_4xx
+dependency_5xx
+dependency_unavailable
+circuit_open
+degraded
+business_error
+unknown
+```
+
+规则：
+
+- counter 只递增；当前状态使用 gauge。
+- duration 使用 seconds 语义；日志字段可以继续用 `durationMs` 便于人工阅读。
+- histogram bucket 由 exporter 或部署配置决定，但必须覆盖服务 timeout 附近的延迟区间。
+- `errorCode` 没有公开错误码时使用稳定内部分类，例如 `DEPENDENCY_TIMEOUT`，不要使用原始错误文本。
+- retry 指标同时保留每次 attempt 的日志字段和总 retry 次数；最终业务结果仍记录到 `zhicore_client_requests_total`。
+
+## 运行期观测方式
+
+运行期问题按三层观测：
+
+1. 日志定位单次请求或任务：用 `requestId` / `traceId` 串起 Gateway、业务服务、repository、下游 client 和 worker，查看 `provider`、`operation`、`status`、`durationMs`、`attempt`、`errorCode`、`circuitState`、`degradeStrategy`。
+2. Metrics 判断趋势和阈值：按 `service`、`provider`、`operation` 聚合请求量、错误率、timeout rate、retry rate、p95 / p99 latency、熔断打开次数、降级次数和 in-flight。
+3. Trace 还原跨服务路径：当前阶段可以先通过 `X-Request-Id` / `X-Trace-Id` 传播实现；未来接入 OpenTelemetry 时沿用相同 operation 和关联 ID。
+
+最小 dashboard 视图：
+
+- 服务入口：HTTP QPS、错误率、p95 / p99 latency、in-flight，按 `operation` 拆分。
+- 下游依赖：client QPS、错误率、timeout rate、retry rate、p95 / p99 latency，按 `provider + operation` 拆分。
+- resilience：`zhicore_client_circuit_state`、`zhicore_client_circuit_open_total`、`zhicore_client_degraded_total`、`zhicore_client_inflight`。
+- 异步处理：worker 成功 / 失败 / retry / dead-letter、consumer lag、处理耗时。
+
+最小告警信号只定义“应被看见”的事件，不在本文件固化具体平台规则：
+
+- 核心路径 provider 熔断打开。
+- 核心路径出现持续降级或降级次数快速增长。
+- 下游失败率、timeout rate 或 retry rate 持续高于服务 README / 运维配置中记录的阈值。
+- HTTP `5xx`、`SERVICE_DEGRADED` 或 `DEPENDENCY_UNAVAILABLE` 持续出现。
+- worker dead-letter 增加、consumer lag 持续增长或 outbox 长时间无法清空。
+
 ## 脱敏规则
 
 禁止写入日志、metrics label 或 trace attribute：
@@ -173,6 +240,7 @@ postgres.post.insert
 - HTTP 请求完成：method、route、status、durationMs、requestId、traceId、operation。
 - 未知错误、panic、HTTP 5xx：operation、traceId/requestId、errorCode、内部错误摘要。
 - 下游调用：provider、operation、status、durationMs、attempt、errorCode。
+- 熔断和降级：provider、operation、circuitState、degradeStrategy、status、durationMs、requestId、traceId、errorCode。
 - worker / consumer：eventId、eventType、consumer、attempt、durationMs、幂等处理结果。
 - migration / 管理任务执行：命令、目标服务、目标版本、结果；不得记录生产连接串。
 

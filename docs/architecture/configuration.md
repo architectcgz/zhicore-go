@@ -89,7 +89,7 @@ ZHICORE_GATEWAY_JWT_SECRET=...
 
 - 不用“空字符串”隐式表示 optional；可选依赖必须有明确开关或明确的禁用语义。
 - 生产敏感项不能 default；本地开发可在 `local.example.*` 写示例值。
-- 默认 timeout、连接池大小、最大请求体、上传大小上限、分页上限等必须在服务文档或配置模板中可见。
+- 默认 timeout、连接池大小、最大请求体、上传大小上限、分页上限、retry / circuit breaker / max in-flight 等运行期策略必须在服务文档或配置模板中可见。
 - 派生配置不能隐藏失败。例如从 public URL 派生 callback URL 失败时，应返回配置错误。
 - 启动日志可以记录配置摘要，但只能记录脱敏后的值和关键非敏感参数。
 
@@ -139,9 +139,9 @@ ZHICORE_GATEWAY_JWT_SECRET=...
 - Redis：地址、DB、dial/read/write timeout、pool size。
 - RabbitMQ：URL、exchange、queue、routing key、publish confirm timeout、consumer shutdown timeout。
 - MongoDB / Elasticsearch：URL、认证信息、request timeout、index / collection 名称。
-- HTTP client：base URL、timeout、retry policy、可重试错误分类。
+- HTTP client：base URL、timeout、retry policy、可重试错误分类、circuit breaker 参数、max in-flight、降级策略标识。
 - 日志：level、format、service、env；字段语义见 `docs/architecture/observability.md`。
-- worker / consumer：并发数、batch size、poll interval、lease timeout、retry / dead-letter 策略。
+- worker / consumer：并发数、batch size、poll interval、lease timeout、retry / dead-letter 策略、下游调用 resilience policy。
 
 这些值可以有本地开发默认值，但生产依赖地址和凭证必须来自环境注入。
 

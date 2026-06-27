@@ -159,6 +159,34 @@ GET /health/ready
 - 最终失败要按 `docs/architecture/error-handling.md` 的错误处置规则返回、上报或进入补偿。
 - retry / backoff / cancel / pacing 是控制流语义，不能依赖 logger、metrics、trace、debug flag 等可选观测组件是否存在。观测组件只能影响“记录什么”，不能影响“失败后怎么跑”。
 
+## 下游 client resilience policy
+
+每个同步下游 client adapter 必须在 runtime wiring 时声明 resilience policy，不能把 timeout、retry、熔断或降级策略散落在 handler、application 或 repository 中。
+
+policy 至少包含：
+
+- `provider`：下游名称，例如 `zhicore-content`、`postgres`、`rabbitmq`、`file-service`。
+- `operation`：稳定操作名，和日志、metrics、trace 使用同一套命名。
+- `timeout`：单次业务调用总耗时上限；不得超过上游请求 deadline。
+- `retry`：最大尝试次数、退避、jitter 和可重试错误分类。
+- `circuitBreaker`：统计窗口、最小请求数、失败阈值、打开时长和半开探测数。
+- `maxInFlight`：可选但建议配置，防止下游慢调用或重试耗尽本服务 goroutine / 连接池。
+- `degradeStrategy`：由 application 使用的降级策略标识；adapter 只返回错误和观测字段。
+- `idempotency`：写操作是否具备幂等键、唯一约束、outbox / inbox 或状态机保障。
+
+默认基线：
+
+| 调用类型 | timeout | retry | 熔断 | 降级 |
+| --- | --- | --- | --- | --- |
+| 普通只读查询 | `2s` 到 `5s` | 最多 2 次总尝试 | 开启 | application 可选择降级错误、旧缓存或 contract 允许的空结果 |
+| 聚合查询 / facade 查询 | `2s` 到 `5s` | 最多 2 次总尝试 | 开启 | 默认返回降级错误；只有响应 schema 明确支持 partial 时才返回部分结果 |
+| 幂等写操作 | `5s` 到 `10s` | 具备幂等保障时最多 2 次总尝试 | 开启 | 核心写路径返回失败，不伪造成功 |
+| 非幂等写操作 | 按业务配置 | 不重试 | 开启 | 返回失败或进入人工/补偿流程 |
+| outbox publish / consumer 下游调用 | 按 broker / provider 配置 | 按 outbox / consumer retry 策略 | 可开启 | 进入 retry、dead-letter 或补偿 |
+| best-effort 实时提示、通知 fanout | 短 timeout，例如 `100ms` 到 `1s` | 不阻塞主请求重试 | 开启 | 记录日志和 metrics，按业务决定丢弃、延后或单独 retry |
+
+这些默认值不是生产最终答案。服务首次实现必须先有保守默认值和显式配置项，上线或压测后再根据观测结果调整。
+
 ## 后台任务和 goroutine owner
 
 每个 goroutine、worker、consumer、dispatcher、poller 和 reconcile loop 必须先明确 owner：
@@ -188,6 +216,7 @@ panic recovery 只能放在明确 owner 边界内，不新增跨服务通用 `Sa
 - retry policy。
 - 错误分类。
 - 失败计数或指标标签。
+- 熔断状态查询或观测字段。
 
 当某个下游持续失败时：
 
@@ -195,6 +224,58 @@ panic recovery 只能放在明确 owner 边界内，不新增跨服务通用 `Sa
 - 查询类接口可以返回降级错误或明确的空结果，但必须由 application 决定。
 - adapter 不得自行构造业务 DTO 作为降级结果。
 - 降级行为必须可观测，至少有结构化日志和错误计数。
+
+熔断按 `provider + operation` 维度统计；除非同一个 provider 的所有操作共享相同容量和失败域，否则不要用一个全局开关熔断整个 provider。
+
+计入失败率的错误：
+
+- connect refused、DNS / TLS / 网络错误、连接池耗尽。
+- timeout、deadline exceeded、RabbitMQ publish confirm timeout。
+- 下游 HTTP `5xx`、`429` 或明确的资源耗尽 / 限流错误。
+- 下游 client 返回的 `ErrDependencyUnavailable`、`ErrCircuitOpen` 或等价临时不可用错误。
+
+不计入下游熔断失败率的错误：
+
+- 参数错误、权限不足、资源不存在、状态不允许等确定性业务拒绝。
+- 当前请求 context 因客户端断开或上游主动取消而结束；这类错误记录为 `canceled`，不用于判断 provider 健康。
+- 本服务配置错误或序列化错误；这类问题应 fail fast 或作为本服务 bug 处理。
+
+推荐初始熔断参数：
+
+| 参数 | 默认建议 | 说明 |
+| --- | --- | --- |
+| 统计窗口 | `30s` 滚动窗口 | 低 QPS 服务可放宽到 `60s` |
+| 最小请求数 | `20` | 未达到最小样本数不按失败率打开熔断 |
+| 连续失败阈值 | `5` | 低 QPS 或冷启动时避免等待窗口填满 |
+| 失败率阈值 | `50%` | 只统计上面的临时失败分类 |
+| 打开时长 | `30s` | 连续打开可指数退避，最高不超过 `5m`，并记录原因 |
+| 半开探测数 | `3` | 半开只允许少量请求通过 |
+| 恢复条件 | 半开探测全部成功 | 任一探测失败则重新打开 |
+
+熔断统计以一次业务调用的最终结果为主；每次 attempt 仍要记录 metrics，但不要让一次业务调用的多次 retry 把失败率放大成多次独立业务失败。
+
+失败阈值不能等线上事故发生后才第一次设置。真实场景的做法是：
+
+- 首次实现时使用上面的保守默认值，并让所有参数可配置。
+- 压测或灰度期间观察 p95 / p99 latency、timeout rate、retry rate、失败率、熔断打开次数和降级次数。
+- 根据调用方 SLO、下游容量、流量大小和错误预算调参；高流量核心路径可以更快熔断，低流量后台任务需要更高最小样本或连续失败阈值。
+- 如果熔断打开会导致核心业务不可用，应优先缩短 timeout、限制并发和减少 retry，避免雪崩；不要简单把失败率阈值调高来掩盖问题。
+- 参数调整原因应记录在服务 README、配置模板或运维变更记录中。
+
+降级策略只能由 application 选择。允许的策略：
+
+- `fail-fast`：返回公开降级错误，例如 `SERVICE_DEGRADED` 或 provider 对应公开错误码。
+- `stale-cache`：返回明确允许的旧缓存；必须能标记数据时间或在内部日志中记录旧值来源。
+- `partial-response`：只在 HTTP contract 明确支持部分结果时使用。
+- `async-compensation`：主事务完成后副作用失败，进入 outbox、retry、dead-letter 或补偿。
+- `best-effort-skip`：通知、实时提示、非关键统计等可恢复副作用失败时记录并跳过。
+
+禁止的降级：
+
+- 把失败伪装成业务成功。
+- adapter 自行构造空 DTO、空列表或默认值并让 application 误以为下游成功。
+- 对权限、资源归属、支付、写入一致性等核心校验做静默跳过。
+- 在 facade 查询中把 provider 不可用伪装成“用户没有数据”；例如 User facade 获取用户发表文章时，Content 查询失败应暴露为降级错误，而不是返回空列表。
 
 ## 幂等
 
