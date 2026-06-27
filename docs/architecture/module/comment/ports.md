@@ -9,8 +9,10 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 | `CommentCommandRepository` | `Comment` 聚合加载、保存、编辑、软删除、批量软删除回复。 |
 | `CommentFloorAllocator` | 在事务内为指定 `post_id` 分配下一个楼层号。 |
 | `CommentQueryRepository` | 详情、文章评论列表、回复列表、游标分页、增量查询和管理端查询。 |
-| `CommentStatsRepository` | 初始化统计、原子增减点赞数和回复数、读取统计。 |
+| `CommentStatsRepository` | 初始化统计、原子增减回复数、批量应用点赞 delta、读取统计。 |
 | `CommentLikeRepository` | 点赞关系插入、删除、存在性检查和批量状态查询。 |
+| `CommentHotRankRepository` | 初始化顶级评论 HOT 排序行，按 `post_id + like_count DESC + floor ASC` 读取候选，批量更新点赞数。 |
+| `CommentCounterDeltaRepository` | 追加、claim、标记完成或失败点赞计数 delta，供后台 worker 批量聚合。 |
 
 ## 可选端口
 
@@ -27,6 +29,7 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 | `OutboxAdminRepository` | outbox summary、dead retry 和状态流转。 |
 | `Clock` | 时间源和游标时间比较。 |
 | `CursorCodec` | `TIME` / `HOT` 游标编码和解码；具体 codec 落在 application 或 infrastructure，避免 domain 绑定 Base64 兼容细节。 |
+| `CommentCounterDeltaWorker` | 后台批量应用 `comment_counter_deltas`，更新 `comment_stats` 和 `comment_hot_rank`；落点是 infrastructure job，不进入 domain。 |
 
 ## 缓存端口
 
@@ -42,11 +45,20 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 
 | Port | 职责 |
 | --- | --- |
-| `ContentPostClient` | 校验文章存在、可见性、是否允许评论；必要时查询文章作者。 |
+| `ContentPostClient` | 校验文章存在、可见性、是否允许评论；返回 `postAuthorId` 供 `comment.created` 通知事件使用。 |
 | `UserProfileClient` | 获取评论作者摘要、批量用户摘要和用户状态。 |
 | `UserRelationClient` | 判断拉黑关系和互动权限。 |
 | `FileUploadClient` | 上传评论图片和语音，解析文件 URL。 |
 | `RankingClient` | 读取热门文章候选；不拥有 Ranking 分数。 |
+
+## 首个切片端口范围
+
+首个交付切片只锁定创建根评论 / 回复和文章顶级评论传统分页。最小端口集先保持窄接口，`comment_hot_rank` 的读写可以先封装在 command / query repository 内，等 HOT 读模型或 worker 复杂度上升后再拆成独立 `CommentHotRankRepository`：
+
+- 必需端口：`TransactionRunner`、`CommentFloorAllocator`、`CommentCommandRepository`、`CommentQueryRepository`、`CommentStatsRepository`、`OutboxPublisher`、`ContentPostClient`、`UserProfileClient`、`Clock`。
+- 可暂缓端口：`CommentHotRankRepository`、`CommentLikeRepository`、`CommentCounterDeltaRepository`、`CommentCounterDeltaWorker`、缓存 store、`RankingClient`、`FileUploadClient` 和媒体 facade。
+
+`OutboxPublisher` 必须进入首个切片，因为 `comment.created` 是 Content / Notification / Ranking 依赖的关键事实；不要先实现只写业务表、不写 outbox 的临时路径。
 
 ## 端口约束
 

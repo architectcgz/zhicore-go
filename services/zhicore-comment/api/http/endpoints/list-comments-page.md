@@ -35,8 +35,8 @@
 | --- | --- | --- | --- | --- |
 | `page` | int | 否 | `1` | 页码，从 `1` 开始。 |
 | `size` | int | 否 | `20` | 每页大小，范围 `1..100`。 |
-| `sort` | string | 否 | `TIME` | `TIME` 或 `HOT`。`HOT` 公式由 Comment 查询层拥有。 |
-| `includeViewer` | boolean | 否 | `false` | 登录用户可传 `true` 返回 `viewer.liked`；匿名请求传 `true` 按 `false` 处理。 |
+| `sort` | string | 否 | `TIME` | `TIME` 或 `HOT`。第一阶段只提供这两种排序，不额外冗余其他排序枚举。 |
+| `includeViewer` | boolean | 否 | `false` | 登录用户可传 `true` 返回 `viewer.liked`；匿名请求传 `true` 按 `false` 处理。点赞切片实现前，服务可以按 `false` 处理并省略 `viewer`。 |
 
 ## Body / Multipart 字段
 
@@ -100,8 +100,10 @@
 ## 排序、分页和过滤
 
 - Page 分页从 `1` 开始。
-- `TIME` 排序：`createdAt DESC, floor DESC`，保证稳定排序。
-- `HOT` 排序：按 Comment 查询层固定公式排序，必须有稳定 tie-breaker；第一阶段可先落回 `likeCount DESC, createdAt DESC, floor DESC`。
+- `TIME` 排序：`floor DESC`。`floor` 是同一文章内单调递增创建序号，足以作为稳定时间锚点；`createdAt` 只作为展示和审计字段返回。
+- `HOT` 排序：`likeCount DESC, floor ASC`。同点赞数下优先展示更早楼层。
+- `HOT` 查询先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要，避免大范围 `comments + stats` 排序 join。
+- `likeCount` 来自异步更新的读模型，允许短暂最终一致；`viewer.liked` 如果返回，必须以 `comment_likes` 为强一致事实。
 - `size` 最大 `100`。
 - 本 endpoint 不返回回复列表；回复预览如需支持，必须新增字段并在 contract 中登记 `replyLimit`。
 
@@ -110,11 +112,11 @@
 | 项 | 值 |
 | --- | --- |
 | Use case | `ListTopLevelCommentsByPage` |
-| 查询模型 | `CommentQueryRepository` 返回根评论列表和统计；User 批量补作者摘要。 |
-| Ports | `CommentQueryRepository`、`CommentListCacheStore`、`UserProfileClient`、`CommentLikeRepository` / `CommentLikeCacheStore` |
+| 查询模型 | `TIME` 走 `comments(post_id, floor DESC)`；`HOT` 走 `comment_hot_rank(post_id, like_count DESC, floor ASC)` 后批量补评论和统计；User 批量补作者摘要。 |
+| Ports | 首切必需 `CommentQueryRepository`、`UserProfileClient`；缓存和 `CommentLikeRepository` / `CommentLikeCacheStore` 随缓存、点赞切片补齐。 |
 | 事务边界 | 只读查询，不开启业务写事务。 |
 | 事件 | 无。 |
-| 缓存 | 可使用文章顶级评论列表缓存；缓存 miss 时回源 PostgreSQL 并批量补作者摘要。 |
+| 缓存 | 首切可直接回源 PostgreSQL 并批量补作者摘要；后续可加入文章顶级评论列表缓存。 |
 
 ## 测试要求
 

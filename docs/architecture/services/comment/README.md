@@ -15,14 +15,14 @@
 Comment 拥有：
 
 - 评论、回复、评论树、评论状态和删除元数据。
-- 评论文本、评论媒体引用、评论点赞和评论统计。
+- 评论文本、评论媒体引用、评论点赞、评论统计、点赞计数 delta 和顶级评论 HOT 排序读模型。
 - Comment 服务自己的 outbox 事件、首页评论缓存和热门候选本地缓存。
 
 Comment 不拥有：
 
 - 文章、用户资料、文件存储事实、通知收件箱或榜单分数。
 - Admin 审核审计日志；Admin 可以暴露 facade，但删除评论必须委托 Comment mutation。
-- Upload 文件元数据；Comment 只保存展示 / 播放 URL 快照，不保存媒体文件 ID、对象存储路径或 URL 生成规则。
+- Upload 文件元数据、对象存储路径或 URL 生成规则；Comment 只保存系统内媒体文件 ID，展示 / 播放 URL 由读取时解析或缓存派生。
 
 ## 模块设计
 
@@ -35,6 +35,12 @@ Comment 不拥有：
 | `docs/architecture/module/comment/ports.md` | repository、cache、client、event publisher、outbox 和 external adapter 端口归属。 |
 | `docs/architecture/module/comment/data-events.md` | 数据归属、目标 schema 草案、缓存 key、事件 payload 和跨服务一致性。 |
 
+## 设计复盘
+
+| 文档 | 内容 |
+| --- | --- |
+| `decision-log/2026-06-27-comment-stats-hot-rank.md` | 记录 Comment 统计字段、点赞高 QPS、`comments + comment_stats` HOT join 排序和 `comment_hot_rank` 读模型的取舍。 |
+
 ## 目标 API 范围
 
 Comment 服务明确按 Go-first API 重做，不保留以全局 `commentId` 为外部资源 ID 的旧 API 形态。目标 API 以文章为上级资源，用 `(postId, floor)` 定位评论；`postId` 是 Content 对外文章 ID，`floor` 是文章内单调递增楼层号。
@@ -42,7 +48,7 @@ Comment 服务明确按 Go-first API 重做，不保留以全局 `commentId` 为
 | API family | 范围 | HTTP contract |
 | --- | --- | --- |
 | 创建和查询评论 | 创建根评论、传统分页、游标分页、增量补拉、详情、更新、删除 | `services/zhicore-comment/api/http/README.md` |
-| 回复 | 创建回复、回复传统分页、回复游标分页、回复增量补拉 | 待提取 |
+| 回复 | 创建回复已并入 `POST /api/v1/posts/{postId}/comments`；回复传统分页、回复游标分页、回复增量补拉 | 创建回复见 `services/zhicore-comment/api/http/endpoints/create-comment.md`；回复列表待提取 |
 | 点赞 | 点赞、取消点赞、点赞状态、批量点赞状态、点赞数 | 待提取 |
 | 管理 | 管理端查询、管理删除、outbox summary、dead retry | 待提取 |
 | 媒体 facade | 评论图片和语音上传 facade，可由目标前端直接改用 Upload | 待定 |
@@ -55,9 +61,13 @@ Comment 拥有：
 - `comment_stats`
 - `comment_likes`
 - `comment_post_counters`
+- `comment_counter_deltas`
+- `comment_hot_rank`
 - Comment 服务自己的 `outbox_events`
 
-评论图片和语音只保存 Upload / File Service 返回的可展示 / 可播放 CDN URL。文件元数据、对象存储路径、URL 解析和文件删除事实仍归 Upload / File Service。
+评论图片和语音只保存 Upload / File Service 返回的文件 ID，例如 `imageFileIds`、`voiceFileId`。文件元数据、对象存储路径、URL 解析、签名 URL、CDN 规则和文件删除事实仍归 Upload / File Service；Comment response 可以返回可展示 / 可播放 URL，但这些 URL 不是 Comment 的持久化事实。
+
+`post_id` 在 Comment 本地表中保存 Content 对外 `postId` 字符串，不保存 Content 私有数据库主键。Comment 只把它作为 opaque reference 和分区 / 查询条件使用。
 
 ## 跨服务依赖
 
@@ -76,11 +86,12 @@ Comment 拥有：
 - `floor` 是文章内外部定位号，必须在同一 `post_id` 下唯一、单调递增、删除不复用，不能用动态行号或回复列表内序号替代。
 - 回复模型使用 `root_id + parent_id`，不要再引入 `reply_to_comment_id` 或 `reply_to_user_id` 冗余字段。
 - 顶级评论删除会影响所有回复，必须明确批量删除、统计修正和事件 `affectedCount` 语义。
-- 点赞和取消点赞必须用唯一约束和原子计数保护幂等，不要只依赖 Redis。
+- 点赞和取消点赞必须用 `comment_likes(comment_id, user_id)` 唯一约束保护幂等；点赞计数和 HOT 排序通过 `comment_counter_deltas` 异步批量更新 `comment_stats` / `comment_hot_rank`，不要把高 QPS 点赞直接写到 `comments` 或同步更新同一统计行。
+- 顶级评论 HOT 查询不做大范围 `comments + comment_stats` 排序 join；先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取候选，再批量补评论正文、统计和作者摘要。
 - 媒体上传 facade 如果保留，必须明确文件归属不转移，并处理上传成功但评论创建失败的补偿策略。
 
 ## 下一步
 
-1. 以 `services/zhicore-comment/api/http/README.md` 中首批 contract 为准，实现“创建根评论 + 文章评论传统分页查询”。
-2. 先补 domain / application 测试，验证评论内容、楼层分配、Content/User 校验、统计初始化和分页查询。
-3. 再接入 PostgreSQL / HTTP；切片 2 再补删除、点赞、outbox、缓存失效和事件发布。
+1. 以 `services/zhicore-comment/api/http/README.md` 中首批 contract 为准，实现“创建根评论 / 回复 + 文章评论传统分页查询”；`POST` 已有 `parentFloor`，实现不能只支持根评论。
+2. 先补 domain / application 测试，验证评论内容、楼层分配、`parentFloor` 解析、Content/User 校验、统计初始化、回复计数、outbox 写入和分页查询。
+3. 再接入 PostgreSQL / HTTP；切片 2 再补删除、点赞、计数 delta worker、缓存失效和事件发布。

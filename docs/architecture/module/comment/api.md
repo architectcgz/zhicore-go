@@ -43,8 +43,9 @@
 ## 外部定位
 
 - 对外 path 不使用全局 `commentId`；评论资源由 `(postId, floor)` 定位。
-- `postId` 是 Content 的对外文章 ID。Comment application 通过 Content contract 解析或校验后，在本地表中保存内部 `post_id BIGINT` 引用。
+- `postId` 是 Content 的对外文章 ID。Comment application 通过 Content contract 校验文章事实后，在本地表中保存该公开 `postId` 字符串，不保存 Content 内部 `BIGINT` 主键。
 - `floor` 是文章内单调递增楼层号，根评论和回复共享同一序列；删除后不复用、不重排。
+- 创建回复时，`parentFloor` 可以指向根评论或任意回复；application 在同一事务内解析直接父评论，并校验同文章、未删除、根归属正确。
 - 回复列表接口中的 `{floor}` 表示根评论楼层。第一阶段如果传入回复自身楼层，返回参数错误，避免隐式展开带来额外查询和语义混淆。
 
 ## 创建评论流程
@@ -54,14 +55,15 @@ HTTP handler
 -> 解析 postId、Actor、body
 -> CreateComment
 -> ContentPostClient 校验文章存在、可见、允许评论
--> UserProfileClient / UserRelationClient 校验作者状态和互动权限
+-> UserProfileClient 校验作者状态；后续需要拉黑或互动权限时接入 UserRelationClient
 -> TransactionRunner:
      CommentFloorAllocator 分配 floor
      CommentFactory 创建根评论或回复
      CommentCommandRepository 保存 comments
      CommentStatsRepository 初始化统计
+     根评论时初始化 hot rank 行
      回复时 CommentStatsRepository 递增根评论 reply_count
-     OutboxPublisher 写 comment.created
+     OutboxPublisher 写 comment.created，payload 带 postAuthorId、root/parent 楼层和作者事实
 -> 提交后失效列表 / 回复 / 首页缓存
 ```
 
@@ -78,9 +80,11 @@ HTTP handler
 
 - 传统分页用于 Web 固定页码场景，Go-first API 默认 `page` 从 `1` 开始，`size` 必须有上限。
 - 游标分页用于移动端无限滚动，cursor 对外不透明。
-- 增量补拉使用 `afterCreatedAt` 和 `afterFloor` / 内部锚点做稳定排序，避免同一时间戳下漏读或重复读。
-- `TIME` 排序以 `created_at DESC, floor DESC` 或内部 `id DESC` 作为稳定 tie-breaker。
-- `HOT` 排序可以使用点赞数、回复数和时间衰减规则，具体公式必须从 Java 查询 / 缓存实现提取后固定。
+- 增量补拉第一阶段优先使用 `floor` 锚点；`floor` 已经是同一文章内单调递增创建序号，避免同时暴露 `createdAt` 和 `floor` 两套排序锚点。
+- 顶级评论 `TIME` 排序固定为 `floor DESC`。`createdAt` 是展示和审计字段，不作为第一阶段排序锚点。
+- 回复列表排序固定为 `floor ASC`，保证对话从早到晚展开。
+- 顶级评论 `HOT` 排序固定为 `like_count DESC, floor ASC`。`like_count` 来自 `comment_hot_rank` 读模型；同点赞数下优先展示更早楼层。
+- HOT 游标如果后续补齐，必须编码 `likeCount + floor` 两个锚点；如果未来再加入 `createdAt`、时间衰减或其他排序列，cursor 必须同步包含所有排序锚点，不能只编码 `likeCount + id`。
 
 ## 管理和媒体边界
 

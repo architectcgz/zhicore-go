@@ -229,12 +229,16 @@ Provider contract：
 拥有：
 
 - 评论、回复、评论媒体引用、评论状态、评论统计、评论点赞和 Comment 自己的 outbox 事件。
+- 评论楼层计数器、点赞计数异步 delta 台账和顶级评论 HOT 排序读模型。
 
 拥有的表：
 
 - `comments`
 - `comment_stats`
 - `comment_likes`
+- `comment_post_counters`
+- `comment_counter_deltas`
+- `comment_hot_rank`
 - Comment 服务自己的 `outbox_events`
 
 权威查询：
@@ -260,6 +264,7 @@ Provider contract：
 
 - Comment 拥有评论树，Content 拥有文章和文章聚合统计。
 - Comment 事件是更新 Content 文章评论计数的首选方式。
+- `comment_stats` 和 `comment_hot_rank` 是 Comment 拥有的可重建读模型；点赞高频写入以 `comment_likes` 唯一约束作为事实源，以 `comment_counter_deltas` 批量更新计数和 HOT 排序，避免把点赞 QPS 直接打到 `comments` 行锁上。
 
 ### `zhicore-message`
 
@@ -516,7 +521,7 @@ Provider contract：
 | Auth | `accounts`, `account_credentials`, `roles`, `account_roles`, Auth `outbox_events`, Auth Redis refresh token 白名单和 token 失效缓存 |
 | User | `users`, `user_follows`, `user_follow_stats`, `user_blocks`, `user_check_ins`, `user_check_in_stats`, User `outbox_events` |
 | Content | `posts`, `post_stats`, `post_likes`, `post_favorites`, `categories`, `tags`, `post_tags`, `tag_stats`, `scheduled_publish_event`, `outbox_event`, `outbox_retry_audit`, `consumed_events`, `domain_event_task`, Content MongoDB projection |
-| Comment | `comments`, `comment_stats`, `comment_likes`, Comment `outbox_events` |
+| Comment | `comments`, `comment_stats`, `comment_likes`, `comment_post_counters`, `comment_counter_deltas`, `comment_hot_rank`, Comment `outbox_events` |
 | Message | `conversations`, `messages`, `message_outbox_task` |
 | Notification | `notifications`, `notification_group_state`, `notification_campaign`, `notification_campaign_shard`, `notification_delivery`, `notification_user_preference`, `notification_user_dnd`, `notification_author_subscription`, `global_announcements`, `assistant_messages` |
 | Admin | `reports`, `audit_logs` |
@@ -600,7 +605,7 @@ Go 目标消息模型使用 RabbitMQ：
 | 账号注册、账号禁用、角色变更 | Auth | `auth.account.registered`, `auth.account.disabled`, `auth.role.changed` | Java User auth 能力抽离 |
 | 用户资料创建、关注、取消关注、资料更新 | User | `user.profile.created`, `user.followed`, `user.unfollowed`, `user.profile.updated` | `ZhiCore-user-events` |
 | 文章发布、更新、删除、标签更新、点赞、取消点赞、收藏、取消收藏、浏览 | Content | `content.post.published`, `content.post.updated`, `content.post.deleted`, `content.post.tags.updated`, `content.post.liked`, `content.post.unliked`, `content.post.favorited`, `content.post.unfavorited`, `content.post.viewed` | `ZhiCore-post-events` |
-| 评论创建、删除、点赞 | Comment | `comment.created`, `comment.deleted`, `comment.liked` | `ZhiCore-comment-events` |
+| 评论创建、删除、点赞、取消点赞 | Comment | `comment.created`, `comment.deleted`, `comment.liked`, `comment.unliked` | `ZhiCore-comment-events` |
 | 私信发送、已读 | Message | `message.sent`, `message.read` | `ZhiCore-message-events` |
 | 通知实时 fanout | Notification | `notification.realtime.comment_stream`, `notification.realtime.user_notification`, `notification.realtime.unread_count` | `ZhiCore-notification-events` |
 

@@ -40,13 +40,15 @@
 | --- | --- | --- | --- | --- |
 | `content` | string | 否 | 可省略；省略时必须有图片或语音 | 评论文本，最多 2000 字；服务端 trim 后判断空白。 |
 | `parentFloor` | int64 | 否 | 省略表示创建根评论 | 被回复评论的文章内楼层。传入时创建回复；被回复评论必须存在、未删除且属于同一 `postId`。 |
-| `imageUrls` | string[] | 否 | 省略或空数组表示无图片 | 图片 CDN / 可展示 URL，最多 9 个；语音评论不能同时传图片。 |
-| `voiceUrl` | string | 否 | 省略表示无语音 | 语音 CDN / 可播放 URL；不能与 `imageUrls` 同时存在。 |
-| `voiceDuration` | int | 否 | `voiceUrl` 为空时必须省略 | 语音时长秒数；`voiceUrl` 非空时必须为正数，第一阶段上限按 Upload contract 固定为 60 秒候选值。 |
+| `imageFileIds` | string[] | 否 | 省略或空数组表示无图片 | 图片文件引用，最多 9 个；语音评论不能同时传图片。 |
+| `voiceFileId` | string | 否 | 省略表示无语音 | 语音文件引用；不能与 `imageFileIds` 同时存在。 |
+| `voiceDuration` | int | 否 | `voiceFileId` 为空时必须省略 | 语音时长秒数；`voiceFileId` 非空时必须为正数，第一阶段上限按 Upload contract 固定为 60 秒候选值。 |
 
-评论整体必须至少包含 `content`、`imageUrls` 或 `voiceUrl` 中的一项。
+评论整体必须至少包含 `content`、`imageFileIds` 或 `voiceFileId` 中的一项。
 
-`imageUrls` 和 `voiceUrl` 必须是可展示或可播放的绝对 `http` / `https` 地址，通常为 Upload / File Service 返回的 CDN URL；Comment 不接受媒体文件 ID、对象存储 key 或相对路径。
+`imageFileIds` 和 `voiceFileId` 必须是 Upload / File Service 返回的 opaque file ID。Comment 不接受系统内媒体的 CDN URL、对象存储 key、签名 URL 或相对路径作为写入事实；读取响应可以返回派生的 `imageUrls` / `voiceUrl`。
+
+`parentFloor` 可以指向根评论或任意回复。application 必须在同一事务内解析直接父评论，推导所属根评论，并校验同文章、未删除、根归属正确。
 
 ## 成功响应 `data`
 
@@ -77,7 +79,7 @@
 
 | code | HTTP status | message 语义 | 触发条件 |
 | --- | --- | --- | --- |
-| `1001` | `400` | 参数校验失败 | `postId` 格式非法、`parentFloor` 非正数、`imageUrls` 数量超过 9、URL 格式非法、`voiceDuration` 非法、图片和语音同时存在。 |
+| `1001` | `400` | 参数校验失败 | `postId` 格式非法、`parentFloor` 非正数、`imageFileIds` 数量超过 9、文件 ID 格式非法、`voiceDuration` 非法、图片和语音同时存在。 |
 | `1004` | `503` | 服务暂时不可用 | Content / User / PostgreSQL / outbox 依赖不可用。 |
 | `2006` | `401` | 请先登录 | 缺少 Gateway 注入的 `X-User-Id`。 |
 | `4001` | `404` | 文章不存在 | Content 返回文章不存在、不可见或不可评论。 |
@@ -104,13 +106,13 @@
 | --- | --- |
 | Use case | `CreateComment` / `CreateReply` |
 | 聚合 | `Comment`、`CommentStats` |
-| Ports | `ContentPostClient`、`UserProfileClient`、`UserRelationClient`、`CommentFloorAllocator`、`CommentCommandRepository`、`CommentStatsRepository`、`OutboxPublisher`、`TransactionRunner` |
-| 事务边界 | 分配 `floor`、写 `comments`、初始化统计、回复时递增根评论回复数、写 `comment.created` outbox 在同一 PostgreSQL 事务内完成。 |
-| 事件 | `comment.created`，关键事件，必须进入 producer outbox。 |
+| Ports | `ContentPostClient`、`UserProfileClient`、`CommentFloorAllocator`、`CommentCommandRepository`、`CommentStatsRepository`、`OutboxPublisher`、`TransactionRunner`、`Clock` |
+| 事务边界 | 分配 `floor`、写 `comments`、初始化统计、根评论初始化 `comment_hot_rank`、回复时递增根评论回复数、写 `comment.created` outbox 在同一 PostgreSQL 事务内完成。 |
+| 事件 | `comment.created`，关键事件，必须进入 producer outbox；payload 必须包含 `postAuthorId`，回复时包含 `rootFloor/rootAuthorId`、`parentFloor/parentAuthorId`。 |
 | 缓存 | 提交后失效文章评论列表；回复时额外失效根评论回复列表和根评论统计。 |
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖登录态缺失、空内容、文本过长、图片 URL 数量、图片 URL 格式、语音 URL 格式、语音图片互斥、父评论不存在、父评论已删除、Content 校验失败和成功响应。
+- Handler contract test：待补，覆盖登录态缺失、空内容、文本过长、图片文件引用数量、图片文件引用格式、语音文件引用格式、语音图片互斥、父评论不存在、父评论已删除、Content 校验失败和成功响应。
 - Application test：待补，覆盖 `floor` 分配、根评论创建、回复创建、统计初始化、outbox 写入和缓存失效语义。
 - System HTTP test：待补。
