@@ -11,15 +11,6 @@ Create the decision log before the first plan or design question. If the user gi
 
 Ask the questions one at a time. Wait for feedback on each question before continuing.
 
-Whenever a question is resolved, immediately append the decision to the decision log before asking the next question. Do not batch decisions for later. Use concise Markdown entries:
-
-```md
-## {Short decision title}
-
-- Question: {the question that was resolved}
-- Decision: {the agreed answer}
-- Rationale: {why this answer was chosen}
-- Follow-up: {remaining dependency, or "None"}
-```
+Whenever a question is resolved, immediately append the decision to the decision log before asking the next question. Do not batch decisions for later. Use the table format in `references/decision-log-table.md` unless the user asks for another shape.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
