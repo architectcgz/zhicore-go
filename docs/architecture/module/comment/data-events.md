@@ -8,10 +8,12 @@ Comment 拥有：
 
 - `comments`
 - `comment_stats`
+- `comment_post_stats`
 - `comment_likes`
 - `comment_post_counters`
 - `comment_counter_deltas`
 - `comment_hot_rank`
+- `comment_recommended_rank`
 - Comment 服务自己的 `outbox_events`
 
 评论图片只保存 Upload / File Service 返回的图片文件 ID；语音只保存语音文件 ID。可展示图片 URL 和可播放语音 URL 由查询时解析或缓存派生，不作为 Comment 持久化事实。文件元数据、对象存储路径、签名 URL、CDN 规则和文件删除事实归 Upload / File Service。
@@ -36,13 +38,18 @@ CREATE TABLE comments (
   voice_duration INTEGER NULL,
   status VARCHAR(32) NOT NULL,
   deleted_by BIGINT NULL,
+  deleted_by_role VARCHAR(32) NULL,
   delete_reason VARCHAR(500) NULL,
   deleted_at TIMESTAMPTZ NULL,
+  edited_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT uq_comments_post_floor UNIQUE (post_id, floor),
   CONSTRAINT ck_comments_floor_positive CHECK (floor > 0),
   CONSTRAINT ck_comments_status CHECK (status IN ('NORMAL', 'DELETED')),
+  CONSTRAINT ck_comments_deleted_by_role CHECK (
+    deleted_by_role IS NULL OR deleted_by_role IN ('AUTHOR', 'ADMIN')
+  ),
   CONSTRAINT ck_comments_root_parent_pair CHECK (
     (root_id IS NULL AND parent_id IS NULL)
     OR (root_id IS NOT NULL AND parent_id IS NOT NULL)
@@ -83,6 +90,8 @@ CREATE INDEX ix_comments_root_replies_time
 
 `root_id` 和 `parent_id` 可以加服务内自引用外键，也可以先只用索引和 repository 校验保护，取决于 migration 阶段对软删除、导入顺序和批量修复的要求。无论是否加外键，application / repository 都必须在创建回复的事务内校验根评论和直接父评论属于同一 `post_id`、父评论未删除、根评论确实是顶级评论，并且父评论属于该根评论树。
 
+`edited_at` 表示用户可见的最后编辑时间，不保存完整编辑历史。删除评论保留 `edited_at`，普通用户接口不返回已删除评论；Admin 查询可见删除元数据和编辑元数据。
+
 ## `comment_post_counters` schema 草案
 
 ```sql
@@ -104,13 +113,42 @@ RETURNING next_floor - 1 AS floor;
 
 首次评论可用 UPSERT 初始化 counter。`floor` 一旦分配，即使评论删除也不复用。
 
+`comment_post_counters` 是普通表，参与业务事务回滚。`floor` 分配必须在本地父评论 / 树结构校验通过后执行；失败请求不消耗楼层号。不要使用 PostgreSQL sequence 作为文章内楼层号。
+
+## `comment_post_stats` schema 草案
+
+`comment_post_stats` 是 Comment 拥有的文章级评论统计事实源。Content 的 `post_stats.comment_count` 是消费 Comment 事件后的副本，允许短暂滞后。
+
+```sql
+CREATE TABLE comment_post_stats (
+  post_id VARCHAR(32) PRIMARY KEY,
+  total_comments BIGINT NOT NULL DEFAULT 0,
+  total_top_level_comments BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT ck_comment_post_stats_total_comments_non_negative CHECK (total_comments >= 0),
+  CONSTRAINT ck_comment_post_stats_top_level_non_negative CHECK (total_top_level_comments >= 0),
+  CONSTRAINT ck_comment_post_stats_top_level_le_total CHECK (total_top_level_comments <= total_comments)
+);
+```
+
+初始化和维护语义：
+
+- 第一次创建评论时 UPSERT 惰性创建；文章无评论时可以没有行，查询返回零值。
+- 创建根评论：`total_comments +1`、`total_top_level_comments +1`。
+- 创建回复：`total_comments +1`。
+- 删除根评论子树：`total_comments -= affectedCount`、`total_top_level_comments -1`。
+- 删除回复子树：`total_comments -= affectedCount`。
+- 计数归零后保留零值行，不物理删除。
+- `COUNT(*) WHERE post_id = ?` 只作为 `RebuildFromQuery` / Ops 对账修复工具，不作为普通列表查询路径。
+
 ## 统计、点赞和计数 delta 表
 
 `comment_stats`：
 
 - `comment_id` 唯一，引用 `comments.id`。
 - `like_count`、`reply_count` 必须非负。
-- `reply_count` 在创建 / 删除回复事务内同步增减；`like_count` 由 `comment_counter_deltas` 后台批量聚合更新。
+- `reply_count` 表示根评论下所有未删除后代回复总数。它在创建 / 删除回复子树事务内强一致增减，不接受最终一致。
+- `like_count` 是历史点赞数，保留已删除评论的历史点赞统计；它由 `comment_counter_deltas` 后台批量聚合更新，允许短暂最终一致。
 - `RebuildFromQuery` 可以从 `comment_likes` 和 `comments` 重建统计。
 
 ```sql
@@ -139,7 +177,7 @@ CREATE TABLE comment_likes (
 );
 ```
 
-`comment_counter_deltas` 第一阶段只记录点赞计数变化：
+`comment_counter_deltas` 当前只记录点赞计数变化：
 
 ```sql
 CREATE TABLE comment_counter_deltas (
@@ -165,9 +203,9 @@ CREATE INDEX ix_comment_counter_deltas_pending
   WHERE status IN ('PENDING', 'FAILED');
 ```
 
-worker 按批次 claim `PENDING` delta，按 `comment_id` 聚合后更新 `comment_stats.like_count`。如果目标评论是顶级评论，同步更新 `comment_hot_rank.like_count`。delta 表是可重试台账，不是长期审计表；统计漂移时以 `comment_likes` 作为事实源重建。
+worker 按批次 claim `PENDING` delta，按 `comment_id` 聚合后更新 `comment_stats.like_count`。如果目标评论是顶级评论，同步更新 `comment_hot_rank.like_count` 和 `comment_recommended_rank.like_count/recommended_score`。delta 表是可重试台账，不是长期审计表；统计漂移时以 `comment_likes` 作为事实源重建。
 
-如果未来回复创建 QPS 也成为瓶颈，可以把 `reply_count` 改为同一 delta 机制；第一阶段不提前冗余，回复数仍在创建 / 删除回复事务内同步维护。
+如果未来回复创建 QPS 也成为瓶颈，可以把 `reply_count` 改为同一 delta 机制；当前不提前冗余，回复数仍在创建 / 删除回复事务内同步维护。
 
 ## HOT 排序读模型
 
@@ -202,6 +240,52 @@ comment_hot_rank 按 post_id + like_count DESC + floor ASC 取一页 comment_id
 ```
 
 这样排序发生在窄读模型索引上，后续补数据只对一页结果做批量读取。
+
+## RECOMMENDED 排序读模型
+
+`comment_recommended_rank` 只保存顶级评论默认评论流的排序锚点。它和 `comment_hot_rank` 分表维护，避免严格 HOT 和推荐流语义混杂：
+
+```sql
+CREATE TABLE comment_recommended_rank (
+  comment_id BIGINT PRIMARY KEY,
+  post_id VARCHAR(32) NOT NULL,
+  floor BIGINT NOT NULL,
+  like_count BIGINT NOT NULL DEFAULT 0,
+  freshness_tier VARCHAR(32) NOT NULL,
+  recommended_score BIGINT NOT NULL DEFAULT 0,
+  next_decay_at TIMESTAMPTZ NULL,
+  visible BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_comment_recommended_rank_post_floor UNIQUE (post_id, floor),
+  CONSTRAINT ck_comment_recommended_rank_like_count_non_negative CHECK (like_count >= 0)
+);
+
+CREATE INDEX ix_comment_recommended_rank_post
+  ON comment_recommended_rank (post_id, recommended_score DESC, floor DESC)
+  WHERE visible = TRUE;
+
+CREATE INDEX ix_comment_recommended_rank_decay
+  ON comment_recommended_rank (next_decay_at)
+  WHERE visible = TRUE AND next_decay_at IS NOT NULL;
+```
+
+首版推荐分：
+
+```text
+recommendedScore = likeCount * 100 + freshnessBoost
+```
+
+`freshnessBoost` 只给新根评论并随时间衰减，例如 10 分钟内 80、1 小时内 40、6 小时内 10，之后为 0。`RECOMMENDED` 查询按 `recommended_score DESC, floor DESC` 取候选。`HOT` 仍严格按 `like_count DESC, floor ASC`。
+
+更新规则：
+
+- 根评论创建时插入 `comment_recommended_rank`。
+- 点赞 delta worker 更新顶级评论 `like_count` 后重算 `recommended_score`。
+- decay / recompute job 按 `next_decay_at <= now` claim 一批行，更新 `freshness_tier`、`recommended_score` 和下一次衰减时间。
+- 删除顶级评论时标记 `visible=false`。
+- 多实例 decay job 必须使用 `SELECT ... FOR UPDATE SKIP LOCKED`、Redis 分布式锁或等价 claim 机制，避免重复重算同一批行。
+
+回复不进入 `comment_hot_rank` 或 `comment_recommended_rank`。回复列表首版在单个根评论范围内 join `comment_stats`，默认按 `like_count DESC, floor ASC` 排序；可选 `TIME` 使用 `floor ASC`。
 
 ## Outbox 表
 
@@ -246,6 +330,7 @@ comment_hot_rank 按 post_id + like_count DESC + floor ASC 取一页 comment_id
 | 文章评论数 | `comment:post:{postId}:count` |
 | 文章顶级评论时间排序 | `comment:post:{postId}:top:time` |
 | 文章顶级评论热度排序 | `comment:post:{postId}:top:hot` |
+| 文章顶级评论推荐排序 | `comment:post:{postId}:top:recommended` |
 | 根评论回复列表 | `comment:{rootId}:replies` |
 | 首页评论快照 | `comment:post:{postId}:homepage:{sort}:{size}:{replyLimit}` |
 | Ranking 热门候选 | `comment:ranking:posts:hot:candidates` |
@@ -263,12 +348,12 @@ comment_hot_rank 按 post_id + like_count DESC + floor ASC 取一页 comment_id
 
 集成事件是跨服务 contract，必须放到 `libs/contracts/events/comment` 后才能被其他服务稳定依赖。本文只固定语义方向，不替代字段级 contract。
 
-集成事件中的 `commentId` 是 Comment 内部 `comments.id` 的跨服务 opaque reference，用于 consumer 幂等、通知、统计和热度 ledger；对外 HTTP 仍以 `(postId, floor)` 定位评论。
+集成事件中的 `commentId` 是 Comment 内部 `comments.id` 的跨服务 opaque reference，用于 consumer 幂等、通知、统计和热度 ledger；对外 HTTP 仍以 `(postId, floor)` 定位评论。事件中的 `authorId`、`postAuthorId`、`commentAuthorId`、`likedBy`、`deletedBy` 等用户字段是 User 内部 `UserID` opaque reference，不是 User `publicId`。Comment 事件默认不携带 User `publicId`。
 
 | 事件 | 触发用例 | 主要 payload | 当前 / 目标 consumer | outbox 要求 |
 | --- | --- | --- | --- | --- |
 | `comment.created` | `CreateComment` / `CreateReply` | `commentId`、`postId`、`postAuthorId`、`floor`、`authorId`、`rootId/rootFloor/rootAuthorId`、`parentId/parentFloor/parentAuthorId`、`createdAt` | Content、Notification、Ranking | 关键事件，使用 producer outbox |
-| `comment.deleted` | `DeleteComment`、`AdminDeleteComment` | `commentId`、`postId`、`floor`、`rootId`、`rootFloor`、`authorId`、`deletedBy`、`deleteReason`、`deletedAt`、`isRoot`、`affectedCount` | Content、Ranking、Notification | 关键事件，使用 producer outbox |
+| `comment.deleted` | `DeleteComment`、`AdminDeleteComment` | `commentId`、`postId`、`floor`、`rootId`、`rootFloor`、`authorId`、`deletedBy`、`deletedByRole`、`deleteReason`、`deletedAt`、`isRoot`、`affectedCount` | Content、Ranking、Notification | 关键事件，使用 producer outbox |
 | `comment.liked` | `LikeComment` | `commentId`、`postId`、`floor`、`commentAuthorId`、`likedBy`、`occurredAt` | Notification、Ranking | 关键事件，使用 producer outbox |
 | `comment.unliked` | `UnlikeComment` | `commentId`、`postId`、`floor`、`commentAuthorId`、`unlikedBy`、`occurredAt` | Ranking | 关键事件，使用 producer outbox |
 
@@ -302,6 +387,8 @@ comment_hot_rank 按 post_id + like_count DESC + floor ASC 取一页 comment_id
 ```
 
 `comment.created` 首版 payload 必须带足 Notification 创建通知所需的稳定事实：文章作者 `postAuthorId`，以及回复场景下的 `rootFloor/rootAuthorId` 和 `parentFloor/parentAuthorId`。Notification 不应为了构造一条评论通知再同步回查 Comment 或 Content；回查只能作为修复或降级路径。
+
+`comment.deleted` 对删除任意评论节点只发送一条事件。`affectedCount` 表示本次实际从 `NORMAL` 变为 `DELETED` 的评论数量；删除根评论或任意中间回复会软删除整棵子树。Content / Ranking 按 `-affectedCount` 更新评论指标。重复删除已删除评论不得再次写 outbox 或扣统计。
 
 ## Consumer 归属
 

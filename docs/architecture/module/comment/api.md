@@ -12,26 +12,25 @@
 | 删除评论 | 作者 / 管理员 | 普通用户只能删除自己的评论；管理员删除必须携带操作者。 |
 | 点赞 / 取消点赞 | 登录用户 | 已删除评论不能点赞；重复操作按目标 contract 幂等成功。 |
 | 管理端查询 / 删除 / outbox 运维 | 管理员 | 需要 `X-User-Id` 和管理员角色。 |
-| 媒体上传 facade | 登录用户 | 只是转发 Upload / File Service，不转移文件事实归属。 |
 
-客户端伪造的 `X-User-*` header 必须由 Gateway 清理后重新注入。Comment handler 不从 request body 接收当前操作者 `userId`。
+客户端伪造的 `X-User-*` header 必须由 Gateway 清理后重新注入。Gateway 注入的 `X-User-Id` 是 User 内部 `UserID`，Comment handler 将其解析为 application `Actor.UserID`，不从 request body 接收当前操作者 `userId`。HTTP 响应中的作者摘要使用 User `publicId`，不暴露内部 `UserID`。
 
 ## Use Case 追踪
 
 | Endpoint | Use case | 主要副作用 |
 | --- | --- | --- |
-| `POST /api/v1/posts/{postId}/comments` | `CreateComment` / `CreateReply` | 写 `comments`、初始化 `comment_stats`、回复时递增根评论回复数、写 `comment.created` outbox、失效列表缓存。 |
+| `POST /api/v1/posts/{postId}/comments` | `CreateComment` / `CreateReply` | 写 `comments`、初始化 `comment_stats`、维护 `comment_post_stats`、根评论初始化 rank 行、回复时递增根评论回复数、写 `comment.created` outbox、失效列表缓存。 |
 | `GET /api/v1/posts/{postId}/comments/page` | `ListTopLevelCommentsByPage` | 无业务写入；可读取列表缓存和作者摘要。 |
 | `GET /api/v1/posts/{postId}/comments/cursor` | `ListTopLevelCommentsByCursor` | 无业务写入；解码 opaque cursor。 |
 | `GET /api/v1/posts/{postId}/comments/incremental` | `ListTopLevelCommentsIncremental` | 无业务写入；按稳定锚点补拉。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}` | `GetCommentDetail` | 无业务写入；回复详情返回 `rootFloor` / `parentFloor`。 |
 | `PUT /api/v1/posts/{postId}/comments/{floor}` | `UpdateComment` | 更新评论内容；事务后失效详情、列表和回复缓存。 |
-| `DELETE /api/v1/posts/{postId}/comments/{floor}` | `DeleteComment` | 软删除评论；根评论删除时批量软删除回复；写 `comment.deleted` outbox。 |
+| `DELETE /api/v1/posts/{postId}/comments/{floor}` | `DeleteComment` | 软删除目标评论及其整棵子树；维护 `reply_count`、`comment_post_stats` 和 rank 可见性；写一条 `comment.deleted` outbox。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}/replies/page` | `ListRepliesByPage` | 无业务写入；`floor` 必须是根评论楼层。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}/replies/cursor` | `ListRepliesByCursor` | 无业务写入；`floor` 必须是根评论楼层。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}/replies/incremental` | `ListRepliesIncremental` | 无业务写入；按稳定锚点补拉。 |
-| `POST /api/v1/posts/{postId}/comments/{floor}/like` | `LikeComment` | 插入点赞关系、递增点赞数、写 `comment.liked` outbox、更新或失效缓存。 |
-| `DELETE /api/v1/posts/{postId}/comments/{floor}/like` | `UnlikeComment` | 删除点赞关系、递减点赞数、写 `comment.unliked` outbox、更新或失效缓存。 |
+| `POST /api/v1/posts/{postId}/comments/{floor}/like` | `LikeComment` | 插入点赞关系、追加点赞计数 delta、写 `comment.liked` outbox、返回强一致 `liked=true`。 |
+| `DELETE /api/v1/posts/{postId}/comments/{floor}/like` | `UnlikeComment` | 删除点赞关系、追加点赞计数 delta、写 `comment.unliked` outbox、返回强一致 `liked=false`。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}/liked` | `GetLikeStatus` | 无业务写入。 |
 | `GET /api/v1/posts/{postId}/comments/{floor}/like-count` | `GetLikeCount` | 无业务写入。 |
 | `POST /api/v1/posts/{postId}/comments/batch/liked` | `BatchGetLikeStatus` | 无业务写入。 |
@@ -46,7 +45,8 @@
 - `postId` 是 Content 的对外文章 ID。Comment application 通过 Content contract 校验文章事实后，在本地表中保存该公开 `postId` 字符串，不保存 Content 内部 `BIGINT` 主键。
 - `floor` 是文章内单调递增楼层号，根评论和回复共享同一序列；删除后不复用、不重排。
 - 创建回复时，`parentFloor` 可以指向根评论或任意回复；application 在同一事务内解析直接父评论，并校验同文章、未删除、根归属正确。
-- 回复列表接口中的 `{floor}` 表示根评论楼层。第一阶段如果传入回复自身楼层，返回参数错误，避免隐式展开带来额外查询和语义混淆。
+- 回复列表接口中的 `{floor}` 表示根评论楼层；创建回复的 `parentFloor` 可以指向根评论或任意未删除回复。
+- 非 Admin 公开 API 对不存在和已删除评论统一返回 404，不向普通用户暴露 `DELETED` 状态。
 
 ## 创建评论流程
 
@@ -55,13 +55,17 @@ HTTP handler
 -> 解析 postId、Actor、body
 -> CreateComment
 -> ContentPostClient 校验文章存在、可见、允许评论
--> UserProfileClient 校验作者状态；后续需要拉黑或互动权限时接入 UserRelationClient
+-> UserProfileClient 校验作者状态
+-> UserRelationClient 校验文章作者 / 父评论作者是否拉黑当前用户
+-> FileReferenceClient 校验媒体文件引用
 -> TransactionRunner:
+     事务内校验父评论未删除、同文章、根归属正确
      CommentFloorAllocator 分配 floor
      CommentFactory 创建根评论或回复
      CommentCommandRepository 保存 comments
      CommentStatsRepository 初始化统计
-     根评论时初始化 hot rank 行
+     CommentPostStatsRepository 维护文章级评论总数
+     根评论时初始化 hot rank / recommended rank 行
      回复时 CommentStatsRepository 递增根评论 reply_count
      OutboxPublisher 写 comment.created，payload 带 postAuthorId、root/parent 楼层和作者事实
 -> 提交后失效列表 / 回复 / 首页缓存
@@ -74,19 +78,23 @@ HTTP handler
 - 顶级评论列表只返回未删除根评论。
 - 回复列表按根评论 `floor` 展开，不依赖“根评论下第几条回复”的序号。
 - 评论详情返回当前评论 `floor`；如果是回复，同时返回 `rootFloor` 和 `parentFloor`，供前端展开根评论、定位父评论和高亮目标回复。
-- 评论列表展示作者摘要时，优先批量调用 User contract 或使用本地快照；不得直接读取 User 数据库。
+- 评论列表展示作者摘要时，优先批量调用 User contract 或使用本地快照；不得直接读取 User 数据库。作者摘要解析失败时查询可以降级为占位作者，写路径的用户状态和权限校验不能降级。
+- 登录用户查询默认返回 `viewer.liked`；匿名用户省略 `viewer`，前端按未点赞态展示。
 
 ## 分页和排序
 
 - 传统分页用于 Web 固定页码场景，Go-first API 默认 `page` 从 `1` 开始，`size` 必须有上限。
 - 游标分页用于移动端无限滚动，cursor 对外不透明。
-- 增量补拉第一阶段优先使用 `floor` 锚点；`floor` 已经是同一文章内单调递增创建序号，避免同时暴露 `createdAt` 和 `floor` 两套排序锚点。
-- 顶级评论 `TIME` 排序固定为 `floor DESC`。`createdAt` 是展示和审计字段，不作为第一阶段排序锚点。
-- 回复列表排序固定为 `floor ASC`，保证对话从早到晚展开。
+- 增量补拉优先使用 `floor` 锚点；`floor` 已经是同一文章内单调递增创建序号，避免同时暴露 `createdAt` 和 `floor` 两套排序锚点。
+- 顶级评论默认 `RECOMMENDED` 排序，固定为 `recommended_score DESC, floor DESC`。同分时新楼层优先。
+- 顶级评论 `TIME` 排序固定为 `floor DESC`。`createdAt` 是展示和审计字段，不作为排序锚点。
 - 顶级评论 `HOT` 排序固定为 `like_count DESC, floor ASC`。`like_count` 来自 `comment_hot_rank` 读模型；同点赞数下优先展示更早楼层。
-- HOT 游标如果后续补齐，必须编码 `likeCount + floor` 两个锚点；如果未来再加入 `createdAt`、时间衰减或其他排序列，cursor 必须同步包含所有排序锚点，不能只编码 `likeCount + id`。
+- 回复列表默认 `HOT`，固定为 `like_count DESC, floor ASC`；可选 `TIME` 使用 `floor ASC`。回复列表返回根评论下整棵回复子树的平铺列表。
+- 顶级评论列表返回 `totalComments` 和 `totalTopLevelComments`。`totalComments` 统计根评论和回复的全部未删除评论；`totalTopLevelComments` 只统计未删除根评论。
+- Cursor 必须编码对应排序的全部稳定锚点：`RECOMMENDED` 使用 `recommendedScore + floor`，`HOT` 使用 `likeCount + floor`，`TIME` 使用 `floor`。
 
 ## 管理和媒体边界
 
 - Admin 删除可以从 Admin facade 进入，但最终 mutation 属于 Comment。Comment 只保存 `deletedBy`、`deleteReason`、`deletedAt` 等执行删除所需的最小元数据。
-- 评论媒体上传 API 如果保留，只是 Upload / File Service adapter facade；新前端或新 API 可以直接调用 Upload 服务。
+- Admin 删除必须携带 `deleteReason`；作者删除不要求原因。完整审核审计仍归 Admin。
+- Comment 不提供媒体上传 facade。前端先调用 Upload 获得文件 ID，Comment 创建 / 更新只接收并校验 `imageFileIds` / `voiceFileId`。

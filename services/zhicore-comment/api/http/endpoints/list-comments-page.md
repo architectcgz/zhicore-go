@@ -35,8 +35,7 @@
 | --- | --- | --- | --- | --- |
 | `page` | int | 否 | `1` | 页码，从 `1` 开始。 |
 | `size` | int | 否 | `20` | 每页大小，范围 `1..100`。 |
-| `sort` | string | 否 | `TIME` | `TIME` 或 `HOT`。第一阶段只提供这两种排序，不额外冗余其他排序枚举。 |
-| `includeViewer` | boolean | 否 | `false` | 登录用户可传 `true` 返回 `viewer.liked`；匿名请求传 `true` 按 `false` 处理。点赞切片实现前，服务可以按 `false` 处理并省略 `viewer`。 |
+| `sort` | string | 否 | `RECOMMENDED` | `RECOMMENDED`、`HOT` 或 `TIME`。 |
 
 ## Body / Multipart 字段
 
@@ -44,21 +43,21 @@
 
 ## 成功响应 `data`
 
-`data` 为 `Page<CommentItem>`，`CommentItem` 字段见 `services/zhicore-comment/api/http/README.md`。
+`data` 为 `TopLevelCommentPage`，`CommentItem` 字段见 `services/zhicore-comment/api/http/README.md`。
 
 示例：
 
 ```json
 {
   "code": 200,
-  "message": "操作成功",
+  "message": "OK",
   "data": {
     "items": [
       {
         "postId": "p1K8x9Q2",
         "floor": 26,
         "author": {
-          "userId": "u1001",
+          "publicId": "u_8x7K2m",
           "displayName": "azhi"
         },
         "content": "第一条评论",
@@ -73,7 +72,8 @@
     ],
     "page": 1,
     "size": 20,
-    "total": 1,
+    "totalComments": 3,
+    "totalTopLevelComments": 1,
     "pages": 1
   },
   "timestamp": 1782112892184
@@ -86,25 +86,29 @@
 
 | code | HTTP status | message 语义 | 触发条件 |
 | --- | --- | --- | --- |
-| `1001` | `400` | 参数校验失败 | `postId` 格式非法、`page` / `size` 越界、`sort` 非法。 |
-| `1004` | `503` | 服务暂时不可用 | Content / User / PostgreSQL / Redis 依赖不可用且无法降级。 |
-| `4001` | `404` | 文章不存在 | Content 返回文章不存在或不可见。 |
+| `1001` | `400` | `Invalid request` | `postId` 格式非法、`page` / `size` 越界、`sort` 非法。 |
+| `1004` | `503` | `Service unavailable` | Content / PostgreSQL / Redis 依赖不可用且无法降级。User 摘要或 Upload URL 解析失败时查询可降级。 |
+| `4001` | `404` | `Post not found` | Content 返回文章不存在或不可见。 |
 
 ## 权限和可见性
 
 - 匿名可读取公开可见文章的未删除顶级评论。
-- 登录用户读取时可返回 `viewer.liked`。
+- 登录用户读取时默认返回 `viewer.liked`；匿名用户省略 `viewer`，前端按未点赞态展示。
 - 只返回根评论，即 `root_id IS NULL AND parent_id IS NULL`。
-- 已删除评论默认不进入列表；如果未来需要展示“评论已删除”占位，必须单独登记 contract。
+- 已删除评论不进入列表；如果未来需要展示删除占位，必须单独登记 contract。
 
 ## 排序、分页和过滤
 
 - Page 分页从 `1` 开始。
+- `RECOMMENDED` 排序：`recommendedScore DESC, floor DESC`。`recommendedScore` 来自 `comment_recommended_rank`，首版公式为 `likeCount * 100 + freshnessBoost`。
 - `TIME` 排序：`floor DESC`。`floor` 是同一文章内单调递增创建序号，足以作为稳定时间锚点；`createdAt` 只作为展示和审计字段返回。
 - `HOT` 排序：`likeCount DESC, floor ASC`。同点赞数下优先展示更早楼层。
+- `RECOMMENDED` 查询先从 `comment_recommended_rank` 按 `(post_id, recommended_score DESC, floor DESC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要。
 - `HOT` 查询先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要，避免大范围 `comments + stats` 排序 join。
 - `likeCount` 来自异步更新的读模型，允许短暂最终一致；`viewer.liked` 如果返回，必须以 `comment_likes` 为强一致事实。
 - `size` 最大 `100`。
+- `totalComments` 来自 `comment_post_stats.total_comments`，统计根评论和回复的全部未删除评论。
+- `totalTopLevelComments` 来自 `comment_post_stats.total_top_level_comments`，只统计未删除根评论，并用于计算 `pages`。
 - 本 endpoint 不返回回复列表；回复预览如需支持，必须新增字段并在 contract 中登记 `replyLimit`。
 
 ## 设计追踪
@@ -112,14 +116,14 @@
 | 项 | 值 |
 | --- | --- |
 | Use case | `ListTopLevelCommentsByPage` |
-| 查询模型 | `TIME` 走 `comments(post_id, floor DESC)`；`HOT` 走 `comment_hot_rank(post_id, like_count DESC, floor ASC)` 后批量补评论和统计；User 批量补作者摘要。 |
-| Ports | 首切必需 `CommentQueryRepository`、`UserProfileClient`；缓存和 `CommentLikeRepository` / `CommentLikeCacheStore` 随缓存、点赞切片补齐。 |
+| 查询模型 | `RECOMMENDED` 走 `comment_recommended_rank(post_id, recommended_score DESC, floor DESC)`；`TIME` 走 `comments(post_id, floor DESC)`；`HOT` 走 `comment_hot_rank(post_id, like_count DESC, floor ASC)` 后批量补评论和统计；User 批量补作者摘要。 |
+| Ports | 首切必需 `CommentQueryRepository`、`CommentPostStatsRepository`、`CommentRecommendedRankRepository`、`UserProfileClient`；登录用户 `viewer.liked` 需要 `CommentLikeRepository` 或等价批量查询能力。 |
 | 事务边界 | 只读查询，不开启业务写事务。 |
 | 事件 | 无。 |
 | 缓存 | 首切可直接回源 PostgreSQL 并批量补作者摘要；后续可加入文章顶级评论列表缓存。 |
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖默认分页、`size` 上限、非法 `sort`、空列表、匿名读取、登录用户 `viewer.liked` 和 envelope。
-- Application test：待补，覆盖 `TIME` 排序稳定性、`HOT` 排序 tie-breaker、作者摘要批量查询和缓存 miss 回源。
+- Handler contract test：待补，覆盖默认 `RECOMMENDED`、`size` 上限、非法 `sort`、空列表、匿名读取、登录用户默认 `viewer.liked`、`totalComments` / `totalTopLevelComments` 和 envelope。
+- Application test：待补，覆盖 `RECOMMENDED` 排序、`TIME` 排序稳定性、`HOT` 排序 tie-breaker、作者摘要批量查询、作者摘要降级和缓存 miss 回源。
 - System HTTP test：待补。
