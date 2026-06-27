@@ -30,18 +30,22 @@ Go 服务内部错误分层不属于对外 contract，见 `docs/architecture/err
 
 ## 外部 API 兼容基线
 
-迁移阶段默认保留现有 Java 外部接口。前端暂时不修改，Go 服务替换 Java 服务时必须让现有前端和已知调用方无需改造即可继续工作。
+迁移阶段默认保留现有 Java 外部接口。前端暂时不修改，Go 服务替换 Java 服务时必须让现有前端和已知调用方无需改造即可继续工作，除非某个服务的设计文档和服务级 HTTP schema 明确记录为 Go-first API reset。
 
-必须保持兼容的内容包括：
+当前 Go-first API reset：
+
+- `zhicore-content`：`services/zhicore-content/api/http/` 是新的 Content HTTP contract 事实源；Java 只作为业务能力参考，不作为 path、字段或响应兼容约束。
+
+默认兼容迁移必须保持的内容包括：
 
 - 外部 API 路径、HTTP method、query/path/body 参数。
 - 响应封装、状态码、错误码和错误信息语义。
 - 字段名、字段类型、必填/可选语义、分页和排序语义。
 - 认证、授权、幂等、可见性和权限失败行为。
 
-Gateway 可以在部署层把路由指向对应 Go 服务，但对前端暴露的 API 形态不得因为本次后端迁移而改变。迁移目标不规划 Java/Go 运行时并存。
+Gateway 可以在部署层把路由指向对应 Go 服务。默认兼容迁移不得把 API 形态变化传递给前端；Go-first API reset 服务以服务级 HTTP schema 作为新前端和 consumer contract。迁移目标不规划 Java/Go 运行时并存。
 
-如果某个 Java 接口设计确实需要重做，必须作为独立的 API 演进任务处理：先新增兼容入口或版本化入口，保留旧接口，等前端和所有调用方明确迁移完成后，再在独立清理变更中删除旧接口。
+如果某个默认兼容迁移的 Java 接口设计确实需要重做，必须作为独立的 API 演进任务处理：先新增兼容入口或版本化入口，保留旧接口，等前端和所有调用方明确迁移完成后，再在独立清理变更中删除旧接口。若服务整体已登记为 Go-first API reset，则按该服务 HTTP schema 执行，不再要求保留旧 Java 形态。
 
 ## 归属
 
@@ -106,7 +110,7 @@ Consumer 可以依赖 contract，但不能在自己的服务里重新定义 prov
 - 增加新字段，并在迁移窗口保留旧字段。
 - 增加新 endpoint，同时保留旧 endpoint 直到所有 consumer 迁移完成。
 - 增加新事件类型，同时让旧 consumer 继续接收旧事件。
-- 对外 HTTP API 需要重构时，新增版本化或并行 endpoint；旧 Java 形态 endpoint 在前端迁移完成前必须继续可用。
+- 对外 HTTP API 需要重构时，新增版本化或并行 endpoint；旧 Java 形态 endpoint 在前端迁移完成前必须继续可用。已登记为 Go-first API reset 的服务按服务级 HTTP schema 执行，不要求保留旧 Java 形态。
 
 迁移顺序：
 
@@ -126,9 +130,11 @@ Consumer 可以依赖 contract，但不能在自己的服务里重新定义 prov
 
 ## Facade contract 规则
 
-Facade 路由可以暴露 consumer 友好的形态，但不拥有 provider 数据。
+Facade 路由可以暴露 consumer 友好的形态，但不拥有 provider 数据。是否提供 facade 由对应服务设计决定，不能因为产品 URL 看起来方便就默认新增。
 
 例如，`GET /api/v1/users/{userId}/posts` 可以作为 User 服务的产品侧路由存在。数据和权威查询仍属于 Content，该 User 路由必须通过 Content contract 委托。
+
+当前 `zhicore-content` 明确不提供 User 文章 facade；用户主页文章列表直接调用 Content 作者过滤接口，例如 `GET /api/v1/posts?authorId={authorId}&limit=20`。
 
 如果 facade 形态和 provider 形态不同，必须在 facade 边界记录浅层转换规则。
 

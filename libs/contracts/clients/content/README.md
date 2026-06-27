@@ -1,0 +1,88 @@
+# Content Typed Client Contract
+
+本目录记录其他服务同步调用 `zhicore-content` 时可依赖的 Go-first typed client contract。Provider 是 Content；consumer 不能复制 Content DTO、不能访问 Content 数据库，也不能导入 `services/zhicore-content/internal`。
+
+当前状态为设计草案，尚未生成 Go client 代码。Go 实现时应把本文件拆成稳定 DTO、client interface、HTTP adapter 和 contract tests。
+
+## 使用场景
+
+- Search 消费 Content 事件后，调用 Content 获取 published body 做全文索引。
+- Comment 验证文章存在性，或展示评论上下文时获取文章摘要。
+- Ranking / Notification 需要文章摘要时，批量获取 Content summary。
+- User 不提供用户文章 facade。用户主页文章列表直接走 Content HTTP API。
+- Admin 如需文章管理入口，可以作为 facade 调用 Content admin contract，但不拥有文章 mutation 语义。
+
+## Client interface 草案
+
+```go
+type Client interface {
+    GetPostSummary(ctx context.Context, postID string) (PostSummary, error)
+    GetPostDetail(ctx context.Context, postID string) (PostDetail, error)
+    GetPublishedBody(ctx context.Context, postID string) (PostBody, error)
+    BatchGetPostSummaries(ctx context.Context, postIDs []string) (BatchPostSummaryResult, error)
+    ListPublishedPosts(ctx context.Context, query ListPublishedPostsQuery) (CursorPage[PostSummary], error)
+    CheckPostsVisible(ctx context.Context, postIDs []string) (map[string]bool, error)
+}
+```
+
+`CheckPostsVisible` 是 Go 侧建议新增的窄 contract，用于 Comment、Notification 等服务只需要验证文章是否公开可见的场景；consumer 不应为了存在性校验拉取完整正文。
+
+## DTO
+
+### `PostSummary`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `PostID` | string | 文章公开 ID。 |
+| `AuthorID` | string | 作者 ID。 |
+| `AuthorName` | string | Content 作者快照。 |
+| `Title` | string | 标题。 |
+| `Summary` | string | 摘要。 |
+| `CoverFileID` | string | Upload 文件引用。 |
+| `Status` | string | `PUBLISHED` 等状态。 |
+| `PublishedAt` | time | 发布时间。 |
+| `Stats` | struct | 浏览、点赞、收藏、评论计数。 |
+
+### `PostDetail`
+
+`PostSummary + Tags + Body`。普通 consumer 优先使用 `PostSummary`；只有确实需要展示或索引正文时才读取 `Body`。
+
+### `PostBody`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `BodyID` | string | Content body UUID。 |
+| `SchemaVersion` | int | blocks schema 版本。 |
+| `Blocks` | []Block | 结构化正文。 |
+| `PlainText` | string | canonical 纯文本。 |
+| `ContentHash` | string | `sha256:<hex>`。 |
+| `SizeBytes` | int64 | canonical JSON 字节数。 |
+
+Consumer 不得把 Content blocks 复制成自己的领域模型。Search 可以把它转换成索引文档；其他服务只读取自己需要的稳定字段。
+
+### `ListPublishedPostsQuery`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `AuthorID` | string | 可选作者过滤。 |
+| `Tag` | string | 可选标签 slug。 |
+| `CategoryID` | string | 可选分类过滤。 |
+| `Cursor` | string | Opaque cursor。 |
+| `Limit` | int | `1..100`，默认 20。 |
+
+Consumer 不解析 cursor，只保存并回传给 Content。
+
+## 错误语义
+
+| 错误 | 语义 | Consumer 处理 |
+| --- | --- | --- |
+| `POST_NOT_FOUND` | 文章不存在或不可见 | 按业务返回 not found、跳过或进入 DLQ。 |
+| `CONTENT_BODY_UNAVAILABLE` | published body 不可读 | Search 应 retry 或 DLQ；普通查询返回 Content 降级错误。 |
+| `SERVICE_DEGRADED` | Content 或其依赖不可用 | 按调用方 resilience policy retry、熔断或降级。 |
+| `PARAM_ERROR` | consumer 请求 contract 错误 | 视为 consumer bug，不应重试。 |
+
+## Resilience
+
+- HTTP client policy 必须按 `docs/architecture/runtime-operations.md` 配置 timeout、retry、circuit breaker 和观测字段。
+- 查询类调用可以重试；mutation 不通过 typed client 暴露给普通 consumer。
+- Content 失败不能被 User、Admin 或其他 facade 伪装为空列表或成功。

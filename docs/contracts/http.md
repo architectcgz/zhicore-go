@@ -4,7 +4,9 @@
 
 ## 兼容基线
 
-迁移阶段默认保留 Java 外部接口：
+迁移阶段默认保留 Java 外部接口，除非服务级 HTTP schema 明确登记为 Go-first API reset。当前 `zhicore-content` 已登记为 Go-first API reset，Content 的 Go HTTP schema 是新事实源，Java 只作为业务能力参考。
+
+默认兼容迁移需要保留：
 
 - path
 - HTTP method
@@ -19,7 +21,7 @@
 
 ## 成功响应
 
-HTTP 成功响应使用 Java `ApiResponse` 兼容形态：
+HTTP 成功响应使用 ZhiCore 统一 envelope。默认兼容迁移保持 Java `ApiResponse` 形态；Go-first API reset 服务仍使用同一 envelope 语义，但 `data` 字段以服务级 schema 为准：
 
 ```json
 {
@@ -34,15 +36,15 @@ HTTP 成功响应使用 Java `ApiResponse` 兼容形态：
 规则：
 
 - 普通成功响应使用 HTTP `200`，不使用 `204`，避免破坏前端对 envelope 的解析。
-- `data` 是否出现以 Java 当前行为为准；新接口无返回体时可以省略 `data`。
+- 默认兼容迁移中 `data` 是否出现以 Java 当前行为为准；Go-first API reset 服务按自己的服务级 schema 记录。
 - `timestamp` 使用 Unix epoch milliseconds。
 - `traceId` 有则返回，没有则可省略。
 
 ## 请求
 
 - `Content-Type: application/json` 用于 JSON body。
-- `multipart/form-data` 用于上传，字段名必须和 Java controller 保持一致。
-- path variable 和 query 参数名保持 Java controller 现状。
+- `multipart/form-data` 用于上传。默认兼容迁移字段名保持 Java controller 现状；Go-first API reset 服务按服务级 schema 记录。
+- 默认兼容迁移中 path variable 和 query 参数名保持 Java controller 现状；Go-first API reset 服务按服务级 schema 记录。
 - 不用 Gateway 做参数重命名或响应形态转换。
 
 ## 认证和内部身份 Header

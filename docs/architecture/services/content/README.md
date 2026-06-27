@@ -4,7 +4,7 @@
 
 ## 事实来源
 
-- Java `zhicore-content` controller：Post command/query、like/favorite、tag、admin、outbox、reader presence。
+- Java `zhicore-content` controller：只作为业务能力参考，用于确认 Post command/query、like/favorite、tag、admin、outbox、reader presence 等能力存在；不作为 Go API path、字段或响应兼容约束。
 - Java `content-service-design.md`、`content-visibility-and-projection-evolution.md`、`post-reading-presence.md`。
 - Java `zhicore-content/src/main/resources/db/schema.sql`。
 - `zhicore-client` 和 `zhicore-integration` 中 post 事件与 DTO。
@@ -54,11 +54,11 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 ## 当前迁移状态
 
 - 已迁移：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
-- 未完成：字段级 HTTP request/response schema、完整 migration SQL、服务级行为测试清单。
+- 已设计草案：Content Go-first HTTP contract，见 `services/zhicore-content/api/http/`；该 contract 是 Go 侧新事实源，不承诺兼容 Java path / DTO，且尚未由 Go handler/test 验证。
+- 未完成：完整 migration SQL、服务级行为测试清单、Go handler / application / repository 实现。
 
 ## 下一步
 
-- 提取 Content 字段级 HTTP contract。
 - 生成 Content migration 草案。
 - 实现“创建草稿并发布文章”核心切片，详见 [application-and-ports.md](application-and-ports.md)。
 - 先写 domain 层测试，再写 application 层编排测试，最后接入 PostgreSQL / MongoDB / HTTP。

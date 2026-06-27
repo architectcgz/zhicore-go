@@ -1,6 +1,6 @@
 # 分页契约
 
-本文件定义分页、排序和过滤的通用规则。已有 Java 接口保持现状；新接口按本文件设计。
+本文件定义分页、排序和过滤的通用规则。默认兼容迁移的已有 Java 接口保持现状；新接口和 Go-first API reset 服务按本文件设计，并在服务级 HTTP schema 中固定最终参数。
 
 ## 基本原则
 
@@ -27,7 +27,7 @@ order
 
 规则：
 
-- `page` 起始值保持 Java 当前接口语义；新接口默认从 `1` 开始。
+- 默认兼容迁移的 `page` 起始值保持 Java 当前接口语义；新接口和 Go-first API reset 服务默认从 `1` 开始。
 - `size` 必须有最大值。
 - `sort` 只能接受 provider 明确列出的字段。
 - `order` 使用 `asc` / `desc`。
@@ -58,7 +58,7 @@ direction
 
 ## 返回形态
 
-已有接口保持 Java DTO。新接口推荐：
+默认兼容迁移的已有接口保持 Java DTO。新接口和 Go-first API reset 服务推荐：
 
 ```json
 {

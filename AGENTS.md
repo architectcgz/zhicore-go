@@ -52,7 +52,7 @@
 - 修改提交信息格式、commit-msg hook、`harness/policies/commit-message.json`、`scripts/check-commit-message.sh` 或 `scripts/install-githooks.sh` 前，先读 `docs/reviews/commit-message.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
-- 保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。
+- 默认保留现有 Java 外部 API 形态；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 属于该例外。
 
 ## 服务落点
 

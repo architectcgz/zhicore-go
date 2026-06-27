@@ -18,7 +18,8 @@ services/<service>/api/http/
 - `README.md` 是该服务 HTTP schema 入口，只放服务级公共规则、endpoint 索引和来源说明。
 - `endpoints/<operation>.md` 记录单个 endpoint 的字段级 contract。
 - `<operation>` 使用小写短横线命名，例如 `upload-image.md`、`login.md`、`list-comments.md`。
-- 一个文档只记录一个 endpoint。兼容别名 endpoint 可以放在同一文档中，但必须明确主路径和别名路径。
+- 默认一个文档只记录一个 endpoint。兼容别名 endpoint 可以放在同一文档中，但必须明确主路径和别名路径。
+- 如果某个服务明确登记为 Go-first API reset，且一次设计需要固定完整 API 面，可以使用 `endpoints/<family>.md` 记录一个 API family 或完整服务 API 面；服务 README 必须索引该文件。后续实现单个 handler 时，可以再按 endpoint 拆出更窄文档。
 - 如果 endpoint 尚未从 Java controller / DTO 提取，不要创建“占位完成”的 schema；在服务 README 或迁移文档中记录待提取即可。
 
 ## 提取流程
@@ -27,13 +28,15 @@ services/<service>/api/http/
 
 1. 读取该服务文档：`docs/architecture/services/<service>/README.md`。
 2. 读取通用 contract：`docs/contracts/README.md`、`docs/contracts/http.md`、`docs/contracts/errors.md`、`docs/contracts/error-codes.md`、`docs/contracts/data-types.md`。
-3. 从 Java controller、DTO、exception handler 和测试中提取 path、method、字段、响应和错误。
+3. 默认兼容迁移从 Java controller、DTO、exception handler 和测试中提取 path、method、字段、响应和错误；Go-first API reset 服务从服务设计和目标产品语义固定新 schema，Java 只作为业务能力参考。
 4. 将公共规则写入 `services/<service>/api/http/README.md`。
 5. 每个 endpoint 写入独立 `endpoints/<operation>.md`。
 6. 实现或修改 Go handler 前，先补对应 contract test。
 7. 变更后运行最窄相关测试；脚手架或索引变更时运行 `bash scripts/check-structure.sh`。
 
 ## 服务 README 模板
+
+默认兼容迁移可以在“来源”列出 Java controller / DTO / 测试；Go-first API reset 服务应把来源改成服务设计、目标 Go schema 和业务能力参考。
 
 ```markdown
 # <service> HTTP Schema
@@ -69,6 +72,8 @@ services/<service>/api/http/
 ```
 
 ## Endpoint 模板
+
+默认兼容迁移可以列出 Java 来源；Go-first API reset endpoint 应把来源改成服务设计、当前 API schema 和 Go handler / test 落点。
 
 ```markdown
 # <operation>
@@ -141,7 +146,7 @@ Endpoint 文档状态只允许使用：
 
 | 状态 | 含义 |
 | --- | --- |
-| 草案 | 已从 Java 或设计提取，但尚未由 Go handler/test 验证。 |
+| 草案 | 已从 Java、服务设计或 Go-first API reset 方案提取，但尚未由 Go handler/test 验证。 |
 | 已验证 | 已有 Go handler contract test 或 system HTTP test 证明。 |
 | 兼容例外 | 明确保留历史 path、字段、HTTP status 或错误码例外；必须写明原因。 |
 | 废弃候选 | 保留旧入口但计划迁移；必须有替代 endpoint 和删除条件。 |

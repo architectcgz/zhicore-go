@@ -2,20 +2,23 @@
 
 本文记录 `zhicore-content` 的 API 保留范围、数据归属、主写流程、事件、跨服务依赖、发布校验、错误契约和后续链接预览设计。
 
-## API 保留范围
+## API 设计范围
 
-必须保留以下 API 族：
+Content API 采用 Go-first 设计，Java 只作为业务能力参考，不作为 path、字段或响应兼容约束。字段级 HTTP schema 见 `services/zhicore-content/api/http/`，当前状态为草案，尚未由 Go handler / contract test 验证。
 
-- `/api/v1/posts`：创建、更新、发布、取消发布、定时发布、删除、恢复、草稿、列表、详情、作者文章、游标和批量查询。
-- `/api/v1/posts/{postId}/like`、`favorite`：点赞、取消点赞、收藏、取消收藏、状态和计数查询。
-- `/api/v1/posts/{postId}/content`、`draft`：正文和草稿读取。
-- `/api/v1/posts/{postId}/tags`：文章标签读写。
-- `/api/v1/posts/{postId}/readers`：阅读 presence session、leave、presence 查询。
+必须覆盖以下 API 族：
+
+- `/api/v1/posts`：公开文章列表、作者文章过滤、创建草稿、文章详情、published body、批量摘要。
+- `/api/v1/me/posts`、`/api/v1/me/drafts`：作者工作台列表。
+- `/api/v1/posts/{postId}/draft/*`：草稿元数据、正文 blocks、草稿读取和删除。
+- `/api/v1/posts/{postId}/publish`、`unpublish`、`schedule`、`restore`：发布生命周期。
+- `/api/v1/posts/{postId}/like`、`favorite`、`engagement`：点赞、收藏、互动状态和计数。
+- `/api/v1/posts/{postId}/reader-*`：阅读 presence session、leave、presence 查询。
 - `/api/v1/tags`：标签详情、列表、搜索、热门和标签文章。
-- `/api/v1/admin/posts`：管理端文章查询和删除。
-- `/api/v1/admin/outbox`：outbox dead/failed 查询和 retry。
+- `/api/v1/admin/content/posts`：管理端文章查询和删除。
+- `/api/v1/admin/content/outbox-events`：outbox dead/failed 查询和 retry。
 
-字段级 HTTP schema 后续按 `docs/contracts/http-schema-template.md` 落到 `services/zhicore-content/api/http/`。
+User 不暴露用户文章 facade；用户主页需要文章列表时直接调用 Content 作者过滤接口，例如 `GET /api/v1/posts?authorId={authorId}&limit=20`。
 
 ## 数据归属
 

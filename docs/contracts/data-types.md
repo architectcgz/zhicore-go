@@ -4,9 +4,10 @@
 
 ## 基本原则
 
-- 迁移阶段优先保持 Java 外部接口兼容；已有字段的类型、名称和空值语义不得因为 Go 重写而改变。
+- 默认兼容迁移优先保持 Java 外部接口兼容；已有字段的类型、名称和空值语义不得因为 Go 重写而改变。
+- 已明确登记为 Go-first API reset 的服务以服务级 HTTP schema 或 typed client schema 为准，Java 只作为业务能力参考。
 - 新增字段必须默认向后兼容，旧前端和旧 consumer 能忽略。
-- API 字段名、事件字段名和协议字段保持原有大小写和拼写，不因 Go 命名习惯改变 JSON 形态。
+- 默认兼容迁移的 API 字段名、事件字段名和协议字段保持原有大小写和拼写，不因 Go 命名习惯改变 JSON 形态；Go-first API reset 服务的新字段默认使用 lowerCamelCase。
 
 ## 时间
 
@@ -34,6 +35,7 @@
 内部主键策略见 `docs/architecture/id-strategy.md`。对外契约规则如下：
 
 - 已有 Java 接口返回 `Long` / JSON number 的 ID，迁移阶段保持原类型，除非作为独立 API 演进任务处理。
+- Go-first API reset 服务的外部公开资源 ID 优先使用 string；当前 Content 对外 `postId` 是 string 公开 ID，不暴露数据库内部自增主键。
 - 新增对外公开资源 ID 优先使用 string，例如 `public_id`、`public_no`、`order_no`。
 - 跨服务内部 contract 可以使用 `int64` / JSON number 表示内部引用 ID，但字段必须明确归属服务。
 - 不把数据库自增序列的数量暴露问题交给 Base64/Base62 直接编码解决；需要隐藏时使用独立公开 ID 或可逆混淆方案。
@@ -46,7 +48,7 @@
 
 ## 空值和可选字段
 
-- 已有接口保持 Java 当前 JSON 行为。
+- 默认兼容迁移的已有接口保持 Java 当前 JSON 行为；Go-first API reset 服务按服务级 schema 记录空值语义。
 - 新字段默认设计为可选字段，旧 consumer 可忽略。
 - `null` 只在“空值”和“字段缺失”有不同业务含义时使用。
 - 空列表返回 `[]`，不返回 `null`。
@@ -60,6 +62,6 @@
 
 ## 字段命名
 
-- JSON 字段默认沿用 Java DTO 当前字段名。
-- 新增 HTTP、typed client 和事件 JSON 字段使用 lowerCamelCase。
+- 默认兼容迁移的 JSON 字段沿用 Java DTO 当前字段名。
+- 新增 HTTP、typed client、事件 JSON 字段以及 Go-first API reset 服务的新 schema 使用 lowerCamelCase。
 - 本文件不规定 Go 内部标识符、数据库列名或 Redis key 命名；这些属于实现风格、migration/schema 或运行时设计规则。
