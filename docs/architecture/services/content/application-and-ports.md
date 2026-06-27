@@ -6,6 +6,23 @@
 
 Content application 层按命令、查询分层组织 use case。application 拥有事务边界、权限上下文、幂等、端口调用和错误映射。
 
+认证上下文由 Gateway 解析 JWT 后注入，Content 自身不解析客户端 JWT。HTTP 入站层只把可信身份 header 映射为 application input，例如：
+
+```text
+type Actor struct {
+    UserID int64
+    Roles  []string
+}
+```
+
+规则：
+
+- 登录态命令必须显式携带 `Actor` 或等价 `AuthContext`，不能从 request body 接收 `userId` 作为当前操作者。
+- `CreatePost` 的作者 ID 来自 `Actor.UserID`，并作为 `posts.owner_id` 和作者快照的归属引用。
+- `PublishPost`、`UpdateDraftBody`、`DeleteDraft`、`UpdatePostTags` 等作者写操作必须在 application 层加载文章并校验 `owner_id == Actor.UserID`。
+- 缺少 `Actor` 映射为 `LOGIN_REQUIRED`；操作者不是作者映射为 `RESOURCE_ACCESS_DENIED` 或 Content 服务级 contract 登记的兼容错误。
+- application 不读取 HTTP header、不依赖框架上下文、不解析 `Authorization`。
+
 ### Commands
 
 - `CreatePost`：创建文章草稿，保存作者快照，初始化统计，必要时写正文/草稿和内部投影任务。
@@ -203,5 +220,6 @@ api/http -> application -> domain <- ports <- infrastructure
    - `POST /api/v1/posts`
    - `PUT /api/v1/posts/{postId}/draft`
    - `POST /api/v1/posts/{postId}/publish`
+   - 从 Gateway 注入的身份上下文构造 `Actor`，缺失时返回认证失败；不做服务内 JWT 解析。
 
 该切片完成后再扩展点赞、收藏、标签、投影、管理端和 reader presence。

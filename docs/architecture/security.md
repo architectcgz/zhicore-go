@@ -6,6 +6,7 @@
 
 - 安全规则按 owner 收口。Gateway 负责入口认证和基础拦截，User 负责身份、凭证和角色事实，业务服务负责资源归属和业务权限。
 - Gateway 不判断资源归属权限，不复制业务模型，不把下游响应转换成另一套业务语义。
+- 外部 HTTP 请求的 JWT 只在 Gateway 解析和校验。业务服务不解析客户端 `Authorization` 作为身份来源。
 - 权限判断默认在 application 层完成；handler 只负责把认证上下文映射成 application input，repository 不做鉴权。
 - 用户输入默认不可信。所有外部输入必须经过绑定、校验和明确的错误映射后才能进入 use case。
 - 安全失败必须返回稳定公开错误码，不暴露 token、密码、底层 driver、外部 provider 或内部拓扑细节。
@@ -45,28 +46,39 @@
 - 查询 token 黑名单或认证缓存。
 - 为下游服务注入受信任的身份上下文 header。
 - 处理匿名 endpoint 和登录 endpoint 的认证跳过规则。
+- 按认证结果、路由规则和服务目标分流请求到下游服务。
 
 规则：
 
-- Gateway 只能信任自己校验后的 token 结果，不能把客户端传入的 `X-User-Id`、`X-Roles` 或类似身份 header 直接透传为可信身份。
+- Gateway 只能信任自己校验后的 token 结果，不能把客户端传入的 `X-User-Id`、`X-User-Roles` 或类似身份 header 直接透传为可信身份。
 - Gateway 转发给下游的身份 header 必须先清理客户端同名 header，再由 Gateway 重新写入。
+- Gateway 是普通业务 HTTP 请求的唯一 JWT 校验点。下游业务服务不得为了直连、调试或兼容再从 `Authorization` 解析 JWT。
+- Gateway 转发业务请求时不要求下游依赖原始 `Authorization`。如果某个 endpoint 确实需要接收原始凭证，必须在服务级 HTTP contract 中显式登记，并且不得把它当作当前用户身份来源。
 - 认证失败使用 `docs/contracts/error-codes.md` 的认证授权错误码，并保持 Java 兼容响应 envelope。
 - Gateway 可以做入口级限流、CORS、body size 和请求 ID 注入，但不做“文章是否属于当前用户”这类资源权限判断。
 
 ## 身份上下文传播
 
-下游服务接收的认证上下文至少包含：
+Gateway 注入给下游服务的身份上下文使用内部 header。当前固定名称：
 
-- `userId`：当前登录用户 ID。
-- `roles`：稳定角色集合。
-- `requestId` / `traceId`：观测关联 ID。
-- 可选 `authSubject` 或 `tokenVersion`：仅在 User / Gateway 需要校验 token 版本时使用。
+| Header | 含义 | 要求 |
+| --- | --- | --- |
+| `X-User-Id` | 当前登录用户 ID | 登录态 endpoint 必填；下游按内部 `UserID` 解析。 |
+| `X-User-Name` | 当前用户名或展示名 | 可选，仅用于兼容或轻量日志字段，不作为权限事实。 |
+| `X-User-Roles` | 稳定角色集合 | 可选；多个角色用逗号分隔。 |
+| `X-Request-Id` | 请求关联 ID | 有上游值则沿用，否则 Gateway 生成。 |
+| `X-Trace-Id` | 链路关联 ID | 有上游值则沿用，否则 Gateway 生成或派生。 |
+
+可选 `authSubject` 或 `tokenVersion` 只能在 User / Gateway 需要校验 token 版本时引入。新增身份 header 必须先更新 `docs/contracts/http.md` 和本文件。
 
 规则：
 
 - handler 把 header / middleware context 映射成明确 application input，例如 `Actor`、`AuthContext` 或 `Principal`。
+- 下游服务的 auth middleware 只做可信 header 的提取、格式校验和 `context.Context` 注入；不得解析 JWT、查询 token 黑名单或自行决定 token 是否有效。
+- 缺少必需身份上下文的登录态 endpoint 返回 `LOGIN_REQUIRED`；身份 header 格式非法按认证失败处理，不降级解析 `Authorization`。
 - application 层不直接读 HTTP header，不依赖框架上下文查找权限事实。
 - 服务间 typed client 需要传播 `X-Request-Id` / `X-Trace-Id`；是否传播用户身份必须由 provider contract 明确。
+- 服务间同步调用如果需要代表当前用户执行操作，consumer 必须显式把 `Actor`/`AuthContext` 映射为 provider contract 允许的身份 header；不能隐式透传客户端 header。
 - 异步事件可以携带 `requestId` / `traceId` 做观测关联，但不能用这些字段做权限、幂等或业务分支判断。
 
 ## 授权与资源权限
@@ -143,14 +155,15 @@
 
 允许放入：
 
-- JWT 解析、签名校验、claims 基础结构和错误分类原语。
-- 认证上下文类型、context helper 和 middleware 可复用小工具。
+- JWT 解析、签名校验、claims 基础结构和错误分类原语，仅供 User 签发/解析 refresh token 和 Gateway 校验 access token 使用。
+- 认证上下文类型、context helper 和可信 header 提取 middleware 的可复用小工具。
 - 密码 hash / verify 的薄封装，前提是参数由 User owner 明确配置。
 
 禁止放入：
 
 - 服务私有角色模型、资源权限规则、Admin 操作清单。
 - 直接访问 User 数据库、Redis 黑名单或业务 repository 的逻辑。
+- 让业务服务从客户端 `Authorization` 解析 JWT 的通用 fallback。
 - 会替代业务 owner 决策的通用 `CanEdit`、`IsOwner`、`IsAdminBypass`。
 
 共享库只提供认证原语；User、Gateway 和业务服务分别拥有自己的安全决策。
@@ -168,6 +181,8 @@
 
 - 优先新增 focused test 或回归测试；是否 test-first 按 `docs/architecture/testing.md` 的风险分级执行。
 - Handler test 覆盖认证缺失、权限失败、公开错误码和响应 envelope。
+- Gateway handler / middleware test 必须覆盖客户端伪造 `X-User-*` 被清理或覆盖。
+- 业务服务 handler test 必须覆盖：缺少 Gateway 注入身份时拒绝、存在 `Authorization` 但缺少可信身份 header 时不解析 JWT。
 - Application test 覆盖资源归属、角色、状态机、审计结果和跨服务 contract 结果。
 - Upload / 外部 URL 相关测试必须覆盖非法类型、超限、清理路径和 SSRF 防护边界。
 - 修改安全敏感面时，应按 `docs/reviews/done-definition.md` 判断是否需要正式 review。

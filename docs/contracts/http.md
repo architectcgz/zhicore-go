@@ -45,6 +45,34 @@ HTTP 成功响应使用 Java `ApiResponse` 兼容形态：
 - path variable 和 query 参数名保持 Java controller 现状。
 - 不用 Gateway 做参数重命名或响应形态转换。
 
+## 认证和内部身份 Header
+
+外部调用方只通过当前前端约定提交认证凭证，通常是：
+
+```text
+Authorization: Bearer <access-token>
+```
+
+规则：
+
+- `Authorization` 只由 Gateway 和明确拥有凭证语义的 User endpoint 解析。普通业务服务不得从 `Authorization` 解析 JWT 作为当前用户身份。
+- Gateway 校验 JWT 后，先移除客户端传入的同名内部身份 header，再重新写入下游可信身份 header。
+- 下游服务只消费 Gateway 注入的可信身份上下文，并把它映射成 application input，例如 `Actor`、`AuthContext` 或 `Principal`。
+- 缺少可信身份上下文的登录态 endpoint 返回认证失败；不得通过解析 `Authorization` 做服务内 fallback。
+- Gateway 不判断资源归属权限。资源归属、可见性和业务权限仍由归属服务 application 判断。
+
+当前内部身份 header 固定为：
+
+| Header | 用途 | 可见范围 |
+| --- | --- | --- |
+| `X-User-Id` | 当前登录用户 ID | Gateway -> 下游服务。 |
+| `X-User-Name` | 当前用户名或展示名 | Gateway -> 下游服务，可选。 |
+| `X-User-Roles` | 当前用户角色集合，逗号分隔 | Gateway -> 下游服务，可选。 |
+| `X-Request-Id` | 请求关联 ID | 外部可传入，服务间继续传播。 |
+| `X-Trace-Id` | 链路关联 ID | 外部可传入，服务间继续传播。 |
+
+服务级 HTTP schema 必须在“鉴权上下文”中说明 endpoint 是匿名、登录用户还是管理员，以及需要哪些身份字段。
+
 ## 响应 Header
 
 - JSON 响应使用 `Content-Type: application/json; charset=utf-8`。

@@ -81,6 +81,7 @@ libs/contracts/events/<domain>/
 
 - 边缘路由、请求认证拦截、CORS 和网关 filter。
 - 网关使用的 token 校验缓存和 token 黑名单缓存。
+- Gateway 注入给下游服务的可信身份 header 规则。
 
 不拥有：
 
@@ -97,6 +98,7 @@ libs/contracts/events/<domain>/
 
 - Gateway route 是部署/API 表面 contract，不是领域数据 contract。
 - Gateway 只做入口控制和转发，不实现业务规则。
+- 普通业务 HTTP 请求的 JWT 只在 Gateway 校验；下游业务服务只消费 Gateway 注入的身份上下文，不解析客户端 `Authorization`。
 
 ### `zhicore-user`
 
