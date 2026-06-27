@@ -2,6 +2,12 @@
 
 `zhicore-comment` 是评论服务的 Go 目标服务模块。
 
+长期设计入口：
+
+- 服务边界：`docs/architecture/services/comment/README.md`
+- 模块设计：`docs/architecture/module/comment/README.md`
+- HTTP contract：`services/zhicore-comment/api/http/README.md`
+
 服务职责：
 
 - 拥有评论、回复、评论媒体引用、评论状态、评论统计和评论点赞。

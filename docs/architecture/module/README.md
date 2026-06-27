@@ -33,6 +33,13 @@ docs/architecture/module/<module>/
 | `adr/` | 模块内难以逆转、需要解释取舍的架构决策。 |
 | `decision-log/` | 重要设计压测、评审或讨论的复盘记录。 |
 
+## 当前模块
+
+| 模块 | 服务 | 文档 | 状态 |
+| --- | --- | --- | --- |
+| `auth` | `zhicore-auth` | `auth/README.md` | 已拆分模块设计。 |
+| `comment` | `zhicore-comment` | `comment/README.md` | 已拆分模块设计；首批 HTTP contract 已登记。 |
+
 ## 关联方式
 
 HTTP contract 通过 `services/<service>/api/http/README.md` 的“API 到设计追踪”表关联到本目录：

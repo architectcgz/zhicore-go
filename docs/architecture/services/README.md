@@ -51,6 +51,18 @@ Content 服务文档已经拆成专题文件：
 | Application、Ports 与实现切片 | `content/application-and-ports.md` |
 | 数据、事件和契约 | `content/data-events-contracts.md` |
 
+Comment 的服务级文档只保留边界、API 族和模块入口；模块内部设计已迁移到 `docs/architecture/module/comment/`：
+
+| 专题 | 文档 |
+| --- | --- |
+| 入口和关键结论 | `comment/README.md` |
+| 模块总览 | `../module/comment/README.md` |
+| API 背后设计 | `../module/comment/api.md` |
+| Application service | `../module/comment/service.md` |
+| Domain | `../module/comment/domain.md` |
+| Ports | `../module/comment/ports.md` |
+| 数据和事件 | `../module/comment/data-events.md` |
+
 ## 服务设计图
 
 图表源文件：
