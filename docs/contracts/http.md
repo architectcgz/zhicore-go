@@ -74,10 +74,14 @@ Authorization: Bearer <access-token>
 | `X-Session-Id` | 当前 access token 所属登录 session ID | Gateway -> Auth 和需要 session 语义的下游服务。 |
 | `X-Session-Version` | 当前 access token 携带的 session version | Gateway -> Auth 和需要认证状态校验的下游服务。 |
 | `X-Principal-Version` | 当前 access token 携带的 principal version | Gateway -> Auth 和需要 principal 刷新的下游服务。 |
+| `X-Caller-Service` | 服务间同步调用的调用方服务名 | 内部 typed client / Gateway -> provider；外部客户端传入时必须清理。 |
+| `X-Caller-Operation` | 服务间同步调用的稳定调用方操作名 | 内部 typed client / Gateway -> provider；用于限流、审计和观测，不能包含用户输入或资源 ID。 |
 | `X-Request-Id` | 请求关联 ID | 外部可传入，服务间继续传播。 |
 | `X-Trace-Id` | 链路关联 ID | 外部可传入，服务间继续传播。 |
 
 服务级 HTTP schema 必须在“鉴权上下文”中说明 endpoint 是匿名、登录用户还是管理员，以及需要哪些身份字段。
+
+`X-Caller-Service` / `X-Caller-Operation` 只表示服务间调用来源，不表示当前用户身份，也不能替代资源权限校验。业务服务只在来自可信内部入口、Gateway 或经过服务间认证的 typed client 请求中信任这两个 header；普通外部 HTTP 请求中的同名 header 必须被 Gateway 清理。
 
 ## 响应 Header
 

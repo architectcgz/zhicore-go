@@ -78,6 +78,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `ConsumedEventStore` | 消费幂等 | 记录消费过的事件 ID |
 | `BodyCleanupTaskStore` | 正文清理任务 | 创建和查询未引用 MongoDB body 的清理任务 |
 | `BodyRepairTaskStore` | 正文修复任务 | 记录正文缺失、hash 不一致等数据一致性事故 |
+| `RateLimiter` | Content 业务限流 | 按 actor、post、session、service caller、operation 和高成本资源维度返回 typed decision；必须能表达 allow、`1003` reject、Redis 降级放行、`1004` fail-closed 和 presence no-op，策略见 `rate-limiting.md`。 |
 
 ### 缓存和外部服务端口
 
@@ -97,6 +98,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 - `PostRepository` 包含 Post 聚合持久化方法，不拆成 10 个小接口。
 - `PostQueryRepository` 独立于 `PostRepository`，避免写模型被查询需求污染。
 - Outbox、InternalEventTask dispatcher、cleanup worker 属于 infrastructure；application 只依赖发布端口或任务记录端口。
+- HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、idempotency key、body size、presence session、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误或 no-op success，adapter 不直接构造 HTTP response。
 - 不定义宽泛 `Store` 大接口。
 
 不定义的端口：

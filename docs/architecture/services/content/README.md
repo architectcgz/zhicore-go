@@ -16,6 +16,8 @@
 2. [body-storage-and-publishing.md](body-storage-and-publishing.md)：PostgreSQL + MongoDB 正文指针、草稿、发布原子切换、blocks schema、cleanup / repair。
 3. [application-and-ports.md](application-and-ports.md)：application use case、ports、包落点、事务边界和实现切片。
 4. [data-events-contracts.md](data-events-contracts.md)：API 保留范围、数据归属、事件、跨服务依赖、发布校验、错误契约和链接预览后续项。
+5. [rate-limiting.md](rate-limiting.md)：公开读、作者写路径、互动、presence、管理端和内部调用的限流矩阵、Redis 故障原则和观测要求。
+6. [runtime-resilience.md](runtime-resilience.md)：Content 下游 provider / operation 的 timeout、retry、circuit breaker、max-in-flight 和降级策略矩阵。
 
 相关 ADR：
 
@@ -50,11 +52,14 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 - **普通个人文章不做长期版本库**：正文 UUID 只是内部引用，不是产品版本号；旧 draft / old snapshot 按 body_id 清理。
 - **正文使用结构化 blocks，不允许 raw HTML**：blocks 便于媒体引用、字数统计、审核、搜索抽取、AI summary 和 schema migration；raw HTML 会扩大 XSS 和样式污染风险。
 - **链接预览第一阶段不做**：后续如果做，必须由后端异步生成并使用 SSRF-safe fetcher。
+- **Content 需要服务内业务限流**：Gateway 粗限流只挡 IP / route 洪水；Content 还要按 actor、post、session、service caller、operation 和高成本资源保护草稿、发布、正文读取、互动、presence、管理端和内部调用。
+- **Content 需要按 provider + operation 声明 resilience policy**：User、Upload、MongoDB、Redis、RabbitMQ 和 PostgreSQL 的 timeout、retry、熔断、max-in-flight 与降级策略见 `runtime-resilience.md`，不能只在实现里临时写 timeout。
 
 ## 当前设计状态
 
 - 已明确：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
 - 已设计草案：Content Go-first HTTP contract，见 `services/zhicore-content/api/http/`；该 contract 是 Go 侧新事实源，不承诺兼容 Java path / DTO，且尚未由 Go handler/test 验证。
+- 已设计草案：Content 业务限流和运行期 resilience 策略，见 `rate-limiting.md` 与 `runtime-resilience.md`；当前只固定设计和实现准入条件，不表示 Go runtime 已落地。
 - 未完成：完整 migration SQL、服务级行为测试清单、Go handler / application / repository 实现。
 
 ## 下一步

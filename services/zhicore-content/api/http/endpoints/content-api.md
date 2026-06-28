@@ -19,6 +19,20 @@ Content HTTP API 分为五组：
 - 公开读接口只返回 `PUBLISHED` 且未删除文章。作者工作台接口由 application 校验 owner。
 - 正文只接受 `schemaVersion + blocks`，不接受 raw HTML 作为可信正文。外部链接和 external media 只做安全格式和 provider 白名单校验。
 - 发布是用户可见原子操作：PG `published_*` 指针和 MongoDB body snapshot 必须一起成功。
+- 限流按 API 情景分层处理：公开读和标签接口主要保护缓存 / DB 回源，草稿保存保护 MongoDB 写入和 autosave 风暴，发布 / 定时 / 管理命令不能在分布式限流不可确认时 fail-open，reader presence 不能影响正文可读性。完整矩阵见 `docs/architecture/services/content/rate-limiting.md`。
+
+## 限流与降级
+
+所有 endpoint 都接受 Gateway 粗限流保护。Content 服务内业务限流按 actor、post、session、service caller、operation 和高成本资源维度执行：
+
+- 公开阅读、标签和互动查询：允许短时本机限流兜底，重点控制缓存穿透和数据库 / MongoDB 回源。
+- 作者工作台写路径：`POST /posts`、草稿 meta/body、标签替换和删除等按 actor + post + operation 限制；autosave 可配置短 burst，但要限制持续 QPS 和单位时间 body 字节量。
+- 发布生命周期：publish、unpublish、schedule、restore、delete 是高副作用路径；Redis / limiter 不可确认时返回 `1004`，不能放行。
+- 点赞 / 收藏：接口幂等不等于无限放行；重复刷写仍要按 actor + post + operation 限制，避免统计和 outbox 被放大。
+- Reader presence：heartbeat 可合并为 no-op success；Redis 不可用时 `PUT` / `GET` 返回空 `ReaderPresence` 并标记 `degraded=true`，`DELETE` 返回空成功，不能阻塞文章详情、正文读取或公开列表。
+- 管理和运维：管理删除和 outbox retry 必须按 admin actor + target 限流，并保留审计语义。
+
+限流命中返回 `1003 REQUEST_TOO_FREQUENT` / HTTP `429`。限流依赖不可用且当前 API 不允许 fail-open 时返回 `1004 SERVICE_DEGRADED` / HTTP `503`。
 
 ## 通用对象
 
@@ -596,8 +610,13 @@ Body：`postIds`，最多 100 个。
 | --- | --- | --- |
 | `readingCount` | int | 当前估算阅读人数。 |
 | `avatars` | object[] | 最多 3 个头像摘要：`userId`、`nickname`、`avatarUrl`。 |
+| `degraded` | boolean | 是否因为 Redis / presence 依赖不可用返回降级空摘要；正常响应为 `false`。 |
 
-Presence 是 Redis 短生命周期状态，不能影响文章可读性。
+Presence 是 Redis 短生命周期状态，不能影响文章可读性。Redis 不可用时：
+
+- `PUT /reader-sessions/{sessionId}` 返回 HTTP `200`，`data` 为 `readingCount=0`、`avatars=[]`、`degraded=true`。
+- `DELETE /reader-sessions/{sessionId}` 返回 HTTP `200`，`data` 为空。
+- `GET /reader-presence` 返回 HTTP `200`，`data` 为 `readingCount=0`、`avatars=[]`、`degraded=true`。
 
 ## 标签 API
 

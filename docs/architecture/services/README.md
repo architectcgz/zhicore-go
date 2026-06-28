@@ -57,6 +57,8 @@ Content 服务文档已经拆成专题文件：
 | 正文存储与发布 | `content/body-storage-and-publishing.md` |
 | Application、Ports 与实现切片 | `content/application-and-ports.md` |
 | 数据、事件和契约 | `content/data-events-contracts.md` |
+| 限流和频控 | `content/rate-limiting.md` |
+| 运行期 resilience | `content/runtime-resilience.md` |
 
 Comment 的服务级文档只保留边界、API 族和模块入口；模块内部设计已迁移到 `docs/architecture/module/comment/`：
 

@@ -12,6 +12,23 @@
 - User 不提供用户文章 facade。用户主页文章列表直接走 Content HTTP API。
 - Admin 如需文章管理入口，可以作为 facade 调用 Content admin contract，但不拥有文章 mutation 语义。
 
+## Caller Identity
+
+Content typed client 调用必须携带服务间 caller 身份，供 Content 做内部调用限流、审计和观测。caller 身份不是用户身份，不能替代 `Actor` / `AuthContext` 或资源权限校验。
+
+| Header | 必填 | 来源 | 说明 |
+| --- | --- | --- | --- |
+| `X-Caller-Service` | 是 | consumer 服务静态配置 | 稳定服务名，例如 `zhicore-search`、`zhicore-comment`、`zhicore-ranking`、`zhicore-notification`、`zhicore-admin`。 |
+| `X-Caller-Operation` | 是 | typed client 调用点常量 | 稳定低基数字符串，例如 `search.index_post_body`、`comment.check_post_visible`、`ranking.batch_post_summary`。不得包含用户输入、`postId`、cursor 或错误文本。 |
+| `X-Request-Id` | 否 | 上游请求或任务 metadata | 用于单次请求关联。 |
+| `X-Trace-Id` | 否 | 上游请求或任务 metadata | 用于跨服务链路关联。 |
+
+规则：
+
+- typed client adapter 负责写入 `X-Caller-Service` / `X-Caller-Operation`，业务代码不手写 header。
+- Content 对内部高成本接口按 `callerService + operation + target` 限流；未知 caller 或缺少 caller header 的服务间-only endpoint 默认按未认证内部调用处理，返回 `SERVICE_DEGRADED` 或权限类错误，而不是落到匿名公开配额。
+- 如果某个 consumer 需要代表当前用户调用 Content，必须在 Content HTTP schema 中显式登记允许的用户身份 header；普通 typed client 查询默认只使用服务身份。
+
 ## Client interface 草案
 
 ```go

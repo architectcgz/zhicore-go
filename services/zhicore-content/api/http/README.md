@@ -25,7 +25,14 @@ Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Ja
 - 时间、ID、枚举、空值和 JSON 字段：见 `docs/contracts/data-types.md`。
 - 分页、排序和过滤：见 `docs/contracts/pagination.md`。
 - 认证和身份 header：见 `docs/contracts/http.md` 与 `docs/architecture/security.md`。
-- 运行期 timeout、retry、熔断、降级和观测：见 `docs/architecture/runtime-operations.md` 与 `docs/architecture/observability.md`。
+- 运行期 timeout、retry、熔断、降级和观测：见 `docs/architecture/runtime-operations.md`、`docs/architecture/observability.md` 和 `docs/architecture/services/content/runtime-resilience.md`。
+- 限流和 Redis 故障策略：见 `docs/architecture/services/content/rate-limiting.md`。
+
+## 限流上下文
+
+Content API 需要 Gateway 粗限流和 Content 服务内业务限流两层保护。Gateway 按 IP、route、method 阻挡明显洪水流量；Content 按 actor、post、session、service caller、operation 和高成本资源维度保护草稿保存、发布、正文读取、互动统计、presence、管理端和内部调用。
+
+业务限流命中时返回 HTTP `429`，body `code` 使用 `1003`。Redis 或 limiter 依赖不可用导致高副作用写路径不能确认配额时，返回 HTTP `503`，body `code` 使用 `1004`。Reader presence 是附加能力，Redis 不可用时 presence 接口返回空摘要或空成功并标记降级，不能影响文章详情、正文读取和公开列表。
 
 ## 鉴权上下文
 
@@ -35,8 +42,10 @@ Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Ja
 | 登录用户 | `X-User-Id` 必填 | 创建草稿、保存草稿、点赞、收藏、读取我的草稿等。 |
 | 作者 | `X-User-Id` 必填 | application 校验 `posts.owner_id == Actor.UserID`。 |
 | 管理员 | `X-User-Id` + `X-User-Roles` | 管理端路由需要管理员角色；状态校验仍由 Content application 执行。 |
+| 服务间调用 | `X-Caller-Service` + `X-Caller-Operation` | Content typed client 调用必填，用于内部调用限流、审计和观测；不表示当前用户身份。 |
 
 客户端伪造的 `X-User-*` header 必须由 Gateway 清理后重新注入。Content handler 不从 request body 接收当前操作者 `userId`。
+客户端伪造的 `X-Caller-*` header 必须由 Gateway 清理；服务间 typed client adapter 从服务配置和调用点常量生成 caller header。
 
 ## Endpoint 索引
 
@@ -108,7 +117,8 @@ Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Ja
 | code | HTTP status | 含义 | 适用场景 |
 | --- | --- | --- | --- |
 | `1001` | `400` | 参数校验失败 | path/query/body 字段非法、cursor 非法、blocks schema 非法。 |
-| `1004` | `503` | 服务暂时不可用 | MongoDB、PostgreSQL、User、Upload 或其他依赖不可用。 |
+| `1003` | `429` | 请求过于频繁 | Content 业务限流命中，包含公开读、草稿保存、发布、互动、presence、管理端和内部调用频控。 |
+| `1004` | `503` | 服务暂时不可用 | MongoDB、PostgreSQL、User、Upload、限流依赖或其他核心依赖不可用。 |
 | `1005` | `404` | 数据不存在 | outbox event 等非文章资源不存在。 |
 | `2006` | `401` | 请先登录 | 登录态 endpoint 缺少 Gateway 注入身份。 |
 | `2007` | `403` | 需要特定角色 | 管理端路由缺少管理员角色。 |
