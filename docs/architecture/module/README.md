@@ -39,6 +39,7 @@ docs/architecture/module/<module>/
 | --- | --- | --- | --- |
 | `auth` | `zhicore-auth` | `auth/README.md` | 已拆分模块设计。 |
 | `comment` | `zhicore-comment` | `comment/README.md` | 已拆分模块设计；首批 HTTP contract 已登记。 |
+| `user` | `zhicore-user` | `user/README.md` | 已拆分模块设计；Profile、状态、Block、Follow 边界已确认。 |
 
 ## 关联方式
 
