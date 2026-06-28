@@ -71,6 +71,18 @@
 | `2006` | `LOGIN_REQUIRED` | 请先登录 | 未登录或登录态缺失。 |
 | `2007` | `ROLE_REQUIRED` | 需要特定角色 | 需要管理员或特定角色。 |
 | `2008` | `RESOURCE_ACCESS_DENIED` | 无权访问该资源 | 已登录但无权访问目标资源。 |
+| `2009` | `AUTH_EMAIL_EXISTS` | 邮箱已被注册 | Auth 注册时 email 被占用。 |
+| `2010` | `AUTH_EMAIL_INVALID` | 邮箱格式错误 | Auth email 字段格式非法。 |
+| `2011` | `AUTH_PASSWORD_INVALID` | 密码不符合要求 | Auth password 不符合长度、复杂度或新旧密码规则。 |
+| `2012` | `AUTH_REGISTER_PENDING_RETRYABLE` | 注册暂时未完成，请稍后重试 | Auth pending 注册可重试。 |
+| `2013` | `AUTH_CSRF_INVALID` | CSRF 校验失败 | Auth session 变更请求 CSRF header/cookie 缺失或不匹配。 |
+| `2014` | `AUTH_ACCOUNT_LOCKED` | 账号已临时锁定 | 登录失败等风控触发临时锁定。 |
+| `2015` | `AUTH_RATE_LIMITED` | 请求过于频繁 | Auth 业务安全限流。 |
+| `2016` | `AUTH_PRINCIPAL_UNAVAILABLE` | 登录状态暂时无法确认 | Gateway/Auth 无法确认当前 principal 或 access state。 |
+| `2017` | `AUTH_TOKEN_REPLAYED` | 登录凭证已被重复使用 | refresh token replay。 |
+| `2018` | `AUTH_SESSION_REVOKED` | 会话已失效 | refresh session 已撤销、过期或不可继续使用。 |
+| `2019` | `AUTH_ACCOUNT_BANNED` | 账号已被封禁 | 账号被管理员或风控封禁。 |
+| `2020` | `AUTH_DEACTIVATION_PROCESSING` | 账号注销处理中 | Auth 账号注销或安全同步处理中。 |
 
 ## User 错误
 
