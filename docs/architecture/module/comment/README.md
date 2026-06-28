@@ -77,10 +77,11 @@ Comment 不提供媒体上传 facade。前端先调用 Upload 获得文件 ID，
 | `domain.md` | 聚合、实体、值对象、不变量、领域服务和工厂。 |
 | `ports.md` | repository、cache、client、event publisher、outbox 和 external adapter 端口归属。 |
 | `data-events.md` | 数据归属、目标 schema 草案、缓存 key、事件 payload 和跨服务一致性。 |
+| `runtime-resilience.md` | timeout、retry、熔断、降级、限流、健康检查和依赖故障语义。 |
 | `decision-log.md` | 设计压测中已确认的决策、原因和后续依赖。 |
 
 ## 当前状态
 
-- 已固定：模块边界、DDD 聚合拆分、外部定位方式、用户标识边界、评论计数语义、删除子树语义、默认排序、首批 API contract 和首个实现切片。
+- 已固定：模块边界、DDD 聚合拆分、外部定位方式、用户标识边界、评论计数语义、删除子树语义、默认排序、首批 API contract、运行韧性策略和首个实现切片。
 - 待实现：Go handler、domain/application/infrastructure、migration、contract test 和 system HTTP test。
 - 首批 contract：`services/zhicore-comment/api/http/README.md`、`services/zhicore-comment/api/http/endpoints/create-comment.md`、`services/zhicore-comment/api/http/endpoints/list-comments-page.md`；首个切片必须同时支持根评论和 `parentFloor` 回复创建。

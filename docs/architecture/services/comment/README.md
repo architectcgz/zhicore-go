@@ -34,6 +34,7 @@ Comment 不拥有：
 | `docs/architecture/module/comment/domain.md` | 聚合、实体、值对象、不变量、领域服务和工厂。 |
 | `docs/architecture/module/comment/ports.md` | repository、cache、client、event publisher、outbox 和 external adapter 端口归属。 |
 | `docs/architecture/module/comment/data-events.md` | 数据归属、目标 schema 草案、缓存 key、事件 payload 和跨服务一致性。 |
+| `docs/architecture/module/comment/runtime-resilience.md` | timeout、retry、熔断、降级、限流、健康检查和依赖故障语义。 |
 | `docs/architecture/module/comment/decision-log.md` | 设计压测中已确认的决策、原因和后续依赖。 |
 
 ## 设计复盘
@@ -93,6 +94,7 @@ Comment 拥有：
 - 点赞和取消点赞必须用 `comment_likes(comment_id, user_id)` 唯一约束保护幂等；点赞计数和 HOT / RECOMMENDED 排序通过 `comment_counter_deltas` 异步批量更新 `comment_stats` / rank 表，不要把高 QPS 点赞直接写到 `comments` 或同步更新同一统计行。
 - 顶级评论 HOT 查询不做大范围 `comments + comment_stats` 排序 join；先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取候选，再批量补评论正文、统计和作者摘要。
 - 默认顶级评论流使用 `comment_recommended_rank`，按 `(post_id, recommended_score DESC, floor DESC)` 取候选；decay / recompute 必须过滤 `visible=true` 并使用锁或 claim 机制避免重复重算。
+- 写路径外部 guard 不可确认时 fail closed；查询路径只允许作者摘要和 Upload URL 这类展示增强降级，具体矩阵见 `docs/architecture/module/comment/runtime-resilience.md`。
 - 删除任意评论节点必须软删除整棵子树，并用本次实际从 `NORMAL` 变为 `DELETED` 的 `affectedCount` 维护统计和事件，避免重复删除导致重复扣减。
 - Comment 与 Content 的评论总数需要 Ops 对账机制；Comment 的 `comment_post_stats` 是事实源，Content 的 `post_stats.comment_count` 是消费事件后的读模型。
 

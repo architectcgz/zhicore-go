@@ -19,6 +19,7 @@ docs/architecture/module/<module>/
 ├── ports.md
 ├── data-model.md
 ├── data-events.md
+├── runtime-resilience.md
 ├── adr/
 └── decision-log/
 ```
@@ -32,6 +33,7 @@ docs/architecture/module/<module>/
 | `ports.md` | repository、cache、client、event publisher、outbox、external adapter 等端口归属。 |
 | `data-model.md` | PostgreSQL / 持久化数据模型草案、表字段、索引、约束和后续 migration 切片建议。 |
 | `data-events.md` | 数据归属、缓存 key、事件 payload 归属、typed client 和一致性规则。 |
+| `runtime-resilience.md` | timeout、retry、熔断、降级、max-in-flight、健康检查和依赖故障语义。 |
 | `adr/` | 模块内难以逆转、需要解释取舍的架构决策。 |
 | `decision-log/` | 重要设计压测、评审或讨论的复盘记录。 |
 

@@ -70,7 +70,7 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 - 端口不能暴露 `*gorm.DB`、`*redis.Client`、Gin context、HTTP DTO、ORM sentinel 或外部 SDK 类型。
 - repository 返回 module-local 语义错误，例如 `CommentNotFound`、`DuplicateLike`、`StaleCursor`。
 - cache store 不把 Redis key 字符串泄漏给 application；application 只表达“失效文章评论列表、根评论回复列表、首页快照”等语义。
-- client adapter 负责把 HTTP status、Feign / REST 错误、超时和熔断结果翻译为 module-local 错误。
+- client adapter 负责把 HTTP status、Feign / REST 错误、超时和熔断结果翻译为 module-local 错误；具体 resilience policy 见 `runtime-resilience.md`。
 - `OutboxPublisher` 只负责在业务事务内追加事件，dispatcher 的 claim、发送、retry/dead 状态更新属于 infrastructure job。
 - Comment 不提供媒体上传 facade；Upload 只通过 `FileReferenceClient` 作为文件事实 owner 被调用。
 - 查询路径的 User 摘要和 Upload URL 解析可以降级返回占位或省略 URL；写路径校验不能降级放行。
