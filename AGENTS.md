@@ -32,6 +32,7 @@
 - 修改跨服务数据归属、同步调用、facade 路由或 contract 放置前，先读 `docs/architecture/service-boundaries.md`。
 - 修改单个服务职责、API 族、数据归属、事件、依赖或实现风险前，先读 `docs/architecture/services/README.md` 和对应服务文档。
 - 修改模块内部 API 背后设计、application service、domain、ports、数据或事件细节前，先读 `docs/architecture/module/README.md` 和对应模块文档。
+- 同一模块内 `service.md`、`domain.md`、`ports.md`、`api.md`、服务 README 和 `decision-log.md` 存在张力时，以 `decision-log.md` 中已确认的设计决策为准推进；其他摘要文档视为待同步材料。
 - 修改服务替换实施顺序、既有事实核对流程、服务完成标准或交付切片规则前，先读 `docs/migration/service-migration-workflow.md`。
 - 修改服务内分层、运行时依赖、数据库列命名、Go 内部命名、显式 mapper/tag、缓存、RabbitMQ 事件或事务边界前，先读 `docs/architecture/go-service-design.md`。
 - 修改 schema migration、`golang-migrate` 命令、migration 文件命名、GORM schema 边界或数据修复规则前，先读 `docs/architecture/migrations.md`。
