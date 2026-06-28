@@ -10,6 +10,7 @@ Ports 放在 `services/zhicore-auth/internal/auth/ports`，按能力和用例族
 | `CredentialRepository` | 密码 hash 读取和更新。 |
 | `RoleRepository` | 默认角色查询、账号角色关系写入和角色查询。 |
 | `AccountQueryRepository` | 当前主体、账号主体和管理端账号查询。 |
+| `AccessStateQuery` | Gateway 回源校验 access token claims 对应的账号、session 和 principal 状态。 |
 
 ## 安全机制端口
 
@@ -17,7 +18,7 @@ Ports 放在 `services/zhicore-auth/internal/auth/ports`，按能力和用例族
 | --- | --- |
 | `PasswordHasher` | 密码 hash 和 verify。 |
 | `TokenIssuer` | JWT access / refresh token 签发、解析、claims 校验和 token ID 提取。 |
-| `RefreshTokenStore` | Refresh token 白名单、吊销、rotation 和账号级全量吊销。 |
+| `RefreshSessionStore` | Refresh session 真相源、token hash rotation、session 吊销和账号级全量吊销。 |
 | `AccessTokenBlacklist` | Access token 黑名单或 token version 失效机制。 |
 | `AuthCacheStore` | 账号主体、角色和 token 校验缓存。 |
 

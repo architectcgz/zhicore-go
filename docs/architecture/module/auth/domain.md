@@ -65,4 +65,4 @@
 | `AccountStatusPolicy` | 判断账号状态是否允许登录、refresh 或凭证变更。 |
 | `RolePolicy` | 校验默认角色、管理员角色和角色变更规则。 |
 
-JWT 签发、refresh token 白名单、Redis 黑名单和密码 hash / verify 都不是领域服务职责，由 application 通过 ports 编排。
+JWT 签发、refresh session 持久化与 rotation、Redis 黑名单和密码 hash / verify 都不是领域服务职责，由 application 通过 ports 编排。

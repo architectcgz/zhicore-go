@@ -5,18 +5,25 @@
 服务职责：
 
 - 拥有账号身份、登录标识、登录凭证、账号状态、角色事实和 JWT 签发 / refresh 行为。
-- 管理 refresh token 白名单、token rotation、登出、强制失效和高风险凭证变更。
+- 管理 PostgreSQL refresh session、token rotation、登出、强制失效和高风险凭证变更。
 - 向 Gateway 提供 access token 校验所需的签名、claims 规则和失效语义；Gateway 仍负责入口校验和可信身份 header 注入。
 - 向 User 提供账号创建后的用户资料初始化所需事实，例如 `accountId`、`username`、默认昵称来源。
 
 数据归属：
 
-- `accounts`
-- `account_credentials`
-- `roles`
-- `account_roles`
-- Auth 服务自己的 `outbox_events`
-- Redis refresh token 白名单、token 黑名单或 token 版本缓存
+- `auth_accounts`
+- `auth_password_credentials`
+- `auth_account_roles`
+- `auth_refresh_sessions`
+- `auth_used_refresh_tokens`
+- `auth_email_verifications`
+- `auth_verification_tokens`
+- `auth_security_operations`
+- `auth_audit_logs`
+- `auth_outbox_events`
+- Redis refresh session cache、token 黑名单和账号版本投影
+
+PostgreSQL 表设计见 `docs/architecture/module/auth/data-model.md`；正式 SQL migration 后续放在 `services/zhicore-auth/migrations/`。
 
 Go 设计注意点：
 

@@ -25,14 +25,21 @@ Auth 不拥有用户公开资料、关注、拉黑、签到、用户资料摘要
 
 Auth 拥有：
 
-- `accounts`
-- `account_credentials`
-- `roles`
-- `account_roles`
-- Auth 服务自己的 `outbox_events`
-- Redis refresh token 白名单、token 黑名单或 token 版本缓存
+- `auth_accounts`
+- `auth_password_credentials`
+- `auth_account_roles`
+- `auth_refresh_sessions`
+- `auth_used_refresh_tokens`
+- `auth_email_verifications`
+- `auth_verification_tokens`
+- `auth_security_operations`
+- `auth_audit_logs`
+- `auth_outbox_events`
+- Redis refresh session cache、token 黑名单和账号版本投影
 
 User 可以把 Auth 的 `accountId` / `userId` 作为用户资料主键或外部引用，但不复制密码、角色事实或 token 状态。
+
+PostgreSQL 表设计见 `docs/architecture/module/auth/data-model.md`；正式 SQL migration 后续放在 `services/zhicore-auth/migrations/`。
 
 ## API 族
 
@@ -48,6 +55,7 @@ User 可以把 Auth 的 `accountId` / `userId` 作为用户资料主键或外部
 - Application service：`docs/architecture/module/auth/service.md`
 - Domain：`docs/architecture/module/auth/domain.md`
 - Ports：`docs/architecture/module/auth/ports.md`
+- 数据模型：`docs/architecture/module/auth/data-model.md`
 - 数据和事件：`docs/architecture/module/auth/data-events.md`
 
 ## 实现风险

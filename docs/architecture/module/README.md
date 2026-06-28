@@ -17,6 +17,7 @@ docs/architecture/module/<module>/
 ├── service.md
 ├── domain.md
 ├── ports.md
+├── data-model.md
 ├── data-events.md
 ├── adr/
 └── decision-log/
@@ -29,6 +30,7 @@ docs/architecture/module/<module>/
 | `service.md` | application service / use case、事务边界、幂等、并发和错误映射。 |
 | `domain.md` | 聚合、实体、值对象、不变量和状态转换。 |
 | `ports.md` | repository、cache、client、event publisher、outbox、external adapter 等端口归属。 |
+| `data-model.md` | PostgreSQL / 持久化数据模型草案、表字段、索引、约束和后续 migration 切片建议。 |
 | `data-events.md` | 数据归属、缓存 key、事件 payload 归属、typed client 和一致性规则。 |
 | `adr/` | 模块内难以逆转、需要解释取舍的架构决策。 |
 | `decision-log/` | 重要设计压测、评审或讨论的复盘记录。 |
