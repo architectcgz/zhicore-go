@@ -1,0 +1,4 @@
+interface:
+  display_name: "Persist Useful Findings"
+  short_description: "发现并持久化记录可复用问题纠正流程缺口风险和经验信号"
+  default_prompt: "Use $persisting-useful-findings to capture useful corrections, questions, risks, and reusable lessons in the right durable location."
