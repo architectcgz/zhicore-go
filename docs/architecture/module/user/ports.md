@@ -23,6 +23,7 @@ Ports 放在 `services/zhicore-user/internal/user/ports`，按能力和用例族
 | `Clock` | UTC 当前时间和审计时间。 |
 | `CursorCodec` | 关系列表 cursor 编码/解码；使用内部关系 `id`，HTTP 不暴露 SQL 锚点。 |
 | `UserPublicIDCodec` | 根据内部 `userId` 生成和解析 User `publicId`；封装前缀、版本和 secret。 |
+| `RateLimiter` | User 业务限流决策；返回稳定 `Outcome`、公开错误码、原因和 fallback 类型，不只返回 bool。 |
 | `MetricsRecorder` | 低基数指标记录；不能影响业务控制流。 |
 
 `publicId` 生成不依赖 `zhicore-id-generator`。推荐使用 User 本地短公开 ID 规则，例如 `u` 前缀 + 版本 + `Base58/Base62(permute64(userId, secret))`。
@@ -65,6 +66,7 @@ type Client interface {
     BatchCheckBlocked(ctx context.Context, pairs []UserPair) (map[UserPair]bool, error)
     CheckFollowing(ctx context.Context, followerID, followingID int64) (bool, error)
     GetStrangerMessageSetting(ctx context.Context, userID int64) (bool, error)
+    ListFollowerShard(ctx context.Context, input ListFollowerShardInput) (ListFollowerShardResult, error)
 }
 ```
 
@@ -74,15 +76,19 @@ DTO 规则：
 - `UserSimple` 返回 `userId`、`publicId`、`nickname`、`avatarFileId`、`profileVersion`、`status`。
 - 默认 typed client 不返回 `avatarUrl`。
 - 缺失用户在批量结果中省略，并返回 `missingUserIds`。
+- 服务间 HTTP adapter 必须从 consumer 配置和调用点常量写入 `X-Caller-Service` / `X-Caller-Operation`，不能透传客户端输入。
 
 ## 端口约束
 
 - repository 返回 module-local 语义错误，例如 `UserNotFound`、`NicknameTaken`、`DuplicateFollow`。
-- 外部 HTTP / SDK adapter 负责把 status、超时、熔断和 payload 错误翻译为 module-local 错误。
+- 外部 HTTP / SDK adapter 负责把 status、超时、熔断和 payload 错误翻译为 module-local 错误；application 拥有降级选择，adapter 不构造业务 DTO 伪装成功。
 - `OutboxPublisher` 只负责事务内追加事件；dispatcher 的 claim、retry、dead 状态更新属于 infrastructure job。
 - `FileReferenceClient` 用于写路径校验，失败时不写 User 资料。
 - `FileURLResolver` 用于读路径展示，失败时省略 `avatarUrl` 并记录观测。
+- `RateLimiter` 按 [rate-limiting.md](rate-limiting.md) 返回 `ALLOW`、`REJECT_TOO_FREQUENT`、`DEGRADED_ALLOW_LOCAL` 或 `DEGRADED_DENY_UNAVAILABLE`；高副作用写路径不能在 Redis 限流不可确认时 fail-open。
+- runtime wiring 必须按 [runtime-resilience.md](runtime-resilience.md) 为每个下游 `provider + operation` 声明 timeout、retry、circuit breaker、max-in-flight 和 degrade strategy。
 - `BatchGetUserSimple` 不可承担写路径资格判断；写路径使用 `BatchGetUserAvailability` 和 `BatchCheckBlocked`。
+- `BatchCheckBlocked` / `CheckFollowing` 中“用户缺失返回 false”和“User 依赖不可用返回 `SERVICE_DEGRADED`”必须区分，consumer 写路径在 degraded 时 fail closed。
 
 ## Go 包落点
 
