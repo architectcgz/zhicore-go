@@ -38,6 +38,13 @@ docs/architecture/services/<service>/
 | ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` | `id-generator/service-detail.drawio` | `id-generator/service-detail.png` |
 | Ops | `ops/README.md` | `ops/service-design.ops.png` | `ops/service-detail.drawio` | `ops/service-detail.png` |
 
+Gateway 的服务级专题文档：
+
+| 专题 | 文档 |
+| --- | --- |
+| 入口和关键结论 | `gateway/README.md` |
+| Redis/Auth 降级下的路由风险策略 | `gateway/route-risk-policy.md` |
+
 Content 服务文档已经拆成专题文件：
 
 | 专题 | 文档 |

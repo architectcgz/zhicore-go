@@ -67,9 +67,13 @@ Authorization: Bearer <access-token>
 
 | Header | 用途 | 可见范围 |
 | --- | --- | --- |
+| `X-Account-Id` | 当前登录 Auth account ID | Gateway -> 下游服务。 |
 | `X-User-Id` | 当前登录用户 ID | Gateway -> 下游服务。 |
 | `X-User-Name` | 当前用户名或展示名 | Gateway -> 下游服务，可选。 |
 | `X-User-Roles` | 当前用户角色集合，逗号分隔 | Gateway -> 下游服务，可选。 |
+| `X-Session-Id` | 当前 access token 所属登录 session ID | Gateway -> Auth 和需要 session 语义的下游服务。 |
+| `X-Session-Version` | 当前 access token 携带的 session version | Gateway -> Auth 和需要认证状态校验的下游服务。 |
+| `X-Principal-Version` | 当前 access token 携带的 principal version | Gateway -> Auth 和需要 principal 刷新的下游服务。 |
 | `X-Request-Id` | 请求关联 ID | 外部可传入，服务间继续传播。 |
 | `X-Trace-Id` | 链路关联 ID | 外部可传入，服务间继续传播。 |
 
