@@ -112,6 +112,8 @@ Ports 放在 `services/zhicore-ranking/internal/ranking/ports`，按能力和用
 
 claim 必须只选择窗口已经结束、未 flushed、未被有效 owner 持有或 claim 已过期的 bucket。Go 实现可用条件更新或 `FOR UPDATE SKIP LOCKED`，但必须保留 `flush_owner/flush_started_at` 语义，方便 crash 后回收。
 
+Flush worker 按 `ranking.pipeline.flush_interval` 周期运行，默认参考值为 `5s`。每轮只 claim 满足条件的 bucket；如果 `ranking.pipeline.bucket_window` 是 `10s`，且 `ranking.pipeline.flush_delay >= bucket_window`，刚写入的当前窗口不会立即物化，必须等窗口结束并经过 flush delay 后，才进入可 claim 范围。
+
 `ranking_post_state` 更新必须使用 version、post 级锁或等价条件写，避免两个 worker 对同一内部 `post_id` 的相邻 bucket 并发覆盖。`bucket` 的 `applied_*` 是幂等关键字段，不能省略。
 
 推荐的 bucket 级并发控制是“先锁定、再取 pending、同事务应用”：

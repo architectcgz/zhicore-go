@@ -59,6 +59,13 @@ RabbitMQ delivery
 - 本地 keyed worker 只能优化单进程内同一 `post_id` 的处理顺序，不能作为跨实例正确性假设。
 - 如果运行多个 Ranking consumer 实例，必须假设同一 `post_id` 可能并发落到不同实例。
 
+### 单条消费与 bucket 聚合
+
+- consumer 入口逐条处理 RabbitMQ delivery；同一个 consumer 连续收到多条 event 时也逐条执行，不先在内存里批量聚合。
+- 每条 event 单独 decode、校验、执行 application use case、提交 PostgreSQL 事务后 ack。
+- 聚合发生在 PostgreSQL `ranking_delta_bucket`，不是 consumer 内存里批量聚合；每条已接受事件先按 `event_id` 写入 `ranking_event_ledger` 做幂等，再按 `(bucket_start, post_id)` upsert bucket 并累加 delta。
+- 整体链路是“逐条消费 + bucket 聚合 + 批量 flush”；consumer 不直接写 Redis，不直接更新 `ranking_post_state`，后续 `FlushRankingBuckets` 再按 pending delta 批量物化到 `ranking_post_state`、`ranking_period_score` 和 Redis。
+
 ## Partition Key
 
 Ranking 内部统一 partition key：
