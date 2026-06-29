@@ -47,6 +47,9 @@ docs/architecture/services/<service>/
 | Auth | `auth/page-design.md` | 登录、注册、会话和安全设置 |
 | User | `user/page-design.md` | 资料、关注、拉黑和用户设置 |
 | Content | `content/page-design.md` | 文章浏览、编辑、互动和内容管理 |
+| Comment | `comment/page-design.md` | 评论区、回复、评论点赞和审核入口 |
+| Message | `message/page-design.md` | 私信会话、聊天线程、未读和发送状态 |
+| Notification | `notification/page-design.md` | 通知中心、偏好、免打扰和投递状态 |
 
 Gateway 的服务级专题文档：
 

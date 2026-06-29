@@ -21,6 +21,10 @@ Message 不拥有系统通知事实；通知收件箱归 Notification。Message 
 - `/api/v1/messages/conversations` 和 `/api/v1/conversations`：会话列表、会话详情、用户会话、未读数。
 - 消息历史查询接口保留协议，但当前边界允许默认 provider 返回空列表，后续接外部 IM provider。
 
+## 页面设计
+
+- [page-design.md](page-design.md)：Message 页面初设计、会话列表、聊天线程、发送私信、未读数和 provider 降级规则。
+
 ## 数据归属
 
 Message 拥有：

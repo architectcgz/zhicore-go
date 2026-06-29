@@ -36,6 +36,7 @@ Comment 不拥有：
 | `docs/architecture/module/comment/data-events.md` | 数据归属、目标 schema 草案、缓存 key、事件 payload 和跨服务一致性。 |
 | `docs/architecture/module/comment/runtime-resilience.md` | timeout、retry、熔断、降级、限流、健康检查和依赖故障语义。 |
 | `docs/architecture/module/comment/decision-log.md` | 设计压测中已确认的决策、原因和后续依赖。 |
+| [page-design.md](page-design.md) | Comment 页面初设计、前端草稿、加载逻辑和降级规则。 |
 
 ## 设计复盘
 
