@@ -45,7 +45,7 @@
 | 27 | Content / Comment 事件字段 | Ranking 是否能每条事件同步查询 Content / Comment 补字段？ | `publicPostId` 必填；内部 `postId` 可选优化。缺字段时优先修事件 contract，不把同步补查变成常态。 | 高频事件每条同步补查会放大延迟和失败面；事件应携带足够事实。 | 只携带 `publicPostId` 时允许通过 Content 解析内部 post id；not found / deleted 进入 DLQ 或告警。 |
 | 28 | Comment 同步依赖 | Ranking 是否同步读取 Comment 服务？ | 第一阶段通常不需要。Comment 只通过事件输入；缺字段时优先修 Comment 事件。 | Ranking 不应把 Comment 查询变成热度摄入的在线依赖。 | `CommentClient` 仅作为未来必要时的可选端口。 |
 | 29 | Ranking 生产事件 | Ranking 是否生产关键跨服务事件？ | 第一阶段默认不生产关键事件。热门候选集通过同步查询或定时拉取暴露给 Comment。 | 候选集是可重建视图，不是权威业务事实；事件广播会增加 consumer 幂等和一致性成本。 | 如未来需要 `ranking.hot_candidates.updated`，必须新增 ranking event contract 并定义是否可丢失。 |
-| 30 | HTTP API 兼容 | Go Ranking 是否完全兼容 Java 旧数据和 API 形态？ | 不要求兼容 Java 旧数据，但 API 形态需要按目标前端 contract 固定。 | Go 重建阶段以目标 contract 为准；旧 Java 是能力参考，不是字段事实源。 | 后续按 `docs/contracts/http-schema-template.md` 提取 `services/zhicore-ranking/api/http/README.md`。 |
+| 30 | HTTP API 兼容 | Go Ranking 是否完全兼容 Java 旧数据和 API 形态？ | 不要求兼容 Java 旧数据，但 API 形态需要按目标前端 contract 固定。 | Go 重建阶段以目标 contract 为准；旧 Java 是能力参考，不是字段事实源。 | 字段级 schema 已提取到 `services/zhicore-ranking/api/http/`，当前为草案，待 handler / contract test 验证。 |
 | 31 | 分页起点 | Ranking page 分页从 0 还是 1 开始？ | Ranking 保留 page 从 `0` 开始，`size/limit` 必须配置最大值。 | Ranking 当前前端和 Java 参考已有 0-based 语义；切换会影响调用方。 | HTTP schema 中明确 page 起点、最大 size 和空榜语义。 |
 | 32 | 首个实现切片 | Ranking 首先实现完整榜单体系还是最小链路？ | 先实现“事件账本 + bucket + 文章总榜查询”，再推进 snapshot/rebuild、周期榜、候选集和归档。 | Ranking 风险集中在幂等、bucket flush、Redis 可重建和公开可见性过滤；先闭合核心链路更容易验证。 | 切片 1 覆盖 `content.post.liked/unliked`、`content.post.published/deleted/visibility_changed`、`comment.created/deleted`，view/favorite 可后续补。 |
 | 33 | Ranking 运行韧性专题归属 | Ranking 的 timeout、retry、熔断、降级、健康检查和依赖故障语义写在哪里？ | 新增 `runtime-resilience.md` 作为 Ranking 运行韧性专题事实源；README 和 decision-log 只保留关键结论和入口。 | Ranking 同时有 HTTP 查询、RabbitMQ consumer、bucket flush、snapshot、candidate、archive 和 rebuild，故障语义跨 PostgreSQL、Redis、RabbitMQ、MongoDB、Content/User client，必须集中维护。 | 首次实现任一 adapter、worker、consumer 或 runtime wiring 前必须先读该文档。 |
@@ -60,7 +60,7 @@
 
 ## 需要继续决策的问题
 
-- Ranking HTTP 字段级 schema：`HotScore.entityId`、`rank`、`score`、空榜和错误码。
+- Ranking HTTP 字段级 schema 已进入草案；后续需要用 handler / contract test 验证 `HotScore.entityId`、`rank`、`score`、空榜和错误码。
 - Content / Comment 事件 payload 的最终字段和内部 `postId` 携带策略，尤其是 `content.post.visibility_changed` 的 `oldVisibility/newVisibility/publicVisible/reason/aggregateVersion`。
 - RabbitMQ 分片策略：routing key、consistent hash exchange 或 consumer 本地 post 分片。
 - Admin `rebuild-from-ledger` 的权限、审计、互斥锁和返回状态 schema。

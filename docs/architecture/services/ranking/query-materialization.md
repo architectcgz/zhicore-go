@@ -117,4 +117,4 @@ Ranking 保留当前前端和服务间使用的路径。Go 目标不要求兼容
 
 分页页码从 `0` 开始；`size/limit` 必须按配置限制最大值，Java 默认最大 `100` 可作为迁移参考。周榜使用 ISO week-based year 和 week number。服务间候选集可同时返回内部 `postId` 和 `publicPostId`，但外部 HTTP response 不暴露内部 `post_id`。
 
-字段级 request / response、错误码、权限和返回空榜语义需要后续按 `docs/contracts/http-schema-template.md` 提取到 `services/zhicore-ranking/api/http`。
+字段级 request / response、错误码、权限和返回空榜语义已经按 `docs/contracts/http-schema-template.md` 提取到 `services/zhicore-ranking/api/http/`，当前状态为草案，待 Go handler / contract test 验证。

@@ -220,7 +220,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 
 ## 下一步
 
-- 按 `docs/contracts/http-schema-template.md` 提取 Ranking HTTP 字段级 contract。
+- 用 Go handler / contract test 验证 `services/zhicore-ranking/api/http/` 下的 Ranking HTTP 字段级 contract 草案。
 - 生成 Ranking migration 草案，重点核对 ledger、bucket、state、projection inbox 和 period score。
 - 提取 Content / Comment 事件 payload contract。
 - 设计 RabbitMQ 分片策略，明确同一内部 `post_id` 事件的局部顺序优化和乱序容忍测试。
