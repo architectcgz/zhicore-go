@@ -24,6 +24,10 @@ Java 侧存在以下接口：
 
 Go 第一阶段不保留这些 HTTP 兼容入口，不补 endpoint contract。若未来发现外部调用方仍依赖 `/api/v1/id/*`，必须先登记调用方、业务 owner、迁移原因和容量 / 时钟 / 高可用要求，再重新打开 API contract。
 
+## 页面设计
+
+- [page-design.md](page-design.md)：当前无产品页面；仅记录未来恢复集中发号后的内部诊断页占位和约束。
+
 ## 数据归属
 
 如果未来实现集中发号，ID Generator 可以拥有：

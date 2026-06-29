@@ -23,6 +23,10 @@ Java 侧存在 `/api/gray` 相关接口：
 
 Go 目标当前不保留这些运行时灰度 API，除非后续重新确认 Java/Go 并存或灰度发布需求。
 
+## 页面设计
+
+- [page-design.md](page-design.md)：Ops 内部运维页面初设计、对账、修复、事件回放、worker / queue 状态和任务审计。
+
 ## 数据归属
 
 Ops 不拥有业务事实表。

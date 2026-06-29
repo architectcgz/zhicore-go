@@ -53,6 +53,10 @@ docs/architecture/services/<service>/
 | Search | `search/page-design.md` | 搜索框、建议、热门词、历史和结果列表 |
 | Ranking | `ranking/page-design.md` | 热榜、周期榜、创作者 / 话题榜和 rebuild |
 | Upload | `upload/page-design.md` | 上传组件、批量上传、URL 解析和媒体入口 |
+| Admin | `admin/page-design.md` | 管理端总览、审核、举报和审计 |
+| Gateway | `gateway/page-design.md` | 内部路由、认证、限流和下游诊断 |
+| Ops | `ops/page-design.md` | 对账、修复、事件回放和 worker 状态 |
+| ID Generator | `id-generator/page-design.md` | 当前无产品页，未来发号诊断页占位 |
 
 Gateway 的服务级专题文档：
 

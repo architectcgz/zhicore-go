@@ -61,6 +61,10 @@ Gateway 的认证链路：
 
 Go Gateway 必须保持前端当前访问路径可用。它可以把请求路由到 Go 服务、Ingress 或本地开发地址，但不能把后端迁移造成的 path、method、响应封装变化暴露给前端。
 
+## 页面设计
+
+- [page-design.md](page-design.md)：Gateway 内部运维页面初设计、路由表、认证诊断、限流风险策略和下游健康检查。Gateway 没有普通用户产品页。
+
 ## 数据归属
 
 Gateway 不拥有业务表。可使用 Redis 保存：
