@@ -41,6 +41,7 @@ func (h *Handler) routes() {
 }
 
 func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
+	limitMultipartBody(w, r, h.service.MaxImageSize())
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
@@ -55,6 +56,7 @@ func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
+	limitMultipartBody(w, r, h.service.MaxAudioSize())
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
@@ -69,6 +71,7 @@ func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) uploadImageWithAccess(w http.ResponseWriter, r *http.Request) {
+	limitMultipartBody(w, r, h.service.MaxImageSize())
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
@@ -89,10 +92,12 @@ func (h *Handler) uploadImageWithAccess(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) uploadImagesBatch(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(100 << 20); err != nil {
+	limitMultipartBody(w, r, h.service.MaxBatchImageSize())
+	if err := r.ParseMultipartForm(h.service.MaxBatchImageSize()); err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, "无效的 multipart 请求")
 		return
 	}
+	defer cleanupMultipartForm(r)
 	headers := r.MultipartForm.File["files"]
 	files := make([]ports.FilePayload, 0, len(headers))
 	for _, header := range headers {
@@ -167,6 +172,7 @@ func filePayloadFromRequest(r *http.Request, fieldName string) (ports.FilePayloa
 		return ports.FilePayload{}, errors.New("文件不能为空")
 	}
 	defer file.Close()
+	defer cleanupMultipartForm(r)
 	return filePayloadFromHeader(header), nil
 }
 
@@ -198,4 +204,15 @@ func writeError(w http.ResponseWriter, err error) {
 		return
 	}
 	sharedhttp.WriteError(w, http.StatusInternalServerError, "系统内部错误，请稍后重试")
+}
+
+func limitMultipartBody(w http.ResponseWriter, r *http.Request, maxFileSize int64) {
+	const multipartOverhead = 1 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxFileSize+multipartOverhead)
+}
+
+func cleanupMultipartForm(r *http.Request) {
+	if r.MultipartForm != nil {
+		_ = r.MultipartForm.RemoveAll()
+	}
 }

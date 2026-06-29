@@ -243,6 +243,39 @@ user.profile.updated
 -> consumer idempotent handling
 ```
 
+**Dispatcher claim 模式（防崩溃安全）：**
+
+outbox dispatcher 必须使用 claim 机制，避免多个实例重复发布同一批事件，也避免在 publish RabbitMQ 期间长时间持有数据库行锁。PostgreSQL 的 `UPDATE` 不支持直接 `ORDER BY ... LIMIT`，因此这里用 CTE 先确定本轮要 claim 的一批 `id`，再在同一个 SQL 语句中更新这些行；`FOR UPDATE SKIP LOCKED` 会跳过已被其他 dispatcher 锁定的行，从而让多实例并发 claim 时拿到互不重叠的 outbox 事件：
+
+1. Dispatcher 用 PostgreSQL CTE 原子 claim 一批事件，示例：
+
+```sql
+WITH picked AS (
+  SELECT id
+  FROM outbox_events
+  WHERE status = 'PENDING'
+     OR (status = 'CLAIMING' AND claim_started_at < now() - $1::interval)
+  ORDER BY id
+  FOR UPDATE SKIP LOCKED
+  LIMIT $2
+)
+UPDATE outbox_events AS e
+SET claim_owner = $3,
+    claim_started_at = now(),
+    status = 'CLAIMING'
+FROM picked
+WHERE e.id = picked.id
+RETURNING e.*;
+```
+
+2. `claim_owner` 是实例唯一标识（例如 `hostname:goroutine`），`claimTTL` 典型值 `30s`。
+3. publish RabbitMQ 成功后，`UPDATE ... SET status = 'SENT', sent_at = now()` 释放 claim。
+4. publish 失败，更新 retry metadata；超过阈值标记 `DEAD`。
+5. 进程崩溃后，过了 `claimTTL` 的 `CLAIMING` 行自动被其他实例重新 claim（步骤1的 `claim_started_at < now() - $claimTTL` 条件）。
+6. 状态迁移必须使用条件更新（`WHERE status = 'CLAIMING' AND claim_owner = $workerID`），不允许盲写覆盖已完成或已被其他实例接管的行。
+
+每个有 outbox 的服务（Auth、User、Content、Comment）都必须遵守此 claim 模式。`FOR UPDATE SKIP LOCKED` 只能用于短事务内选中待 claim 行；claim 提交后再 publish RabbitMQ。不要在持有数据库行锁的事务里执行外部 publish，避免 broker 慢调用阻塞 outbox 表。
+
 Consumer 要求：
 
 - 用事件 JSON 的 `eventId`，或落库后的 `event_id`、业务唯一约束保证幂等。

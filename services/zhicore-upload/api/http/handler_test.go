@@ -31,7 +31,7 @@ func TestUploadImageUsesPublicAccessAndReturnsJavaCompatibleEnvelope(t *testing.
 	}
 	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", []byte("image-bytes"), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", jpegHeaderBytes(), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -80,6 +80,64 @@ func TestUploadImageRejectsUnsupportedContentType(t *testing.T) {
 	}
 }
 
+func TestUploadImageRejectsSpoofedContentType(t *testing.T) {
+	fileService := &fakeFileService{}
+	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", []byte("not really a jpeg"), nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+	var body uploadEnvelope[json.RawMessage]
+	decodeJSON(t, rr.Body.Bytes(), &body)
+	if !strings.Contains(body.Message, "文件类型") {
+		t.Fatalf("message = %q, want contains 文件类型", body.Message)
+	}
+	if fileService.uploadCalled {
+		t.Fatal("file service should not be called for spoofed content type")
+	}
+}
+
+func TestUploadImageRejectsDisallowedExtension(t *testing.T) {
+	fileService := &fakeFileService{}
+	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.txt", "image/png", pngHeaderBytes(), nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+	if fileService.uploadCalled {
+		t.Fatal("file service should not be called for disallowed extension")
+	}
+}
+
+func TestUploadImageRejectsOversizedMultipartBeforeService(t *testing.T) {
+	fileService := &fakeFileService{}
+	cfg := application.DefaultConfig()
+	cfg.MaxImageSize = 4
+	handler := uploadhttp.NewHandler(application.NewService(fileService, cfg))
+
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", bytes.Repeat([]byte("x"), 2<<20), nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+	if fileService.uploadCalled {
+		t.Fatal("file service should not be called after oversized multipart parse failure")
+	}
+}
+
 func TestUploadImageWithAccessPassesPrivateAccess(t *testing.T) {
 	fileService := &fakeFileService{
 		uploadResult: ports.UploadResult{
@@ -94,7 +152,7 @@ func TestUploadImageWithAccessPassesPrivateAccess(t *testing.T) {
 	}
 	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image/with-access", "file", "private.jpg", "image/jpeg", []byte("private"), map[string]string{
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image/with-access", "file", "private.jpg", "image/jpeg", jpegHeaderBytes(), map[string]string{
 		"accessLevel": "PRIVATE",
 	})
 	rr := httptest.NewRecorder()
@@ -247,5 +305,24 @@ func decodeJSON(t *testing.T, data []byte, target any) {
 	t.Helper()
 	if err := json.Unmarshal(data, target); err != nil {
 		t.Fatalf("decode response %s: %v", string(data), err)
+	}
+}
+
+func pngHeaderBytes() []byte {
+	return []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00,
+	}
+}
+
+func jpegHeaderBytes() []byte {
+	return []byte{
+		0xff, 0xd8, 0xff, 0xdb,
+		0x00, 0x43, 0x00,
+		0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07,
+		0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c, 0x14,
+		0x0d, 0x0c, 0x0b, 0x0b,
 	}
 }

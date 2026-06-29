@@ -21,6 +21,14 @@
 - 日志脱敏和观测字段：`docs/architecture/observability.md`
 - 运行期超时、重试和停机：`docs/architecture/runtime-operations.md`
 
+## Gateway Redis 降级
+
+当 Redis 不可用时 Gateway 的行为决策见专题文档：
+
+- `docs/architecture/services/gateway/redis-degradation.md`
+
+核心结论：Redis 不可用时只允许 normal 读请求在 L1 短 TTL 命中且未过期的前提下短时兜底；high-risk 请求、未归类写请求和 `POST /auth/refresh` 等安全操作始终要求 Redis 可用或回源 Auth 成功，否则 fail-closed，不进入 blind window。超过配置窗口仍不可确认时，所有需要认证状态确认的请求 fail-closed。
+
 ## 身份认证
 
 ### Auth

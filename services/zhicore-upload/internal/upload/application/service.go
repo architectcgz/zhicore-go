@@ -3,28 +3,34 @@ package application
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
 )
 
 const (
-	defaultMaxImageSize = 50 * 1024 * 1024
-	defaultMaxAudioSize = 10 * 1024 * 1024
+	defaultMaxImageSize      = 50 * 1024 * 1024
+	defaultMaxAudioSize      = 10 * 1024 * 1024
+	defaultMaxBatchImageSize = 100 * 1024 * 1024
+	fileSniffSize            = 512
 )
 
 type Config struct {
-	MaxImageSize     int64
-	MaxAudioSize     int64
-	AllowedImageType []string
-	AllowedAudioType []string
+	MaxImageSize      int64
+	MaxAudioSize      int64
+	MaxBatchImageSize int64
+	AllowedImageType  []string
+	AllowedAudioType  []string
 }
 
 func DefaultConfig() Config {
 	return Config{
-		MaxImageSize: defaultMaxImageSize,
-		MaxAudioSize: defaultMaxAudioSize,
+		MaxImageSize:      defaultMaxImageSize,
+		MaxAudioSize:      defaultMaxAudioSize,
+		MaxBatchImageSize: defaultMaxBatchImageSize,
 		AllowedImageType: []string{
 			"image/jpeg",
 			"image/jpg",
@@ -58,7 +64,22 @@ func NewService(files ports.FileService, config Config) *Service {
 	if config.MaxAudioSize == 0 {
 		config.MaxAudioSize = defaultMaxAudioSize
 	}
+	if config.MaxBatchImageSize == 0 {
+		config.MaxBatchImageSize = defaultMaxBatchImageSize
+	}
 	return &Service{files: files, config: config}
+}
+
+func (s *Service) MaxImageSize() int64 {
+	return s.config.MaxImageSize
+}
+
+func (s *Service) MaxAudioSize() int64 {
+	return s.config.MaxAudioSize
+}
+
+func (s *Service) MaxBatchImageSize() int64 {
+	return s.config.MaxBatchImageSize
 }
 
 func (s *Service) UploadImage(ctx context.Context, file ports.FilePayload, accessLevel ports.AccessLevel) (ports.UploadResult, error) {
@@ -129,6 +150,16 @@ func validateFile(file ports.FilePayload, allowedTypes []string, maxSize int64) 
 	if file.Size > maxSize {
 		return errorf(http.StatusBadRequest, "文件大小超过限制")
 	}
+	if !extensionAllowsContentType(file.OriginalName, file.ContentType) {
+		return errorf(http.StatusBadRequest, "文件类型不允许")
+	}
+	detectedType, err := detectContentType(file)
+	if err != nil {
+		return errorf(http.StatusBadRequest, "文件不能为空")
+	}
+	if !contentTypesCompatible(file.ContentType, detectedType) || !containsContentType(detectedType, allowedTypes) {
+		return errorf(http.StatusBadRequest, fmt.Sprintf("文件类型不允许: %s", detectedType))
+	}
 	return nil
 }
 
@@ -140,4 +171,76 @@ func containsContentType(contentType string, allowedTypes []string) bool {
 		}
 	}
 	return false
+}
+
+func detectContentType(file ports.FilePayload) (string, error) {
+	rc, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+
+	buffer := make([]byte, fileSniffSize)
+	n, err := io.ReadFull(rc, buffer)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return "", err
+	}
+	if n == 0 {
+		return "", io.EOF
+	}
+	return normalizeContentType(http.DetectContentType(buffer[:n])), nil
+}
+
+func extensionAllowsContentType(name string, contentType string) bool {
+	contentType = normalizeContentType(contentType)
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg":
+		return contentType == "image/jpeg"
+	case ".png":
+		return contentType == "image/png"
+	case ".gif":
+		return contentType == "image/gif"
+	case ".webp":
+		return contentType == "image/webp"
+	case ".mp3":
+		return contentType == "audio/mpeg" || contentType == "audio/mp3"
+	case ".m4a", ".mp4":
+		return contentType == "audio/mp4" || contentType == "audio/x-m4a" || contentType == "audio/aac"
+	case ".aac":
+		return contentType == "audio/aac" || contentType == "audio/mp4"
+	case ".wav":
+		return contentType == "audio/wav" || contentType == "audio/x-wav"
+	case ".ogg":
+		return contentType == "audio/ogg"
+	case ".webm":
+		return contentType == "audio/webm"
+	default:
+		return false
+	}
+}
+
+func contentTypesCompatible(claimed string, detected string) bool {
+	claimed = normalizeContentType(claimed)
+	detected = normalizeContentType(detected)
+	if claimed == detected {
+		return true
+	}
+	return equivalentContentTypes(claimed, detected)
+}
+
+func equivalentContentTypes(a string, b string) bool {
+	return (a == "image/jpg" && b == "image/jpeg") ||
+		(a == "image/jpeg" && b == "image/jpg") ||
+		(a == "audio/mp3" && b == "audio/mpeg") ||
+		(a == "audio/mpeg" && b == "audio/mp3") ||
+		(a == "audio/x-wav" && b == "audio/wav") ||
+		(a == "audio/wav" && b == "audio/x-wav")
+}
+
+func normalizeContentType(contentType string) string {
+	contentType = strings.TrimSpace(strings.ToLower(contentType))
+	if idx := strings.Index(contentType, ";"); idx >= 0 {
+		contentType = strings.TrimSpace(contentType[:idx])
+	}
+	return contentType
 }
