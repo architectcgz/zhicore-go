@@ -62,5 +62,5 @@
 
 - Ranking HTTP 字段级 schema 已进入草案；后续需要用 handler / contract test 验证 `HotScore.entityId`、`rank`、`score`、空榜和错误码。
 - Content / Comment 事件 payload 已提取为草案；后续需要用 producer / consumer contract test 验证。当前策略：Content 事件 `publicPostId` 必填、内部 `postId` 可选；Comment 事件 `postId` 表示 Content `public_id`，首版不携带 Content 内部 `post_id`。
-- RabbitMQ 分片策略：routing key、consistent hash exchange 或 consumer 本地 post 分片。
+- RabbitMQ 分片策略已在 `event-ordering-and-partitioning.md` 固定为“正确性不依赖 MQ 顺序；首期 direct/local keyed；扩容后 Ranking 私有 shard router”。后续需要用 consumer tests 验证。
 - Admin `rebuild-from-ledger` 的权限、审计、互斥锁和返回状态 schema。

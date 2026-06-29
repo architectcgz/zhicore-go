@@ -206,7 +206,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 ## 实现风险
 
 - `bucket` flush 如果按整桶总量物化，会重复放大计数；必须使用 `applied_*` 只刷 pending delta。
-- RabbitMQ 没有 RocketMQ `hashKey` 的同等默认语义，可以用 routing key、consistent hash exchange 或 consumer 本地 post 分片降低同一内部 `post_id` 的并发冲突；正确性仍必须容忍重复、乱序和迟到事件。
+- RabbitMQ 没有 RocketMQ `hashKey` 的同等默认语义；consumer 分片和局部顺序优化按 [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md) 落地，正确性仍必须容忍重复、乱序和迟到事件。
 - `RebuildFromLedger` 必须暂停 live ingestion，否则 replay 和实时消费会重复计数。
 - Redis 不是权威源；所有 Redis 榜单必须能从 `ranking_post_state` / `ranking_period_score` 或 ledger 重建。
 - 公开榜单必须过滤 `ranking_post_state.public_visible=true`；查询主路径不能逐条回源 Content 临时判断可见性。
@@ -223,7 +223,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 - 用 Go handler / contract test 验证 `services/zhicore-ranking/api/http/` 下的 Ranking HTTP 字段级 contract 草案。
 - 基于 Ranking migration 补 repository / application 测试，重点验证 ledger 幂等、bucket pending delta、state 可见性过滤、projection inbox 和 period score 更新。
 - 用 producer / consumer contract test 验证 `libs/contracts/events/content/` 和 `libs/contracts/events/comment/` 下的事件 payload 草案。
-- 设计 RabbitMQ 分片策略，明确同一内部 `post_id` 事件的局部顺序优化和乱序容忍测试。
+- 基于 [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md) 落地 RabbitMQ consumer 模式、局部顺序优化和乱序容忍测试。
 - 按 [runtime-resilience.md](runtime-resilience.md) 落地 Ranking runtime 配置、health details、metrics 和 adapter / worker 测试。
 - 先实现“事件账本 + bucket + 文章总榜查询”最小切片，再推进 snapshot / replay、周期榜和候选集。
 

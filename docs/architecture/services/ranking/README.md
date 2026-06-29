@@ -19,6 +19,7 @@
 | [domain-model.md](domain-model.md) | DDD 目标模型、标识策略、聚合、值对象、领域服务、热度公式和浏览去重。 |
 | [application-and-ports.md](application-and-ports.md) | Application 用例、ports、事务边界、rebuild / archive 流程和 Go 包落点。 |
 | [data-events-projections.md](data-events-projections.md) | 消费事件、热度 ledger、Content 可见性 / 元数据投影、Redis 收敛和 projection schema 草案。 |
+| [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md) | RabbitMQ 消费分片、同一文章局部顺序优化、retry / DLQ 和乱序容忍测试。 |
 | [query-materialization.md](query-materialization.md) | 查询路径、Redis key、Redis miss 回源、snapshot、候选集、归档和 API 保留范围。 |
 | [runtime-resilience.md](runtime-resilience.md) | timeout、retry、熔断、降级、readiness、依赖故障、metrics 和测试准入。 |
 | [schema-and-implementation.md](schema-and-implementation.md) | 数据归属、schema 草案、配置要点、实现切片、风险和实现前检查清单。 |
@@ -103,6 +104,7 @@ Ranking 保留当前前端和服务间使用的路径。字段级 request / resp
 2. [domain-model.md](domain-model.md)
 3. [application-and-ports.md](application-and-ports.md)
 4. [data-events-projections.md](data-events-projections.md)
-5. [query-materialization.md](query-materialization.md)
-6. [runtime-resilience.md](runtime-resilience.md)
-7. [schema-and-implementation.md](schema-and-implementation.md)
+5. [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md)
+6. [query-materialization.md](query-materialization.md)
+7. [runtime-resilience.md](runtime-resilience.md)
+8. [schema-and-implementation.md](schema-and-implementation.md)

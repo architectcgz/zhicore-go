@@ -96,6 +96,7 @@ Ranking 的服务级专题文档：
 | 领域模型 | `ranking/domain-model.md` |
 | Application、Ports 与事务 | `ranking/application-and-ports.md` |
 | 数据事件与投影 | `ranking/data-events-projections.md` |
+| 事件顺序与分片 | `ranking/event-ordering-and-partitioning.md` |
 | 查询、缓存与物化 | `ranking/query-materialization.md` |
 | 运行期 resilience | `ranking/runtime-resilience.md` |
 | Schema、配置与实现切片 | `ranking/schema-and-implementation.md` |
