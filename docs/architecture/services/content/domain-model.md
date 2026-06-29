@@ -110,6 +110,8 @@
 
 这些关系总是和 `PostStats` 聚合一起修改。Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best-effort 更新，失败不回滚业务事务。
 
+当前用户视角的 `liked` / `favorited` 查询状态可以因为 Redis 或受控 DB fallback 故障而返回 unknown；unknown 只是查询降级状态，不是领域事实。领域模型只表达关系存在或不存在，不能把 unknown 写入 `post_likes`、`post_favorites`、`post_stats`、outbox 或 Redis 事实缓存。完整互动产品语义见 [engagement-design.md](engagement-design.md)。
+
 ### 非领域聚合
 
 以下对象不建成领域聚合：

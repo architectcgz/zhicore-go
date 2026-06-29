@@ -44,6 +44,18 @@ _Avoid_: HTML tag
 Content 本地保存的作者昵称、头像和资料版本快照，用于列表和详情展示。
 _Avoid_: User profile source
 
+**互动（Engagement）**:
+文章的点赞、收藏、统计和当前用户视角状态。统计是文章事实，当前用户视角是查询结果。
+_Avoid_: reaction（除非未来扩展多表情反馈）
+
+**当前用户视角（Viewer Engagement）**:
+登录用户对当前文章是否已点赞、是否已收藏的查询结果。
+_Avoid_: post state, global engagement state
+
+**互动状态未知（Unknown Engagement Status）**:
+Redis 不可用且受控 DB fallback 无法确认时返回的查询降级状态，不是领域事实，不能当成未点赞或未收藏。
+_Avoid_: false, unliked, default state
+
 **正文清理任务（Body Cleanup Task）**:
 删除未被 PostgreSQL `published_body_id` 或 `draft_body_id` 引用的 MongoDB body 的资源回收任务。
 _Avoid_: repair task
@@ -62,6 +74,7 @@ _Avoid_: cleanup task
 - **个人文章** 不保留完整正文历史；**共建文档** 才预留 revision history。
 - **正文清理任务** 只删除 PostgreSQL 未引用的 body；**正文修复任务** 处理 PostgreSQL 指向的 body 不可读或不一致。
 - **作者快照** 来自 User 事实，但不是 User 资料事实源。
+- **互动状态未知** 只存在于查询响应，不会写入点赞、收藏、统计、outbox 或 Redis 事实缓存。
 
 ## Example Dialogue
 
@@ -75,3 +88,4 @@ _Avoid_: cleanup task
 
 - “版本”曾被用来描述普通文章的正文 UUID；已统一为 **正文引用（Body ID）**，避免误解成产品历史版本。
 - “补偿”曾被用来描述发布后补 Mongo 正文；已改为 **正文清理任务** 和 **正文修复任务** 两类，发布正文不走“PG 已发布后补正文”的正常流程。
+- “未知互动状态”不能被产品、前端或后端实现解释成未点赞 / 未收藏；它只表示当前请求无法确认。

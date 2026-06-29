@@ -44,8 +44,9 @@ type Actor struct {
 - `GetPostDetail`、`GetPostContent`、`GetDraft`
 - `ListPublishedPosts`、`ListAuthorPosts`、`ListMyPosts`、`CursorListPosts`、`BatchGetPosts`
 - `GetPostTags`、`GetTagDetail`、`SearchTags`、`ListHotTags`、`ListPostsByTag`
-- `GetLikeStatus`、`BatchGetLikeStatus`、`GetLikeCount`
-- `GetFavoriteStatus`、`BatchGetFavoriteStatus`、`GetFavoriteCount`
+- `GetPostEngagement`、`BatchGetEngagementStatus`
+- `GetLikeStatus`、`BatchGetLikeStatus`、`GetLikeCount`（内部可作为 engagement query 的窄能力）
+- `GetFavoriteStatus`、`BatchGetFavoriteStatus`、`GetFavoriteCount`（内部可作为 engagement query 的窄能力）
 - `GetReaderPresence`
 - `ListAdminPosts`、`ListOutboxDeadOrFailedEvents`
 
@@ -66,7 +67,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `TagRepository` | Tag 聚合持久化和查询 | 按 slug 查找、创建、批量查询 |
 | `PostTagRepository` | 文章标签关系 | 替换、删除、批量查询文章标签 |
 | `CategoryRepository` | 分类查询 | 查询分类或话题引用合法性 |
-| `PostEngagementRepository` | 点赞/收藏关系 | 插入、删除、查询 `(post_id, user_id)` 关系 |
+| `PostEngagementRepository` | 点赞/收藏关系 | 插入、删除、批量查询当前用户与多个 `post_id` 的关系；Redis 不可用时禁止逐条 `EXISTS` 回源 |
 
 ### 基础设施机制端口
 
@@ -86,7 +87,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | --- | --- | --- |
 | `PostCacheStore` | Post 缓存 | cache-aside、失效、三态缓存 |
 | `TagCacheStore` | Tag 缓存 | 热门标签缓存 |
-| `EngagementCacheStore` | 点赞/收藏缓存 | Redis 状态和计数缓存 |
+| `EngagementCacheStore` | 点赞/收藏缓存 | Redis 状态和计数缓存；必须提供批量读取能力，cache error 只返回依赖状态，不把 unknown 伪装成 false |
 | `ReaderPresenceStore` | Presence 状态 | session、leave、presence 查询 |
 | `UserProfileClient` | User 服务调用 | 获取作者摘要 |
 | `FileResourceClient` | Upload 服务调用 | 解析或清理文件引用 |
@@ -99,6 +100,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 - `PostQueryRepository` 独立于 `PostRepository`，避免写模型被查询需求污染。
 - Outbox、InternalEventTask dispatcher、cleanup worker 属于 infrastructure；application 只依赖发布端口或任务记录端口。
 - HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、idempotency key、body size、presence session、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误或 no-op success，adapter 不直接构造 HTTP response。
+- Engagement 查询在 Redis 不可用时只能走受控 DB fallback：单篇详情可以返回 `viewer.liked/favorited=null` 和 `viewer.degraded=true`，批量状态必须使用批量 repository 方法，不能循环逐条查 `(user_id, post_id)`。完整规则见 [engagement-design.md](engagement-design.md)。
 - 不定义宽泛 `Store` 大接口。
 
 不定义的端口：
