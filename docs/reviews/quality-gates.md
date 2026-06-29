@@ -14,8 +14,9 @@
 
 | 命令 | 职责 | 使用场景 |
 | --- | --- | --- |
-| `make check` | 组合运行结构检查、测试规模检查和所有 Go 模块测试 | 交付前统一门禁；脚手架、共享边界、contract、脚本、AGENTS 或跨模块改动后优先运行 |
+| `make check` | 组合运行结构检查、架构依赖方向检查、测试规模检查和所有 Go 模块测试 | 交付前统一门禁；脚手架、共享边界、contract、脚本、AGENTS 或跨模块改动后优先运行 |
 | `bash scripts/check-structure.sh` | 检查服务入口、模块目录、文档入口和 agent 入口是否齐全 | 文档路径、索引、目录骨架、必备文件清单和入口规则变化 |
+| `python3 tests/architecture/check_boundaries.py --root .` | 检查 Go 源码的服务间和服务内依赖方向 | 修改服务边界、`api/http`、`internal` 分层、`libs/kit`、`libs/contracts` 或相关检查规则 |
 | `make test-size` | 全量检查 `*_test.go` 文件规模 | 测试文件新增、拆分、合并或测试组织方式变化 |
 | `make test` | 在每个 Go workspace 模块内运行 `go test ./...` | 需要仓库级 Go 测试证据，但不需要结构检查和测试规模检查的场景 |
 | `cd <module> && go test ./...` | 运行单个模块测试 | 服务或共享库的开发内循环 |

@@ -45,7 +45,7 @@
 | --- | --- |
 | `services/<service>/**/*_test.go` | 服务本地 handler、application/use case、domain、repository、adapter、worker、consumer 行为。 |
 | `libs/*/**/*_test.go` | 共享 contract 或 kit 原语，不测试服务私有业务。 |
-| `tests/architecture` | 源码级架构边界检查，例如禁止跨服务导入 `internal`、`libs/kit` 不依赖服务私有包。 |
+| `tests/architecture` | 源码级架构边界检查，例如禁止跨服务导入 `internal`、`libs/kit` 不依赖服务私有包；当前入口是 `python3 tests/architecture/check_boundaries.py --root .`。 |
 | `tests/system/http` | 黑盒 HTTP 场景，验证已实现服务的外部 API contract 和核心流程。 |
 | `tests/runtime` | 需要真实服务、容器、端口、PostgreSQL、Redis、RabbitMQ、MongoDB、Elasticsearch 等基础设施的测试。 |
 | `tests/testkit` | 黑盒测试 fixture、builder、HTTP client、断言辅助；不能承载业务规则。 |
@@ -111,6 +111,7 @@ cd services/<service> && go test ./path/...
 cd libs/<module> && go test ./...
 make test-size
 bash scripts/check-structure.sh
+python3 tests/architecture/check_boundaries.py --root .
 make check
 ```
 
@@ -118,7 +119,7 @@ make check
 
 - 只改服务内代码，先跑该服务最窄包测试。
 - 改测试文件组织、测试 helper、测试目录或规模规则，先跑 `make test-size`。只查当前工作区改动可用 `python3 scripts/check-test-size.py --working-tree`，只查暂存内容可用 `python3 scripts/check-test-size.py --staged`，只查指定文件或目录可用 `python3 scripts/check-test-size.py --files <path...>`。
-- 改共享库、contract、脚手架、文档入口或检查脚本，交付前跑 `bash scripts/check-structure.sh`；必要时跑 `make check`。
+- 改共享库、contract、脚手架、文档入口或检查脚本，交付前跑 `bash scripts/check-structure.sh`；涉及 Go 源码依赖方向时跑 `python3 tests/architecture/check_boundaries.py --root .`；必要时跑 `make check`。
 - 改并发、worker、consumer、缓存或共享状态，考虑 `go test -race`。
 - 改解析器、校验器、协议输入或安全敏感输入，考虑补 seed regression test 或 focused fuzz test。
 
