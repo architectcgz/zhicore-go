@@ -10,6 +10,12 @@
 - `../zhicore-microservice/docs/architecture/zhicore-ranking-detailed-design.md` 和 `../zhicore-microservice/zhicore-ranking/README.md`。
 - Go 目标 Content / Comment 事件设计：`content.post.*`、`comment.*`。
 
+## 设计复盘
+
+| 文档 | 内容 |
+| --- | --- |
+| `decision-log/2026-06-29-ranking-design-decisions.md` | 记录 Ranking 职责边界、ledger / bucket / state / Redis 分层、事件输入、rebuild、候选集和首个实现切片的关键取舍。 |
+
 ## 职责边界
 
 `zhicore-ranking` 拥有热度事实账本、窗口增量聚合、文章当前热度状态、周期榜单分数、Redis ZSET 物化榜单、热门文章候选集、历史榜单归档和 Ranking 自己的 rebuild / replay 运维流程。
