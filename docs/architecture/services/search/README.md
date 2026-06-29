@@ -31,6 +31,15 @@ Search 拥有：
 
 Search 不拥有 `posts`、`users`、`comments` 表。
 
+## 可见性滞后 SLA
+
+Search 索引是 Content 的派生读模型，通过消费 `content.post.visibility_changed` / `content.post.deleted` 等事件更新可见性。
+
+- Search 不对返回结果做实时 Content 可见性回源校验，这是已知的最终一致性设计。
+- 索引可见性收敛目标：事件消费后 ≤ 5s（正常 consumer lag 下）。
+- 客户端不应把 Search 结果当作可见性的最终判断；如有必要（例如分享链接），由前端或 Gateway 向 Content 做一次可见性校验。
+- Search 消费 `content.post.deleted` 时必须硬删除索引文档，不能只做软标记，防止已删除内容持续被搜索到。
+
 ## 事件
 
 Search 消费：
