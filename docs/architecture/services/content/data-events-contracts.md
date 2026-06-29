@@ -82,12 +82,15 @@ Content 生产：
 - `content.post.published`
 - `content.post.updated`
 - `content.post.deleted`
+- `content.post.visibility_changed`
 - `content.post.tags.updated`
 - `content.post.liked`
 - `content.post.unliked`
 - `content.post.favorited`
 - `content.post.unfavorited`
 - `content.post.viewed`
+
+`content.post.visibility_changed` 用于表达不一定产生正文或互动变化、但会改变公开可见性的生命周期事实，例如撤回、恢复、管理端下架、隐藏或重新公开。当前 Go API 已登记 `publish`、`unpublish`、`delete`、`restore`；未来若补管理端隐藏 / 下架能力，仍应复用该可见性事件，而不是让 Search / Ranking 在查询时临时回源 Content 判断。事件 payload 至少包含 `publicPostId`、可选内部 `postId`、`oldVisibility`、`newVisibility`、`publicVisible`、`reason`、`occurredAt`；事件 envelope 应携带 `aggregateVersion`，用于 consumer 处理乱序或迟到事件；`eventId` 仍用于 consumer 幂等。
 
 Content 消费：
 

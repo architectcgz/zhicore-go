@@ -1,10 +1,15 @@
 # Ranking 设计决策日志
 
-本文按 `docs/architecture/services/ranking/README.md` 中已经固定的 Ranking 设计重建关键 decision log。它不是逐字 transcript，也不替代 Ranking README；README 仍是当前完整服务设计事实源，本文用于复盘每个关键取舍为什么成立。
+本文按 `docs/architecture/services/ranking/README.md` 和相关专题文档中已经固定的 Ranking 设计重建关键 decision log。它不是逐字 transcript，也不替代 Ranking README 或专题文档；本文用于复盘每个关键取舍为什么成立。
 
 相关事实源：
 
 - [Ranking 服务设计](../README.md)
+- [Ranking 领域模型设计](../domain-model.md)
+- [Ranking Application、Ports 与事务设计](../application-and-ports.md)
+- [Ranking 数据事件与投影设计](../data-events-projections.md)
+- [Ranking 查询、缓存与物化设计](../query-materialization.md)
+- [Ranking Schema、配置与实现切片](../schema-and-implementation.md)
 - [服务边界](../../../service-boundaries.md)
 - [运行期规范](../../../runtime-operations.md)
 - [事件契约规范](../../../../contracts/events.md)
@@ -35,19 +40,27 @@
 | 22 | Rebuild 语义 | `RebuildFromLedger` 能否和 live ingestion 并行？ | 不能。rebuild 必须通过 barrier / lock 暂停 live ingestion，等待 in-flight drain 后从 ledger 重放。 | replay 和实时消费同时写 bucket/state 会重复计数或覆盖状态。 | consumer 看到 barrier 后停止拉取或 nack/requeue；rebuild crash 后锁过期可恢复消费。 |
 | 23 | Rebuild 来源 | rebuild 是否清空 ledger 后重建？ | 不能删除 ledger。rebuild 清空 materialized state、bucket、period 和当前 Redis，再从 ledger 重放。 | ledger 是审计和重放事实源，删除会失去恢复能力。 | rebuild 返回 `replayedEvents`、`rebuiltAt`、`duration`、`failedStage`。 |
 | 24 | 热度公式 | Go 第一阶段是否重新设计热度公式？ | 不重新设计。沿用 Java half-life 衰减公式，权重和半衰期配置化。 | 迁移期不应改变榜单语义；配置化允许后续压测和产品调整。 | 权重变更后需要 snapshot 或 replay 才能完全一致。 |
-| 25 | 未发布 / 隐藏文章 | `published_at IS NULL` 时是否可进入公开榜单？ | `published_at IS NULL` 时公式可令 `timeDecay=1.0`，但未发布、删除或隐藏文章不应进入公开榜单。 | 公式处理缺失时间只是防御；公开可见性仍归 Content 状态决定。 | 过滤依据来自 Content 公开状态快照或详情回源。 |
+| 25 | 未发布 / 隐藏文章 | `published_at IS NULL` 时是否可进入公开榜单？ | `published_at IS NULL` 时公式可令 `timeDecay=1.0`，但未发布、删除、撤回、下架或隐藏文章不应进入公开榜单。 | 公式处理缺失时间只是防御；公开可见性仍归 Content 状态决定。Ranking 只能保存本地投影用于过滤，不能成为 Content 生命周期源事实。 | 过滤主路径来自 `ranking_post_state.public_visible`；Content 回源只用于详情补齐、事件缺字段解析和 repair / reconcile。 |
 | 26 | 评论点赞热度 | `comment.liked` / `comment.unliked` 是否计入文章热度？ | 第一阶段不消费。若产品要求计入，必须先扩展指标、权重、bucket 列、replay 规则和事件 contract。 | 评论点赞属于评论互动，不一定等价于文章热度；在 Ranking 内临时推断会破坏指标可解释性。 | 事件 contract 阶段单独决策，不在 Ranking consumer 内隐藏实现。 |
 | 27 | Content / Comment 事件字段 | Ranking 是否能每条事件同步查询 Content / Comment 补字段？ | `publicPostId` 必填；内部 `postId` 可选优化。缺字段时优先修事件 contract，不把同步补查变成常态。 | 高频事件每条同步补查会放大延迟和失败面；事件应携带足够事实。 | 只携带 `publicPostId` 时允许通过 Content 解析内部 post id；not found / deleted 进入 DLQ 或告警。 |
 | 28 | Comment 同步依赖 | Ranking 是否同步读取 Comment 服务？ | 第一阶段通常不需要。Comment 只通过事件输入；缺字段时优先修 Comment 事件。 | Ranking 不应把 Comment 查询变成热度摄入的在线依赖。 | `CommentClient` 仅作为未来必要时的可选端口。 |
 | 29 | Ranking 生产事件 | Ranking 是否生产关键跨服务事件？ | 第一阶段默认不生产关键事件。热门候选集通过同步查询或定时拉取暴露给 Comment。 | 候选集是可重建视图，不是权威业务事实；事件广播会增加 consumer 幂等和一致性成本。 | 如未来需要 `ranking.hot_candidates.updated`，必须新增 ranking event contract 并定义是否可丢失。 |
 | 30 | HTTP API 兼容 | Go Ranking 是否完全兼容 Java 旧数据和 API 形态？ | 不要求兼容 Java 旧数据，但 API 形态需要按目标前端 contract 固定。 | Go 重建阶段以目标 contract 为准；旧 Java 是能力参考，不是字段事实源。 | 后续按 `docs/contracts/http-schema-template.md` 提取 `services/zhicore-ranking/api/http/README.md`。 |
 | 31 | 分页起点 | Ranking page 分页从 0 还是 1 开始？ | Ranking 保留 page 从 `0` 开始，`size/limit` 必须配置最大值。 | Ranking 当前前端和 Java 参考已有 0-based 语义；切换会影响调用方。 | HTTP schema 中明确 page 起点、最大 size 和空榜语义。 |
-| 32 | 首个实现切片 | Ranking 首先实现完整榜单体系还是最小链路？ | 先实现“事件账本 + bucket + 文章总榜查询”，再推进 snapshot/rebuild、周期榜、候选集和归档。 | Ranking 风险集中在幂等、bucket flush 和 Redis 可重建；先闭合核心链路更容易验证。 | 切片 1 覆盖 `content.post.liked/unliked`、`comment.created/deleted`，view/favorite 可后续补。 |
+| 32 | 首个实现切片 | Ranking 首先实现完整榜单体系还是最小链路？ | 先实现“事件账本 + bucket + 文章总榜查询”，再推进 snapshot/rebuild、周期榜、候选集和归档。 | Ranking 风险集中在幂等、bucket flush、Redis 可重建和公开可见性过滤；先闭合核心链路更容易验证。 | 切片 1 覆盖 `content.post.liked/unliked`、`content.post.published/deleted/visibility_changed`、`comment.created/deleted`，view/favorite 可后续补。 |
+| 33 | Ranking 运行韧性专题归属 | Ranking 的 timeout、retry、熔断、降级、健康检查和依赖故障语义写在哪里？ | 新增 `runtime-resilience.md` 作为 Ranking 运行韧性专题事实源；README 和 decision-log 只保留关键结论和入口。 | Ranking 同时有 HTTP 查询、RabbitMQ consumer、bucket flush、snapshot、candidate、archive 和 rebuild，故障语义跨 PostgreSQL、Redis、RabbitMQ、MongoDB、Content/User client，必须集中维护。 | 首次实现任一 adapter、worker、consumer 或 runtime wiring 前必须先读该文档。 |
+| 34 | Ranking readiness 依赖 | Redis、RabbitMQ、MongoDB 或 Content/User 不可用时，Ranking HTTP readiness 是否失败？ | 首期默认只有 PostgreSQL 是 HTTP readiness 硬依赖；Redis、RabbitMQ、MongoDB、Content/User 默认进入 degraded details 和 metrics，不摘除全部 HTTP 流量。 | Redis 可回源 PG/Mongo；RabbitMQ 影响新事件摄入但已有榜单仍可查；Mongo 只影响冷历史；Content/User 主要影响解析、详情和摘要。直接摘除 HTTP 会扩大故障影响。 | consumer-only、archive-worker、snapshot-worker 等独立部署可用显式配置把对应依赖设为 readiness 硬依赖。 |
+| 35 | Redis 故障语义 | Redis 不可用时 Ranking 是否全站失败？ | 不全站失败。榜单查询回源 PostgreSQL / MongoDB；flush 后 Redis materialize 失败不回滚 PG；view dedup / cap 短时本机严格 fallback，超过窗口后 ack 丢弃 view，不写 ledger；锁不可用时用 PG advisory lock 或跳过 / 拒绝高风险任务。 | Redis 不是热度事实源，但承担物化、去重、防刷和锁。查询可以回源；非 view 事件不依赖 Redis；view 是弱热度信号，不能因 dedup 不可确认长期放大计数。 | 需要配置 `RANKING_REDIS_DEGRADED_VIEW_WINDOW`、backfill lock TTL、empty cache TTL 和 lock fallback。 |
+| 36 | RabbitMQ 故障语义 | RabbitMQ 不可用时 Ranking 是否不可用？ | HTTP 查询不因 RabbitMQ 不可用失败；consumer 暂停摄入或重试。事件只有在 PostgreSQL 事务提交后 ack，重复 `event_id` 直接 ack no-op。 | RabbitMQ 是输入通道，不是已接受事实源。暂停摄入会让榜单变旧，但已有 state / Redis / PG 仍可查询。 | consumer lag、retry 和 DLQ 必须有 metrics / alert；consumer-only readiness 可要求 RabbitMQ ready。 |
+| 37 | Content 解析依赖 | Ranking 能否在 Content publicId 解析失败时继续落账？ | 不能。事件缺内部 `postId` 且 Content publicId 解析 transient 失败时 nack / requeue；Content 确认 not found / deleted 时进入 DLQ 或业务 not found。 | 未解析的 `publicPostId` 无法安全写入以内部 `post_id` 为聚合键的 ledger / bucket；强行落账会破坏分区和重放语义。 | 事件 payload 应尽量携带内部 `postId` 作为优化字段。 |
+| 38 | Rebuild 依赖故障 | Rebuild 时 Redis 或锁不可用怎么办？ | rebuild 必须持有 Redis lock 或配置的 PostgreSQL advisory lock；无锁时拒绝启动。若 PG rebuild 成功后 Redis refresh 失败，返回 partial failedStage，保留 PG 权威状态并告警。 | 无锁 rebuild 会和 live ingestion 或其他 rebuild 重复计数；Redis refresh 失败不应抹掉已重建的 PG 权威状态，也不能静默宣称完全成功。 | Admin rebuild schema 需要表达 `failedStage`、partial 状态和后续 snapshot retry。 |
+| 39 | 文章可见性同步机制 | 文章删除、撤回、下架、隐藏等是否靠 Ranking 查询时回源 Content 过滤？ | 不靠查询主路径回源。Content 通过 `content.post.published`、`content.post.deleted`、`content.post.visibility_changed`、`content.post.tags.updated` 等事件驱动 Ranking 本地 visibility / metadata projection；公开榜单查询、snapshot 和候选集按该投影过滤。 | 查询时逐条回源 Content 会把榜单可用性绑到 Content 实时查询，并产生 N+1、熔断扩散和不可预测延迟。事件投影让 Ranking 在 Content 短暂不可用时仍能按最后已知可见性稳定服务。 | Content provider 侧需要固定 `visibility_changed` payload；Ranking 需要 visibility reconcile 作为兜底。 |
+| 40 | 可见性事件是否写热度 ledger | `content.post.deleted` / `visibility_changed` 是否进入 `ranking_event_ledger`？ | 不进入热度 ledger。它们写 `ranking_projection_event_inbox` 或等价幂等表，并更新 `ranking_post_state.public_visible`、`content_status`、`visibility_reason`、`visibility_updated_at`。 | `ranking_event_ledger` 只记录会产生热度 delta 的事实；可见性变化没有 `MetricDelta`，放入同一 ledger 会破坏 delta 非零、不重放为热度分的约束。 | schema 草案保留 `ranking_projection_event_inbox`；正式 migration 时可按实现命名调整但语义必须保留。 |
+| 41 | Redis 榜单移除失败 | 文章变为不可公开后，Redis ZSET / candidate 移除失败是否回滚 PG projection？ | 不回滚。PostgreSQL visibility projection 已提交后即为 Ranking 过滤权威；Redis 移除失败记录 degraded metric，等待 snapshot、candidate refresh、visibility reconcile 或 rebuild 收敛。 | Redis 是可重建投影，不应决定业务可见性事务成败。回滚 PG 会让 Ranking 明知文章不可公开却继续按旧状态服务。 | 查询和 snapshot 都必须过滤 `public_visible=true`；Redis 失败要有 `redis_visibility_remove_failed` 指标和告警。 |
 
 ## 需要继续决策的问题
 
 - Ranking HTTP 字段级 schema：`HotScore.entityId`、`rank`、`score`、空榜和错误码。
-- Content / Comment 事件 payload 的最终字段和内部 `postId` 携带策略。
+- Content / Comment 事件 payload 的最终字段和内部 `postId` 携带策略，尤其是 `content.post.visibility_changed` 的 `oldVisibility/newVisibility/publicVisible/reason/aggregateVersion`。
 - RabbitMQ 分片策略：routing key、consistent hash exchange 或 consumer 本地 post 分片。
-- Redis 故障下查询、flush materialize、snapshot、candidate refresh 的运行韧性矩阵。
 - Admin `rebuild-from-ledger` 的权限、审计、互斥锁和返回状态 schema。

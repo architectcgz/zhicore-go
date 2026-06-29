@@ -93,6 +93,12 @@ Ranking 的服务级专题文档：
 | --- | --- |
 | 入口和关键结论 | `ranking/README.md` |
 | 设计决策日志 | `ranking/decision-log/2026-06-29-ranking-design-decisions.md` |
+| 领域模型 | `ranking/domain-model.md` |
+| Application、Ports 与事务 | `ranking/application-and-ports.md` |
+| 数据事件与投影 | `ranking/data-events-projections.md` |
+| 查询、缓存与物化 | `ranking/query-materialization.md` |
+| 运行期 resilience | `ranking/runtime-resilience.md` |
+| Schema、配置与实现切片 | `ranking/schema-and-implementation.md` |
 
 ## 服务设计图
 
