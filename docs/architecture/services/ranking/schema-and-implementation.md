@@ -1,6 +1,6 @@
 # Ranking Schema、配置与实现切片
 
-本文记录 `zhicore-ranking` 的数据归属、schema 草案、服务配置、首个实现切片、风险和实现前检查清单。正式 migration 仍以 `services/zhicore-ranking/migrations/` 为准。
+本文记录 `zhicore-ranking` 的数据归属、schema 草案、服务配置、首个实现切片、风险和实现前检查清单。正式 migration 以 `services/zhicore-ranking/migrations/20260629042338_create_ranking_core_tables.*.sql` 为准。
 
 ## 数据归属
 
@@ -221,7 +221,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 ## 下一步
 
 - 用 Go handler / contract test 验证 `services/zhicore-ranking/api/http/` 下的 Ranking HTTP 字段级 contract 草案。
-- 生成 Ranking migration 草案，重点核对 ledger、bucket、state、projection inbox 和 period score。
+- 基于 Ranking migration 补 repository / application 测试，重点验证 ledger 幂等、bucket pending delta、state 可见性过滤、projection inbox 和 period score 更新。
 - 提取 Content / Comment 事件 payload contract。
 - 设计 RabbitMQ 分片策略，明确同一内部 `post_id` 事件的局部顺序优化和乱序容忍测试。
 - 按 [runtime-resilience.md](runtime-resilience.md) 落地 Ranking runtime 配置、health details、metrics 和 adapter / worker 测试。
