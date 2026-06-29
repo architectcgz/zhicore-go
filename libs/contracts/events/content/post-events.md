@@ -14,7 +14,7 @@
 | `producer` | string | 是 | 固定为 `zhicore-content`。 |
 | `occurredAt` | string | 是 | 业务事实发生时间，RFC3339。 |
 | `aggregateType` | string | 是 | 固定为 `post`。 |
-| `aggregateId` | string | 是 | Content `publicPostId`。 |
+| `aggregateId` | string | 是 | Content `publicId`。 |
 | `aggregateVersion` | int | 条件必填 | 生命周期和可见性事件必填；互动事件可选。 |
 | `payload` | object | 是 | 事件 payload。 |
 
@@ -22,11 +22,11 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`，外部公开文章 ID。 |
-| `postId` | int64 | 否 | Content 内部 `post_id` opaque reference，仅用于 consumer 减少解析调用。 |
+| `publicId` | string | 是 | Content `public_id`，外部公开文章 ID。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id` opaque reference，供下游服务落账、分区和聚合使用。 |
 | `authorId` | int64 | 视事件而定 | 作者 User 内部 ID opaque reference。 |
 
-如果事件缺少内部 `postId`，Ranking 等 consumer 必须通过 Content contract 解析 `publicPostId`；解析 transient 失败时按 consumer 重试 / DLQ 策略处理。
+Ranking 等 consumer 必须使用 `internalId` 作为跨服务内部引用；`publicId` 只用于审计、DLQ、repair 和对外返回转换。事件缺少 `internalId` 属于 producer contract 错误，consumer 不应在高频消费路径上同步解析 `publicId` 补字段。
 
 ## 事件索引
 
@@ -51,8 +51,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 是 | 作者 User 内部 ID。 |
 | `title` | string | 是 | 已发布标题。 |
 | `summary` | string | 否 | 已发布摘要，可缺失。 |
@@ -73,8 +73,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 否 | 作者 User 内部 ID。 |
 | `title` | string | 否 | 更新后的标题。 |
 | `summary` | string | 否 | 更新后的摘要。 |
@@ -93,8 +93,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 否 | 作者 User 内部 ID。 |
 | `deletedAt` | string | 是 | 删除时间，RFC3339。 |
 | `deletedBy` | int64 | 否 | 操作者 User 内部 ID；系统任务可缺失。 |
@@ -109,8 +109,8 @@ Ranking 消费本事件只更新可见性投影，不写热度 ledger。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 否 | 作者 User 内部 ID。 |
 | `oldVisibility` | string | 是 | 变化前可见性，例如 `PUBLIC`、`UNPUBLISHED`、`HIDDEN`、`TAKEN_DOWN`、`DELETED`。 |
 | `newVisibility` | string | 是 | 变化后可见性。 |
@@ -127,8 +127,8 @@ Ranking 消费本事件只更新可见性投影，不写热度 ledger。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 否 | 作者 User 内部 ID。 |
 | `topicIds` | string[] | 是 | 更新后的完整话题 ID 列表。 |
 | `updatedAt` | string | 是 | 更新时间，RFC3339。 |
@@ -141,8 +141,8 @@ Ranking 消费本事件只更新可见性投影，不写热度 ledger。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 是 | 文章作者 User 内部 ID。 |
 | `likedBy` | int64 | 是 | 点赞用户 User 内部 ID。 |
 
@@ -166,8 +166,8 @@ Ranking 消费本事件只更新可见性投影，不写热度 ledger。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `publicPostId` | string | 是 | Content `public_id`。 |
-| `postId` | int64 | 否 | Content 内部 `post_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id`。 |
 | `authorId` | int64 | 否 | 作者 User 内部 ID。 |
 | `publishedAt` | string | 否 | 当前发布时间，供 Ranking 衰减计算兜底。 |
 | `viewerId` | int64 | 条件必填 | 登录用户 ID。 |

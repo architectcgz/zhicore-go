@@ -73,7 +73,7 @@ MongoDB 只在这些路径读取正文全文：
 - 发布前审核、字数统计、媒体引用提取。
 - Search consumer 拉取当前 published body 做全文索引。
 
-发布事件不携带正文全文，只携带轻量字段：`postId`、作者、标题、摘要、封面、`publishedBodyId`、`publishedBodyHash` 和发布时间。选择原因是正文可能很大，事件会被多个服务持久化和重试，带全文会放大存储、隐私和治理成本。
+发布事件不携带正文全文，只携带轻量字段：`publicId`、`internalId`、作者、标题、摘要、封面、`publishedBodyId`、`publishedBodyHash` 和发布时间。选择原因是正文可能很大，事件会被多个服务持久化和重试，带全文会放大存储、隐私和治理成本。
 
 ## 事件
 
@@ -92,7 +92,7 @@ Content 生产：
 
 字段级事件 contract 见 `libs/contracts/events/content/README.md` 和 `libs/contracts/events/content/post-events.md`。本文只保留服务设计和事件方向。
 
-`content.post.visibility_changed` 用于表达不一定产生正文或互动变化、但会改变公开可见性的生命周期事实，例如撤回、恢复、管理端下架、隐藏或重新公开。当前 Go API 已登记 `publish`、`unpublish`、`delete`、`restore`；未来若补管理端隐藏 / 下架能力，仍应复用该可见性事件，而不是让 Search / Ranking 在查询时临时回源 Content 判断。事件 payload 至少包含 `publicPostId`、可选内部 `postId`、`oldVisibility`、`newVisibility`、`publicVisible`、`reason`、`occurredAt`；事件 envelope 应携带 `aggregateVersion`，用于 consumer 处理乱序或迟到事件；`eventId` 仍用于 consumer 幂等。
+`content.post.visibility_changed` 用于表达不一定产生正文或互动变化、但会改变公开可见性的生命周期事实，例如撤回、恢复、管理端下架、隐藏或重新公开。当前 Go API 已登记 `publish`、`unpublish`、`delete`、`restore`；未来若补管理端隐藏 / 下架能力，仍应复用该可见性事件，而不是让 Search / Ranking 在查询时临时回源 Content 判断。事件 payload 至少包含 `publicId`、`internalId`、`oldVisibility`、`newVisibility`、`publicVisible`、`reason`、`occurredAt`；事件 envelope 应携带 `aggregateVersion`，用于 consumer 处理乱序或迟到事件；`eventId` 仍用于 consumer 幂等。
 
 Content 消费：
 

@@ -14,5 +14,5 @@
 - Exchange：`zhicore.events`。
 - Routing key：等于 `eventType`。
 - 关键事实事件必须通过 Content producer outbox 发布。
-- `publicPostId` 是 Content 对外公开文章 ID，必填。
-- `postId` 是 Content 内部 `post_id BIGINT`，只作为 consumer 优化字段，可选；consumer 不能依赖它的生成方式或连续性。
+- `publicId` 是 Content 对外公开文章 ID，必填。
+- `internalId` 是 Content 内部 `post_id BIGINT` opaque reference，必填；consumer 不能依赖它的生成方式或连续性。

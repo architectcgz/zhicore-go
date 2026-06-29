@@ -7,7 +7,7 @@
 ## 使用场景
 
 - Search 消费 Content 事件后，调用 Content 获取 published body 做全文索引。
-- Comment 验证文章存在性，或展示评论上下文时获取文章摘要。
+- Comment 验证文章存在性、评论权限，并保存 Content 内部 opaque reference 供事件下游使用。
 - Ranking / Notification 需要文章摘要时，批量获取 Content summary。
 - User 不提供用户文章 facade。用户主页文章列表直接走 Content HTTP API。
 - Admin 如需文章管理入口，可以作为 facade 调用 Content admin contract，但不拥有文章 mutation 语义。
@@ -39,10 +39,11 @@ type Client interface {
     BatchGetPostSummaries(ctx context.Context, postIDs []string) (BatchPostSummaryResult, error)
     ListPublishedPosts(ctx context.Context, query ListPublishedPostsQuery) (CursorPage[PostSummary], error)
     CheckPostsVisible(ctx context.Context, postIDs []string) (map[string]bool, error)
+    CheckPostCommentable(ctx context.Context, postID string) (PostCommentContext, error)
 }
 ```
 
-`CheckPostsVisible` 是 Go 侧建议新增的窄 contract，用于 Comment、Notification 等服务只需要验证文章是否公开可见的场景；consumer 不应为了存在性校验拉取完整正文。
+`CheckPostsVisible` 是 Go 侧建议新增的窄 contract，用于 Notification 等服务只需要验证文章是否公开可见的场景；consumer 不应为了存在性校验拉取完整正文。Comment 写路径必须使用 `CheckPostCommentable`，拿到 Content 内部 `internalId` 后再写入本地评论和 outbox。
 
 ## DTO
 
@@ -59,6 +60,16 @@ type Client interface {
 | `Status` | string | `PUBLISHED` 等状态。 |
 | `PublishedAt` | time | 发布时间。 |
 | `Stats` | struct | 浏览、点赞、收藏、评论计数。 |
+
+### `PostCommentContext`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `PostID` | string | Content 公开 `public_id`，与请求 `postID` 对应。 |
+| `InternalID` | int64 | Content 内部 `post_id` opaque reference；Comment 保存后只用于事件、统计下游和服务间内部引用。 |
+| `AuthorID` | int64 | 文章作者 User 内部 ID，用于通知和拉黑 guard。 |
+| `Commentable` | bool | 是否允许创建评论；不可评论时返回业务错误或 `false` 的选择由 HTTP schema 固定。 |
+| `Status` | string | Content 生命周期状态快照，用于错误映射和审计。 |
 
 ### `PostDetail`
 

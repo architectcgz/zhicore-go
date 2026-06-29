@@ -143,6 +143,17 @@ NOT EXISTS (
 
 这样可以避免用户发布后立刻再次编辑时，旧 draft 清理任务误删新 draft。
 
+**清理 SLA 和告警：**
+
+- cleanup worker 调度间隔：≤ 60s（配置化，首批默认值）。
+- 单批次处理量：每轮最多 100 条（防止大批量写 MongoDB 影响正常读写）。
+- 告警触发条件：
+  - 待清理孤儿数量超过 500 条。
+  - 最老待清理任务年龄超过 1 小时。
+  - 连续 3 次 worker 失败。
+- cleanup 失败不影响业务事务，但必须有结构化错误日志和 `content_cleanup_failed_total` metric。
+- cleanup 是幂等的：重复删除不存在的 body 不是错误（MongoDB 删除操作返回 0 删除计数时正常 ack）。
+
 ### `content_body_repair_tasks`
 
 用途：
