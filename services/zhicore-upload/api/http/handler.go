@@ -10,7 +10,6 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
 )
 
 type Handler struct {
@@ -42,12 +41,14 @@ func (h *Handler) routes() {
 
 func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
 	limitMultipartBody(w, r, h.service.MaxImageSize())
+	// 大文件 multipart 会落到临时文件，必须等应用层完成校验和上传读取后再清理。
+	defer cleanupMultipartForm(r)
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	result, err := h.service.UploadImage(r.Context(), file, ports.AccessLevelPublic)
+	result, err := h.service.UploadImage(r.Context(), file, application.AccessLevelPublic)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -57,12 +58,14 @@ func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
 	limitMultipartBody(w, r, h.service.MaxAudioSize())
+	// 音频上传同样可能使用临时文件，提前清理会让后续存储适配器读不到内容。
+	defer cleanupMultipartForm(r)
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	result, err := h.service.UploadAudio(r.Context(), file, ports.AccessLevelPublic)
+	result, err := h.service.UploadAudio(r.Context(), file, application.AccessLevelPublic)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -72,6 +75,8 @@ func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) uploadImageWithAccess(w http.ResponseWriter, r *http.Request) {
 	limitMultipartBody(w, r, h.service.MaxImageSize())
+	// 带权限上传仍由应用层最终读取文件，临时文件生命周期要覆盖整个 handler。
+	defer cleanupMultipartForm(r)
 	file, err := filePayloadFromRequest(r, "file")
 	if err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, err.Error())
@@ -99,13 +104,13 @@ func (h *Handler) uploadImagesBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanupMultipartForm(r)
 	headers := r.MultipartForm.File["files"]
-	files := make([]ports.FilePayload, 0, len(headers))
+	files := make([]application.FilePayload, 0, len(headers))
 	for _, header := range headers {
 		files = append(files, filePayloadFromHeader(header))
 	}
 	accessLevel := parseAccessLevel(r.FormValue("accessLevel"))
 	if accessLevel == "" {
-		accessLevel = ports.AccessLevelPublic
+		accessLevel = application.AccessLevelPublic
 	}
 	results, err := h.service.UploadImagesBatch(r.Context(), files, accessLevel)
 	if err != nil {
@@ -148,7 +153,7 @@ type uploadResponse struct {
 	ContentType   string `json:"contentType"`
 }
 
-func responseFromUploadResult(result ports.UploadResult) uploadResponse {
+func responseFromUploadResult(result application.UploadResult) uploadResponse {
 	uploadTime := ""
 	if !result.UploadTime.IsZero() {
 		uploadTime = result.UploadTime.Format(time.RFC3339)
@@ -166,18 +171,17 @@ func responseFromUploadResult(result ports.UploadResult) uploadResponse {
 	}
 }
 
-func filePayloadFromRequest(r *http.Request, fieldName string) (ports.FilePayload, error) {
+func filePayloadFromRequest(r *http.Request, fieldName string) (application.FilePayload, error) {
 	file, header, err := r.FormFile(fieldName)
 	if err != nil {
-		return ports.FilePayload{}, errors.New("文件不能为空")
+		return application.FilePayload{}, errors.New("文件不能为空")
 	}
 	defer file.Close()
-	defer cleanupMultipartForm(r)
 	return filePayloadFromHeader(header), nil
 }
 
-func filePayloadFromHeader(header *multipart.FileHeader) ports.FilePayload {
-	return ports.FilePayload{
+func filePayloadFromHeader(header *multipart.FileHeader) application.FilePayload {
+	return application.FilePayload{
 		OriginalName: header.Filename,
 		ContentType:  header.Header.Get("Content-Type"),
 		Size:         header.Size,
@@ -187,23 +191,33 @@ func filePayloadFromHeader(header *multipart.FileHeader) ports.FilePayload {
 	}
 }
 
-func parseAccessLevel(value string) ports.AccessLevel {
+func parseAccessLevel(value string) application.AccessLevel {
 	switch strings.ToUpper(strings.TrimSpace(value)) {
 	case "", "PUBLIC":
-		return ports.AccessLevelPublic
+		return application.AccessLevelPublic
 	case "PRIVATE":
-		return ports.AccessLevelPrivate
+		return application.AccessLevelPrivate
 	default:
-		return ports.AccessLevel(value)
+		return application.AccessLevel(value)
 	}
 }
 
 func writeError(w http.ResponseWriter, err error) {
 	if appErr, ok := application.AsError(err); ok {
-		sharedhttp.WriteError(w, appErr.Status, appErr.Message)
+		sharedhttp.WriteError(w, statusFromApplicationCode(appErr.Code), appErr.Message)
 		return
 	}
 	sharedhttp.WriteError(w, http.StatusInternalServerError, "系统内部错误，请稍后重试")
+}
+
+func statusFromApplicationCode(code application.Code) int {
+	// 应用层只表达业务错误码，HTTP 语义集中在入站适配器映射，避免 use case 反向依赖传输协议。
+	switch code {
+	case application.CodeInvalidArgument:
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func limitMultipartBody(w http.ResponseWriter, r *http.Request, maxFileSize int64) {

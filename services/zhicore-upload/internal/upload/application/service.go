@@ -18,6 +18,15 @@ const (
 	fileSniffSize            = 512
 )
 
+type AccessLevel = ports.AccessLevel
+type FilePayload = ports.FilePayload
+type UploadResult = ports.UploadResult
+
+const (
+	AccessLevelPublic  = ports.AccessLevelPublic
+	AccessLevelPrivate = ports.AccessLevelPrivate
+)
+
 type Config struct {
 	MaxImageSize      int64
 	MaxAudioSize      int64
@@ -106,11 +115,18 @@ func (s *Service) UploadImagesBatch(ctx context.Context, files []ports.FilePaylo
 	if err := validateAccessLevel(accessLevel); err != nil {
 		return nil, err
 	}
+	if len(files) == 0 {
+		return nil, invalidArgument("文件不能为空")
+	}
 	results := make([]ports.UploadResult, 0, len(files))
-	for _, file := range files {
+	for index, file := range files {
 		result, err := s.UploadImage(ctx, file, accessLevel)
 		if err != nil {
-			continue
+			// 批量上传不能静默丢弃失败文件，否则调用方会误以为整批资源已完成入库和可引用。
+			if appErr, ok := AsError(err); ok {
+				return nil, invalidArgument(fmt.Sprintf("批量上传存在失败文件: 第 %d 个文件 %s, %s", index+1, file.OriginalName, appErr.Message))
+			}
+			return nil, err
 		}
 		results = append(results, result)
 	}
@@ -119,14 +135,14 @@ func (s *Service) UploadImagesBatch(ctx context.Context, files []ports.FilePaylo
 
 func (s *Service) GetFileURL(ctx context.Context, fileID string) (string, error) {
 	if strings.TrimSpace(fileID) == "" {
-		return "", errorf(http.StatusBadRequest, "文件ID不能为空")
+		return "", invalidArgument("文件ID不能为空")
 	}
 	return s.files.GetFileURL(ctx, fileID)
 }
 
 func (s *Service) DeleteFile(ctx context.Context, fileID string) error {
 	if strings.TrimSpace(fileID) == "" {
-		return errorf(http.StatusBadRequest, "文件ID不能为空")
+		return invalidArgument("文件ID不能为空")
 	}
 	return s.files.DeleteFile(ctx, fileID)
 }
@@ -136,29 +152,29 @@ func validateAccessLevel(accessLevel ports.AccessLevel) error {
 	case ports.AccessLevelPublic, ports.AccessLevelPrivate:
 		return nil
 	default:
-		return errorf(http.StatusBadRequest, "访问级别必须是 PUBLIC 或 PRIVATE")
+		return invalidArgument("访问级别必须是 PUBLIC 或 PRIVATE")
 	}
 }
 
 func validateFile(file ports.FilePayload, allowedTypes []string, maxSize int64) error {
 	if file.Size <= 0 || file.Open == nil {
-		return errorf(http.StatusBadRequest, "文件不能为空")
+		return invalidArgument("文件不能为空")
 	}
 	if !containsContentType(file.ContentType, allowedTypes) {
-		return errorf(http.StatusBadRequest, fmt.Sprintf("文件类型不允许: %s", file.ContentType))
+		return invalidArgument(fmt.Sprintf("文件类型不允许: %s", file.ContentType))
 	}
 	if file.Size > maxSize {
-		return errorf(http.StatusBadRequest, "文件大小超过限制")
+		return invalidArgument("文件大小超过限制")
 	}
 	if !extensionAllowsContentType(file.OriginalName, file.ContentType) {
-		return errorf(http.StatusBadRequest, "文件类型不允许")
+		return invalidArgument("文件类型不允许")
 	}
 	detectedType, err := detectContentType(file)
 	if err != nil {
-		return errorf(http.StatusBadRequest, "文件不能为空")
+		return invalidArgument("文件不能为空")
 	}
 	if !contentTypesCompatible(file.ContentType, detectedType) || !containsContentType(detectedType, allowedTypes) {
-		return errorf(http.StatusBadRequest, fmt.Sprintf("文件类型不允许: %s", detectedType))
+		return invalidArgument(fmt.Sprintf("文件类型不允许: %s", detectedType))
 	}
 	return nil
 }

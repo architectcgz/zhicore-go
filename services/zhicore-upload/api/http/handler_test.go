@@ -138,6 +138,35 @@ func TestUploadImageRejectsOversizedMultipartBeforeService(t *testing.T) {
 	}
 }
 
+func TestUploadImageKeepsTemporaryMultipartFileUntilServiceReadsIt(t *testing.T) {
+	fileService := &fakeFileService{
+		uploadResult: ports.UploadResult{
+			FileID:       "large_file",
+			URL:          "https://cdn.example.com/large.jpg",
+			FileSize:     33<<20 + int64(len(jpegHeaderBytes())),
+			AccessLevel:  ports.AccessLevelPublic,
+			OriginalName: "large.jpg",
+			ContentType:  "image/jpeg",
+		},
+	}
+	cfg := application.DefaultConfig()
+	cfg.MaxImageSize = 40 << 20
+	handler := uploadhttp.NewHandler(application.NewService(fileService, cfg))
+
+	data := append(jpegHeaderBytes(), bytes.Repeat([]byte{0}, 33<<20)...)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "large.jpg", "image/jpeg", data, nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	if !fileService.uploadCalled {
+		t.Fatal("file service should be called after application validation reads the temporary file")
+	}
+}
+
 func TestUploadImageWithAccessPassesPrivateAccess(t *testing.T) {
 	fileService := &fakeFileService{
 		uploadResult: ports.UploadResult{

@@ -2,17 +2,23 @@ package application
 
 import "errors"
 
+type Code string
+
+const (
+	CodeInvalidArgument Code = "INVALID_ARGUMENT"
+)
+
 type Error struct {
-	Status  int
 	Message string
+	Code    Code
 }
 
 func (e *Error) Error() string {
 	return e.Message
 }
 
-func errorf(status int, message string) error {
-	return &Error{Status: status, Message: message}
+func invalidArgument(message string) error {
+	return &Error{Code: CodeInvalidArgument, Message: message}
 }
 
 func AsError(err error) (*Error, bool) {
