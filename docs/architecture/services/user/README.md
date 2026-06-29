@@ -32,6 +32,7 @@ User 的模块内部设计已迁移到 `docs/architecture/module/user/`：
 | `docs/architecture/module/user/runtime-resilience.md` | timeout、retry、熔断、降级、max-in-flight 和 provider operation 语义。 |
 | `docs/architecture/module/user/rate-limiting.md` | 业务限流矩阵、Redis 故障策略和 `RateLimiter` 决策语义。 |
 | `docs/architecture/module/user/decision-log.md` | 设计压测中已确认的决策、原因和后续依赖。 |
+| [page-design.md](page-design.md) | User 页面初设计、前端草稿、加载逻辑和降级规则。 |
 
 ## API 范围
 

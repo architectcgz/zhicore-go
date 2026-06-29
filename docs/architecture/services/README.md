@@ -38,6 +38,16 @@ docs/architecture/services/<service>/
 | ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` | `id-generator/service-detail.drawio` | `id-generator/service-detail.png` |
 | Ops | `ops/README.md` | `ops/service-design.ops.png` | `ops/service-detail.drawio` | `ops/service-detail.png` |
 
+## 页面初设计索引
+
+页面初设计记录各服务对应产品页、管理页或运维页的前端草稿、加载顺序、空态 / 错误态 / degraded 态和跨服务页面约定。它们不替代 HTTP 字段级 contract。
+
+| 服务 | 页面设计 | 页面性质 |
+| --- | --- | --- |
+| Auth | `auth/page-design.md` | 登录、注册、会话和安全设置 |
+| User | `user/page-design.md` | 资料、关注、拉黑和用户设置 |
+| Content | `content/page-design.md` | 文章浏览、编辑、互动和内容管理 |
+
 Gateway 的服务级专题文档：
 
 | 专题 | 文档 |
