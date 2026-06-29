@@ -1,5 +1,21 @@
 # Auth Domain
 
+## AccountID 与 UserID 的关系
+
+当前阶段 Auth 的 `AccountID` 和 User 的 `UserID` 数值相同（User 用 Auth `accountId` 初始化 profile），但它们是**不同语义的标识符**，归属不同服务：
+
+| 标识符 | 归属 | 语义 |
+|--------|------|------|
+| `AccountID` | Auth | 认证身份，用于登录、token 签发、角色、账号状态 |
+| `UserID` | User | 用户资料，用于昵称、头像、关注、签到 |
+
+使用规则：
+
+- Gateway 注入的 `X-User-Id` 传递的是 Auth 的 `AccountID`（当前与 UserID 相同）。
+- 下游服务调用 User contract 时，传入的 ID 在当前阶段即为 `AccountID`，User 服务接受它作为 `UserID`。
+- 代码和文档中不能混用 `accountId` 和 `userId` 字段名：Auth 侧用 `accountId`，User 侧用 `userId`，哪怕当前值相同。
+- 如果将来 User 需要支持多账号绑定（一个 User 对应多个 Auth 账号），两者必然分离；届时再建立显式映射关系，现有引用不需要提前兼容。
+
 ## 聚合
 
 ### `Account`

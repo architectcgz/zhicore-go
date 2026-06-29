@@ -4,7 +4,7 @@
 
 | Use case | 职责 |
 | --- | --- |
-| `RegisterAccount` | 校验登录标识唯一性、hash 密码、创建账号、分配默认角色、写 outbox，并初始化 User profile。 |
+| `RegisterAccount` | 校验登录标识唯一性、hash 密码、创建账号、分配默认角色，并在同一事务内写 `auth.account.registered` outbox 事件。User profile 初始化由 User 服务异步消费该事件完成，不在 Auth 事务内同步调用。 |
 | `Login` | 按登录标识加载账号，校验状态和密码，创建 PostgreSQL refresh session，签发 access / refresh token，并尽力写 Redis 缓存和限流状态。 |
 | `RefreshToken` | 以 PostgreSQL refresh session 和 token hash 为真相源校验 refresh token，执行 token rotation；疑似重放时吊销当前 session 或升级账号级处置。 |
 | `Logout` | 吊销当前 refresh token，按需要写 access token 黑名单。 |
@@ -55,7 +55,14 @@ auth_accounts
 + auth_outbox_events(auth.account.registered)
 ```
 
-User profile 初始化不和 Auth 本地事务共享数据库事务。第一阶段如采用同步调用，Auth 本地提交成功但 User 初始化失败时，必须返回明确失败并登记补偿策略，不能静默返回完整注册成功。
+事务提交即代表注册成功，Auth 立即返回成功响应。User profile 初始化由 User 服务异步消费 `auth.account.registered` 事件完成：
+
+- User consumer 消费事件，创建 profile，写入 `users` 表。
+- consumer 幂等：若 profile 已存在（重复消费）则 no-op。
+- consumer 失败：按 User 服务 consumer retry / DLQ 策略重试；最终 profile 必然被创建。
+- profile 短暂不存在（事件尚未消费）属于已知最终一致窗口，通常 < 1s；首次登录查询用户资料前若需要确认 profile 已初始化，可以在查询侧容忍 profile not-found 并提示"资料加载中"。
+
+**不再采用同步调用**：Auth 本地提交后立即调用 User 初始化是不正确的设计，因为 Auth 事务已提交后再同步调用失败，Auth 无法回滚，产生孤儿账号或需要复杂补偿。
 
 **密码、状态和角色命令**：
 

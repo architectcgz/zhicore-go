@@ -79,9 +79,11 @@
 
 Gateway 注入给下游服务的身份上下文使用内部 header。当前固定名称：
 
+`X-User-Id` 传递的是 Auth 的 `AccountID`。当前阶段 `AccountID` 与 User 的 `UserID` 数值相同，但下游服务应按语义区分：调用 Auth contract 时用 `accountId` 字段，调用 User contract 时用 `userId` 字段，即使当前值相同。两者字段命名不得混用（详见 `docs/architecture/module/auth/domain.md`）。
+
 | Header | 含义 | 要求 |
 | --- | --- | --- |
-| `X-User-Id` | 当前登录用户 ID | 登录态 endpoint 必填；下游按内部 `UserID` 解析。 |
+| `X-User-Id` | 当前登录用户 Auth `AccountID`（与 `UserID` 当前同值） | 登录态 endpoint 必填；下游按内部 ID 解析。 |
 | `X-User-Name` | 当前用户名或展示名 | 可选，仅用于兼容或轻量日志字段，不作为权限事实。 |
 | `X-User-Roles` | 稳定角色集合 | 可选；多个角色用逗号分隔。 |
 | `X-Request-Id` | 请求关联 ID | 有上游值则沿用，否则 Gateway 生成。 |

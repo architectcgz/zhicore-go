@@ -28,6 +28,7 @@
   - `docs/architecture/id-strategy.md`：内部主键、外部公开 ID、业务编号和 `zhicore-id-generator` 定位。
 - `docs/contracts/`：跨服务 contract 归属、兼容性、版本和变更流程。
   - `docs/contracts/http.md`：HTTP path、method、header、envelope、版本化和服务级 HTTP schema 放置规则。
+  - `docs/contracts/api-evolution.md`：已发布 HTTP API 的破坏性变更、废弃和下线流程。
   - `docs/contracts/api-design-documentation.md`：API 背后设计、HTTP contract、endpoint 文档和实现追踪的分层结构。
   - `docs/contracts/http-schema-template.md`：`services/<service>/api/http/` 下服务级 schema 和 endpoint 文档格式。
   - `docs/contracts/errors.md`：对外错误响应、公开错误码、HTTP status 映射和校验错误形态。
