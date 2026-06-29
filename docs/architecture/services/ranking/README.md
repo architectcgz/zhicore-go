@@ -16,6 +16,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [decision-log/2026-06-29-ranking-design-decisions.md](decision-log/2026-06-29-ranking-design-decisions.md) | 记录职责边界、ledger / bucket / state / Redis 分层、事件输入、rebuild、候选集和运行韧性的关键取舍。 |
+| [admin-rebuild.md](admin-rebuild.md) | 管理员 rebuild 权限、审计、互斥锁、状态机和 HTTP contract 关系。 |
 | [domain-model.md](domain-model.md) | DDD 目标模型、标识策略、聚合、值对象、领域服务、热度公式和浏览去重。 |
 | [application-and-ports.md](application-and-ports.md) | Application 用例、ports、事务边界、rebuild / archive 流程和 Go 包落点。 |
 | [data-events-projections.md](data-events-projections.md) | 消费事件、热度 ledger、Content 可见性 / 元数据投影、Redis 收敛和 projection schema 草案。 |
@@ -68,7 +69,8 @@ Ranking 保留当前前端和服务间使用的路径。字段级 request / resp
 | `/api/v1/ranking/posts/{postId}/rank|score` | 单篇文章排名和分数，`{postId}` 是 Content `public_id`。 |
 | `/api/v1/ranking/creators/*` | 创作者榜、分数和排名。 |
 | `/api/v1/ranking/topics/*` | 话题榜、分数和排名。 |
-| `/api/v1/ranking/admin/rebuild-from-ledger` | 管理员全量补算。 |
+| `/api/v1/ranking/admin/rebuild-from-ledger` | 管理员全量补算，返回 `operationId`。 |
+| `/api/v1/ranking/admin/rebuild-operations/{operationId}` | 查询 rebuild 操作状态。 |
 
 分页页码从 `0` 开始；`size/limit` 必须按配置限制最大值。周榜使用 ISO week-based year 和 week number。服务间候选集可同时返回内部 `postId` 和 `publicPostId`，但外部 HTTP response 不暴露内部 `post_id`。
 
@@ -101,10 +103,11 @@ Ranking 保留当前前端和服务间使用的路径。字段级 request / resp
 实现任一 Ranking handler、consumer、worker、adapter 或 runtime wiring 前，至少先读：
 
 1. [decision-log/2026-06-29-ranking-design-decisions.md](decision-log/2026-06-29-ranking-design-decisions.md)
-2. [domain-model.md](domain-model.md)
-3. [application-and-ports.md](application-and-ports.md)
-4. [data-events-projections.md](data-events-projections.md)
-5. [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md)
-6. [query-materialization.md](query-materialization.md)
-7. [runtime-resilience.md](runtime-resilience.md)
-8. [schema-and-implementation.md](schema-and-implementation.md)
+2. [admin-rebuild.md](admin-rebuild.md)
+3. [domain-model.md](domain-model.md)
+4. [application-and-ports.md](application-and-ports.md)
+5. [data-events-projections.md](data-events-projections.md)
+6. [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md)
+7. [query-materialization.md](query-materialization.md)
+8. [runtime-resilience.md](runtime-resilience.md)
+9. [schema-and-implementation.md](schema-and-implementation.md)

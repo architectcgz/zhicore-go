@@ -11,6 +11,7 @@ Ranking 拥有：
 - `ranking_post_state`
 - `ranking_period_score`
 - `ranking_projection_event_inbox`
+- `ranking_rebuild_operation`
 - MongoDB `ranking_archive`
 - Redis ZSET 榜单、候选集、view 去重、锁和空结果缓存
 
@@ -224,6 +225,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 - 基于 Ranking migration 补 repository / application 测试，重点验证 ledger 幂等、bucket pending delta、state 可见性过滤、projection inbox 和 period score 更新。
 - 用 producer / consumer contract test 验证 `libs/contracts/events/content/` 和 `libs/contracts/events/comment/` 下的事件 payload 草案。
 - 基于 [event-ordering-and-partitioning.md](event-ordering-and-partitioning.md) 落地 RabbitMQ consumer 模式、局部顺序优化和乱序容忍测试。
+- 基于 [admin-rebuild.md](admin-rebuild.md) 落地 rebuild 权限、审计、锁、状态机和状态查询测试。
 - 按 [runtime-resilience.md](runtime-resilience.md) 落地 Ranking runtime 配置、health details、metrics 和 adapter / worker 测试。
 - 先实现“事件账本 + bucket + 文章总榜查询”最小切片，再推进 snapshot / replay、周期榜和候选集。
 

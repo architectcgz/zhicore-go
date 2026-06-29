@@ -10,7 +10,7 @@ Ranking HTTP API 分为五组：
 - 热门候选集：供 Comment 等下游服务读取热门文章候选。
 - 创作者榜：按文章热度派生创作者榜、分数和排名。
 - 话题榜：按文章热度派生话题榜、分数和排名。
-- 管理运维：管理员触发 `rebuild-from-ledger`。
+- 管理运维：管理员触发 `rebuild-from-ledger` 并查询 rebuild 操作状态。
 
 核心边界：
 
@@ -113,8 +113,31 @@ Ranking 不复制 Content 字段定义；`post` 的字段形态以 Content typed
 | `requestedBy` | string | 是 | 管理员用户 ID。 |
 | `dryRun` | boolean | 是 | 是否仅做校验。 |
 | `lockTtlSeconds` | int | 是 | rebuild 锁 TTL。 |
+| `statusPath` | string | 是 | 状态查询 path。 |
 
-长任务状态查询 endpoint 尚未固定；本 endpoint 只负责快速校验和受理。
+本 endpoint 只负责快速校验和受理；执行进度和最终结果通过 `operationId` 查询。
+
+### `RebuildOperationStatus`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `operationId` | string | 是 | rebuild 操作 ID。 |
+| `status` | string | 是 | `ACCEPTED`、`RUNNING`、`SUCCEEDED`、`PARTIAL_FAILED`、`FAILED`、`CANCELED`。 |
+| `dryRun` | boolean | 是 | 是否 dry run。 |
+| `force` | boolean | 是 | 是否 force；首期始终为 `false`。 |
+| `requestedBy` | string | 是 | 管理员用户 ID。 |
+| `reason` | string | 否 | 管理员触发原因。 |
+| `failedStage` | string | 否 | 失败阶段，例如 `LOCK`、`DRAIN`、`REPLAY`、`REDIS_REFRESH`、`CANDIDATE_REFRESH`。 |
+| `errorCode` | string | 否 | 脱敏后的内部错误分类。 |
+| `message` | string | 否 | 面向管理员的状态摘要，不包含底层敏感错误。 |
+| `replayedEvents` | int64 | 是 | 已 replay 的 ledger 事件数。 |
+| `rebuiltPosts` | int64 | 是 | 已重建文章数。 |
+| `refreshedSnapshots` | int | 是 | 已刷新 snapshot 数。 |
+| `refreshedCandidates` | boolean | 是 | 是否刷新候选集。 |
+| `acceptedAt` | string | 是 | RFC3339。 |
+| `startedAt` | string | 否 | RFC3339。 |
+| `completedAt` | string | 否 | RFC3339。 |
+| `durationMs` | int64 | 否 | 已完成时的耗时。 |
 
 ## 通用 Query 参数
 
@@ -422,7 +445,7 @@ Body：
 | --- | --- | --- | --- | --- |
 | `dryRun` | boolean | 否 | 缺失为 `false` | 只做权限、依赖和锁校验，不执行重建。 |
 | `reason` | string | 否 | 可缺失 | 管理员触发原因，最长 200。 |
-| `force` | boolean | 否 | 缺失为 `false` | 是否允许覆盖 stale rebuild lock；第一阶段默认不允许 `true`，除非后续固定审计和安全策略。 |
+| `force` | boolean | 否 | 缺失为 `false` | 首期不允许 `true`；传 `true` 返回 `1008`。 |
 
 成功响应 `data`：`RebuildAccepted`。
 
@@ -437,7 +460,31 @@ Body：
 | `2007` | `403` | 缺少管理员角色。 |
 | `2008` | `403` | 已登录但无权执行 rebuild。 |
 
-`rebuild-from-ledger` 是长任务入口。请求成功只表示任务已受理，不表示 rebuild 已完成。后续如果需要查询任务状态，必须新增独立 endpoint，并固定 `operationId` 查询 schema。
+`rebuild-from-ledger` 是长任务入口。请求成功只表示任务已受理，不表示 rebuild 已完成。Ranking 必须写入 `ranking_rebuild_operation`，后续通过 `operationId` 查询状态。
+
+### `GET /api/v1/ranking/admin/rebuild-operations/{operationId}`
+
+查询 rebuild 操作状态。
+
+鉴权：管理员。必须有 `X-User-Id` 和包含管理员角色的 `X-User-Roles`。
+
+Path：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `operationId` | string | 是 | rebuild 操作 ID。 |
+
+成功响应 `data`：`RebuildOperationStatus`。
+
+错误：
+
+| code | HTTP status | 触发条件 |
+| --- | --- | --- |
+| `1001` | `400` | `operationId` 格式非法。 |
+| `1005` | `404` | 操作不存在或已按保留策略清理。 |
+| `2006` | `401` | 缺少登录态。 |
+| `2007` | `403` | 缺少管理员角色。 |
+| `2008` | `403` | 已登录但无权查询 rebuild 操作。 |
 
 ## 权限和可见性
 
@@ -460,5 +507,5 @@ Body：
 - Redis miss：列表 endpoint 覆盖 Redis miss 后 PostgreSQL 回源，且 `degraded=true`。
 - Visibility：公开榜单过滤 `public_visible=false` 的文章。
 - Content 详情：`/posts/hot/details` 覆盖 Content 批量详情失败返回 `1004`。
-- Admin rebuild：覆盖未登录、非管理员、lock 不可用、已有任务运行和 accepted response。
+- Admin rebuild：覆盖未登录、非管理员、lock 不可用、已有任务运行、accepted response、status 查询和 status not found。
 - Ranking API 仍未实现时，本文状态保持“草案”；handler 和 contract test 落地后再更新为“已验证”。

@@ -171,7 +171,7 @@ application 只把 `pending_*_delta` 应用到 `ranking_post_state` 和 `ranking
 
 进入 replay 窗口的新消息不写业务表：consumer 可以 nack / requeue，也可以停止消费等待 broker 重新投递。rebuild 使用 ledger 中保存的 `bucket_start` 重放，`occurred_at` 只作为排序和审计字段。rebuild 不能删除 `ranking_event_ledger`。
 
-返回结果至少包含 `replayedEvents`、`rebuiltAt`、`duration` 和 `failedStage`。如果候选集刷新失败，保留旧候选集并记录告警。若 rebuild 进程 crash，锁超时后 consumer 可以自动恢复；下一次 rebuild 从头开始，不要求断点续传。
+执行结果写入 `ranking_rebuild_operation`，状态查询至少返回 `replayedEvents`、`rebuiltPosts`、`durationMs` 和 `failedStage`。如果候选集刷新失败，保留旧候选集并记录告警，operation 标记为 `PARTIAL_FAILED`。若 rebuild 进程 crash，锁超时后 consumer 可以自动恢复；下一次 rebuild 从头开始，不要求断点续传。
 
 ## Archive
 
