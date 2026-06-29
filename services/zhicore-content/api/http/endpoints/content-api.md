@@ -54,7 +54,7 @@ Content HTTP API 分为五组：
 | `createdAt` | string | 是 | RFC3339。 |
 | `updatedAt` | string | 是 | RFC3339。 |
 | `stats` | object | 是 | `viewCount`、`likeCount`、`favoriteCount`、`commentCount`。 |
-| `viewer` | object | 否 | 登录用户视角：`liked`、`favorited`。匿名可省略。 |
+| `viewer` | object | 否 | 登录用户视角：`liked`、`favorited`、`degraded`。匿名可省略；`liked/favorited` 可为 `null` 表示状态不可确认。 |
 
 ### `PostDetail`
 
@@ -556,6 +556,10 @@ Body：
 
 鉴权：匿名可查计数；登录用户额外返回 viewer 状态。
 
+调用顺序：客户端应先加载文章详情；文章不存在、不可见或详情加载失败时，不请求也不展示 engagement。Engagement 是文章可读后的附加信息，不作为文章详情接口的前置依赖。
+
+登录用户的 viewer 状态使用三值语义：`true` 表示已确认互动，`false` 表示已确认未互动，`null` 表示当前无法确认。`degraded=true` 时前端不能把 `null` 当成未点赞或未收藏。
+
 响应 `data`：
 
 ```json
@@ -569,10 +573,44 @@ Body：
   },
   "viewer": {
     "liked": true,
-    "favorited": false
+    "favorited": false,
+    "degraded": false
   }
 }
 ```
+
+降级响应示例：
+
+```json
+{
+  "postId": "p1...",
+  "stats": {
+    "viewCount": 100,
+    "likeCount": 10,
+    "favoriteCount": 5,
+    "commentCount": 3
+  },
+  "viewer": {
+    "liked": null,
+    "favorited": null,
+    "degraded": true
+  }
+}
+```
+
+字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `postId` | string | 是 | 文章公开 ID。 |
+| `stats.viewCount` | int | 是 | 浏览数。 |
+| `stats.likeCount` | int | 是 | 点赞数。 |
+| `stats.favoriteCount` | int | 是 | 收藏数。 |
+| `stats.commentCount` | int | 是 | 评论数。 |
+| `viewer` | object | 登录用户必填，匿名可省略 | 当前用户视角。 |
+| `viewer.liked` | boolean \| null | 登录用户必填 | `null` 表示状态不可确认，不等于 `false`。 |
+| `viewer.favorited` | boolean \| null | 登录用户必填 | `null` 表示状态不可确认，不等于 `false`。 |
+| `viewer.degraded` | boolean | 登录用户必填 | 是否因为 Redis / DB fallback 降级导致 viewer 状态不可确认。 |
 
 错误：`4001`。
 
@@ -582,17 +620,28 @@ Body：
 
 鉴权：登录用户。
 
-Body：`postIds`，最多 100 个。
+Body：`postIds`，最多 100 个。重复 `postId` 按首次出现位置去重；响应按去重后的请求顺序返回。
 
 响应 `data`：
 
 ```json
 {
   "items": [
-    { "postId": "p1...", "liked": true, "favorited": false }
+    { "postId": "p1...", "liked": true, "favorited": false, "degraded": false },
+    { "postId": "p2...", "liked": null, "favorited": null, "degraded": true }
   ]
 }
 ```
+
+字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `items` | object[] | 是 | 返回顺序与请求去重后的 `postIds` 一致。 |
+| `items[].postId` | string | 是 | 文章公开 ID。 |
+| `items[].liked` | boolean \| null | 是 | `null` 表示当前无法确认，不等于未点赞。 |
+| `items[].favorited` | boolean \| null | 是 | `null` 表示当前无法确认，不等于未收藏。 |
+| `items[].degraded` | boolean | 是 | 当前 item 是否因 Redis / DB fallback 降级而状态不可确认。 |
 
 错误：`2006`、`1001`。
 
