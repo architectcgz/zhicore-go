@@ -346,9 +346,11 @@ recommendedScore = likeCount * 100 + freshnessBoost
 
 ## 集成事件
 
-集成事件是跨服务 contract，必须放到 `libs/contracts/events/comment` 后才能被其他服务稳定依赖。本文只固定语义方向，不替代字段级 contract。
+集成事件是跨服务 contract，字段级 payload 见 `libs/contracts/events/comment/README.md` 和 `libs/contracts/events/comment/comment-events.md`。本文只固定语义方向，不替代字段级 contract。
 
 集成事件中的 `commentId` 是 Comment 内部 `comments.id` 的跨服务 opaque reference，用于 consumer 幂等、通知、统计和热度 ledger；对外 HTTP 仍以 `(postId, floor)` 定位评论。事件中的 `authorId`、`postAuthorId`、`commentAuthorId`、`likedBy`、`deletedBy` 等用户字段是 User 内部 `UserID` opaque reference，不是 User `publicId`。Comment 事件默认不携带 User `publicId`。
+
+Comment 事件中的 `postId` 是 Content `public_id` 字符串。Comment 首版不保存也不发布 Content 内部 `post_id`；Ranking 等 consumer 如需内部 `post_id`，必须通过 Content contract 解析。
 
 | 事件 | 触发用例 | 主要 payload | 当前 / 目标 consumer | outbox 要求 |
 | --- | --- | --- | --- | --- |

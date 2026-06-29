@@ -42,7 +42,7 @@
 | 24 | 热度公式 | Go 第一阶段是否重新设计热度公式？ | 不重新设计。沿用 Java half-life 衰减公式，权重和半衰期配置化。 | 迁移期不应改变榜单语义；配置化允许后续压测和产品调整。 | 权重变更后需要 snapshot 或 replay 才能完全一致。 |
 | 25 | 未发布 / 隐藏文章 | `published_at IS NULL` 时是否可进入公开榜单？ | `published_at IS NULL` 时公式可令 `timeDecay=1.0`，但未发布、删除、撤回、下架或隐藏文章不应进入公开榜单。 | 公式处理缺失时间只是防御；公开可见性仍归 Content 状态决定。Ranking 只能保存本地投影用于过滤，不能成为 Content 生命周期源事实。 | 过滤主路径来自 `ranking_post_state.public_visible`；Content 回源只用于详情补齐、事件缺字段解析和 repair / reconcile。 |
 | 26 | 评论点赞热度 | `comment.liked` / `comment.unliked` 是否计入文章热度？ | 第一阶段不消费。若产品要求计入，必须先扩展指标、权重、bucket 列、replay 规则和事件 contract。 | 评论点赞属于评论互动，不一定等价于文章热度；在 Ranking 内临时推断会破坏指标可解释性。 | 事件 contract 阶段单独决策，不在 Ranking consumer 内隐藏实现。 |
-| 27 | Content / Comment 事件字段 | Ranking 是否能每条事件同步查询 Content / Comment 补字段？ | `publicPostId` 必填；内部 `postId` 可选优化。缺字段时优先修事件 contract，不把同步补查变成常态。 | 高频事件每条同步补查会放大延迟和失败面；事件应携带足够事实。 | 只携带 `publicPostId` 时允许通过 Content 解析内部 post id；not found / deleted 进入 DLQ 或告警。 |
+| 27 | Content / Comment 事件字段 | Ranking 是否能每条事件同步查询 Content / Comment 补字段？ | Content 事件 `publicPostId` 必填，内部 `postId` 可选优化；Comment 事件 `postId` 表示 Content `public_id`，首版不携带 Content 内部 `post_id`。缺字段时优先修事件 contract，不把同步补查变成常态。 | 高频事件每条同步补查会放大延迟和失败面；事件应携带足够事实。Comment 不拥有 Content 内部 ID，不能为了 Ranking 暴露它不保存的字段。 | Ranking 对 Content 事件优先使用可选内部 `postId`，缺失时按 `publicPostId` 解析；对 Comment 事件按公开 `postId` 解析。not found / deleted 进入 DLQ 或告警。 |
 | 28 | Comment 同步依赖 | Ranking 是否同步读取 Comment 服务？ | 第一阶段通常不需要。Comment 只通过事件输入；缺字段时优先修 Comment 事件。 | Ranking 不应把 Comment 查询变成热度摄入的在线依赖。 | `CommentClient` 仅作为未来必要时的可选端口。 |
 | 29 | Ranking 生产事件 | Ranking 是否生产关键跨服务事件？ | 第一阶段默认不生产关键事件。热门候选集通过同步查询或定时拉取暴露给 Comment。 | 候选集是可重建视图，不是权威业务事实；事件广播会增加 consumer 幂等和一致性成本。 | 如未来需要 `ranking.hot_candidates.updated`，必须新增 ranking event contract 并定义是否可丢失。 |
 | 30 | HTTP API 兼容 | Go Ranking 是否完全兼容 Java 旧数据和 API 形态？ | 不要求兼容 Java 旧数据，但 API 形态需要按目标前端 contract 固定。 | Go 重建阶段以目标 contract 为准；旧 Java 是能力参考，不是字段事实源。 | 字段级 schema 已提取到 `services/zhicore-ranking/api/http/`，当前为草案，待 handler / contract test 验证。 |
@@ -61,6 +61,6 @@
 ## 需要继续决策的问题
 
 - Ranking HTTP 字段级 schema 已进入草案；后续需要用 handler / contract test 验证 `HotScore.entityId`、`rank`、`score`、空榜和错误码。
-- Content / Comment 事件 payload 的最终字段和内部 `postId` 携带策略，尤其是 `content.post.visibility_changed` 的 `oldVisibility/newVisibility/publicVisible/reason/aggregateVersion`。
+- Content / Comment 事件 payload 已提取为草案；后续需要用 producer / consumer contract test 验证。当前策略：Content 事件 `publicPostId` 必填、内部 `postId` 可选；Comment 事件 `postId` 表示 Content `public_id`，首版不携带 Content 内部 `post_id`。
 - RabbitMQ 分片策略：routing key、consistent hash exchange 或 consumer 本地 post 分片。
 - Admin `rebuild-from-ledger` 的权限、审计、互斥锁和返回状态 schema。

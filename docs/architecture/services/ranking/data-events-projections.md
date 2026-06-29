@@ -9,6 +9,8 @@
 - [Ranking 运行期 resilience](runtime-resilience.md)
 - [Content 数据、事件和契约设计](../content/data-events-contracts.md)
 - [事件契约规范](../../../contracts/events.md)
+- [Content 事件 contract](../../../../libs/contracts/events/content/README.md)
+- [Comment 事件 contract](../../../../libs/contracts/events/comment/README.md)
 
 ## 核心结论
 
@@ -49,14 +51,14 @@ Ranking 消费的跨服务事件：
 | `content.post.unliked` | Content | `LIKE` | `-1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`unlikedBy`、`occurredAt` | 负增量由源服务显式发出 |
 | `content.post.favorited` | Content | `FAVORITE` | `+1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`favoritedBy`、`occurredAt` | 收藏增量 |
 | `content.post.unfavorited` | Content | `FAVORITE` | `-1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`unfavoritedBy`、`occurredAt` | 负增量 |
-| `comment.created` | Comment | `COMMENT` | `+1` | `eventId`、`publicPostId`、`postId?`、`commentId`、`authorId`、`createdAt` | 评论增量 |
-| `comment.deleted` | Comment | `COMMENT` | `-affectedCount` | `eventId`、`publicPostId`、`postId?`、`affectedCount`、`deletedAt` | 根评论删除时按 affectedCount 回滚 |
-| `comment.liked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`publicPostId`、`postId?`、`likedBy` | 如产品要求计入文章热度，必须先扩展指标、权重、bucket 列和 replay 规则 |
-| `comment.unliked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`publicPostId`、`postId?`、`unlikedBy` | 同上 |
+| `comment.created` | Comment | `COMMENT` | `+1` | `eventId`、`postId`、`commentId`、`authorId`、`createdAt` | `postId` 是 Content `public_id`，Ranking 解析为内部 `post_id` 后落账 |
+| `comment.deleted` | Comment | `COMMENT` | `-affectedCount` | `eventId`、`postId`、`affectedCount`、`deletedAt` | 根评论删除时按 affectedCount 回滚；`postId` 是 Content `public_id` |
+| `comment.liked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`postId`、`likedBy` | 如产品要求计入文章热度，必须先扩展指标、权重、bucket 列和 replay 规则 |
+| `comment.unliked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`postId`、`unlikedBy` | 同上 |
 
 Go 目标默认先实现 Content 互动、Content 可见性控制事件和评论创建 / 删除。评论点赞是否计入文章热度必须在事件 contract 阶段明确，不能在 Ranking 内自行推断。
 
-表中的 `publicPostId` 是稳定契约字段；`postId?` 是生产方可选携带的 Content 内部 `post_id`，仅用于减少 Ranking 解析调用。HTTP API 的 `{postId}` path 值使用 Content `public_id`。
+Content 事件中的 `publicPostId` 是稳定契约字段；`postId?` 是 Content 可选携带的内部 `post_id`，仅用于减少 Ranking 解析调用。Comment 事件中的 `postId` 是 Content `public_id` 字符串，首版不携带 Content 内部 `post_id`。HTTP API 的 `{postId}` path 值使用 Content `public_id`。
 
 ## 热度事件摄入
 

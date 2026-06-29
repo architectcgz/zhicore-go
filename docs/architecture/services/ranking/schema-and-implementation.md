@@ -222,7 +222,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 
 - 用 Go handler / contract test 验证 `services/zhicore-ranking/api/http/` 下的 Ranking HTTP 字段级 contract 草案。
 - 基于 Ranking migration 补 repository / application 测试，重点验证 ledger 幂等、bucket pending delta、state 可见性过滤、projection inbox 和 period score 更新。
-- 提取 Content / Comment 事件 payload contract。
+- 用 producer / consumer contract test 验证 `libs/contracts/events/content/` 和 `libs/contracts/events/comment/` 下的事件 payload 草案。
 - 设计 RabbitMQ 分片策略，明确同一内部 `post_id` 事件的局部顺序优化和乱序容忍测试。
 - 按 [runtime-resilience.md](runtime-resilience.md) 落地 Ranking runtime 配置、health details、metrics 和 adapter / worker 测试。
 - 先实现“事件账本 + bucket + 文章总榜查询”最小切片，再推进 snapshot / replay、周期榜和候选集。
