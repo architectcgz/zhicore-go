@@ -46,7 +46,7 @@ Comment 不拥有：
 
 ## 目标 API 范围
 
-Comment 服务明确按 Go-first API 重做，不保留以全局 `commentId` 为外部资源 ID 的旧 API 形态。目标 API 以文章为上级资源，用 `(postId, floor)` 定位评论；`postId` 是 Content 对外文章 ID，`floor` 是文章内单调递增楼层号。
+Comment 服务明确按 Go-first API 重做。目标 API 以文章为上级资源，用 `(postId, commentId)` 定位评论；`postId` 是 Content 对外文章 ID，`commentId` 是由 Comment 内部 `comments.id BIGINT IDENTITY` 派生的对外字符串。
 
 | API family | 范围 | HTTP contract |
 | --- | --- | --- |
@@ -64,7 +64,6 @@ Comment 拥有：
 - `comment_stats`
 - `comment_post_stats`
 - `comment_likes`
-- `comment_post_counters`
 - `comment_counter_deltas`
 - `comment_hot_rank`
 - `comment_recommended_rank`
@@ -72,7 +71,7 @@ Comment 拥有：
 
 评论图片和语音只保存 Upload / File Service 返回的文件 ID，例如 `imageFileIds`、`voiceFileId`。文件元数据、对象存储路径、URL 解析、签名 URL、CDN 规则和文件删除事实仍归 Upload / File Service；Comment response 可以返回可展示 / 可播放 URL，但这些 URL 不是 Comment 的持久化事实。
 
-`post_id` 在 Comment 本地表中保存 Content 对外 `postId` 字符串，不保存 Content 私有数据库主键。Comment 只把它作为 opaque reference 和分区 / 查询条件使用。
+`post_id` 在 Comment 本地表中保存 Content 对外 `postId` 字符串，用于 HTTP 定位、分区和查询条件。Comment 同时保存 Content 内部 `post_id BIGINT` opaque reference，用于跨服务事件让 Ranking 等下游直接落账；Comment 不依赖该内部 ID 的生成方式、连续性或可读含义。
 
 ## 跨服务依赖
 
@@ -88,18 +87,18 @@ Comment 拥有：
 ## 实现风险
 
 - Go 侧关键评论事件必须使用 producer outbox，不沿用 Java 历史中的直接 MQ 路径。
-- `floor` 是文章内外部定位号，必须在同一 `post_id` 下唯一、单调递增、删除不复用，不能用动态行号或回复列表内序号替代。
+- 评论内部 ID 使用 PostgreSQL identity 生成；HTTP 对外 `commentId` 由内部 ID 派生，不使用 Redis、segment、每文章 counter 或独立发号服务。
 - 回复模型使用 `root_id + parent_id`，不要再引入 `reply_to_comment_id` 或 `reply_to_user_id` 冗余字段。
 - 顶级评论删除会影响所有回复，必须明确批量删除、统计修正和事件 `affectedCount` 语义。
 - 点赞和取消点赞必须用 `comment_likes(comment_id, user_id)` 唯一约束保护幂等；点赞计数和 HOT / RECOMMENDED 排序通过 `comment_counter_deltas` 异步批量更新 `comment_stats` / rank 表，不要把高 QPS 点赞直接写到 `comments` 或同步更新同一统计行。
-- 顶级评论 HOT 查询不做大范围 `comments + comment_stats` 排序 join；先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取候选，再批量补评论正文、统计和作者摘要。
-- 默认顶级评论流使用 `comment_recommended_rank`，按 `(post_id, recommended_score DESC, floor DESC)` 取候选；decay / recompute 必须过滤 `visible=true` 并使用锁或 claim 机制避免重复重算。
+- 顶级评论 HOT 查询不做大范围 `comments + comment_stats` 排序 join；先从 `comment_hot_rank` 按 `(post_id, like_count DESC, comment_id ASC)` 取候选，再批量补评论正文、统计和作者摘要。
+- 默认顶级评论流使用 `comment_recommended_rank`，按 `(post_id, recommended_score DESC, comment_id DESC)` 取候选；decay / recompute 必须过滤 `visible=true` 并使用锁或 claim 机制避免重复重算。
 - 写路径外部 guard 不可确认时 fail closed；查询路径只允许作者摘要和 Upload URL 这类展示增强降级，具体矩阵见 `docs/architecture/module/comment/runtime-resilience.md`。
 - 删除任意评论节点必须软删除整棵子树，并用本次实际从 `NORMAL` 变为 `DELETED` 的 `affectedCount` 维护统计和事件，避免重复删除导致重复扣减。
 - Comment 与 Content 的评论总数需要 Ops 对账机制；Comment 的 `comment_post_stats` 是事实源，Content 的 `post_stats.comment_count` 是消费事件后的读模型。
 
 ## 下一步
 
-1. 以 `services/zhicore-comment/api/http/README.md` 中首批 contract 为准，实现“创建根评论 / 回复 + 文章评论传统分页查询”；`POST` 已有 `parentFloor`，实现不能只支持根评论。
-2. 先补 domain / application 测试，验证评论内容、楼层分配、`parentFloor` 解析、Content/User/Upload 校验、统计初始化、文章级统计、回复计数、outbox 写入和分页查询。
+1. 以 `services/zhicore-comment/api/http/README.md` 中首批 contract 为准，实现“创建根评论 / 回复 + 文章评论传统分页查询”；`POST` 已有 `parentCommentId`，实现不能只支持根评论。
+2. 先补 domain / application 测试，验证评论内容、`commentId` 生成 / 编码、`parentCommentId` 解析、Content/User/Upload 校验、统计初始化、文章级统计、回复计数、outbox 写入和分页查询。
 3. 再接入 PostgreSQL / HTTP；切片 2 再补删除、点赞、计数 delta worker、缓存失效和事件发布。

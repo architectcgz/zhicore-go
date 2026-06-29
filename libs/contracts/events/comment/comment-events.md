@@ -2,6 +2,16 @@
 
 状态：草案。本文固定 `comment.*` 事件的字段级 payload contract，尚未由 Go outbox publisher / consumer contract test 验证。
 
+## 不存在的事件：`comment.updated`
+
+`comment.updated` 事件**当前不存在**，是有意设计：
+
+- Comment 更新评论只修改文本和媒体引用，不改变排序位置，也没有需要跨服务感知的语义变化。
+- Search 第一阶段不索引评论正文，因此无需此事件。
+- Notification 不发送"评论被编辑"通知。
+
+如果未来需要此事件（例如 Search 索引评论、或 Notification 需要感知编辑），必须先在本文件新增事件定义，再在 Comment outbox publisher 中实现；不得由 consumer 假定此事件存在或将来会存在。
+
 ## Envelope
 
 所有事件使用 `docs/contracts/events.md` 的统一 envelope。
@@ -17,7 +27,7 @@
 | `aggregateId` | string | 是 | `commentId` 的字符串形式。 |
 | `payload` | object | 是 | 事件 payload。 |
 
-Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 payload 的 `postId` 当作 Content `public_id` 解析为内部 `post_id` 后再写 ledger / projection。
+Comment 事件必须携带 Content 内部 `post_id` opaque reference。Ranking 使用 payload 的 `internalId` 写 ledger / projection，`publicId` 只用于 HTTP 关联、审计、DLQ 和 repair。
 
 ## 事件索引
 
@@ -35,15 +45,13 @@ Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 paylo
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `commentId` | int64 | 是 | Comment 内部评论 ID。 |
-| `postId` | string | 是 | Content `public_id`。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id` opaque reference。 |
 | `postAuthorId` | int64 | 是 | 文章作者 User 内部 ID，用于通知和自评论过滤。 |
-| `floor` | int64 | 是 | 文章内楼层号。 |
 | `authorId` | int64 | 是 | 评论作者 User 内部 ID。 |
 | `rootId` | int64 | 否 | 根评论 ID；根评论本身为空。 |
-| `rootFloor` | int64 | 否 | 根评论楼层；根评论本身为空。 |
 | `rootAuthorId` | int64 | 否 | 根评论作者；根评论本身为空。 |
 | `parentId` | int64 | 否 | 直接父评论 ID；根评论本身为空。 |
-| `parentFloor` | int64 | 否 | 直接父评论楼层；根评论本身为空。 |
 | `parentAuthorId` | int64 | 否 | 直接父评论作者；根评论本身为空。 |
 | `hasImages` | boolean | 是 | 评论是否包含图片。 |
 | `hasVoice` | boolean | 是 | 评论是否包含语音。 |
@@ -51,7 +59,7 @@ Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 paylo
 
 约束：
 
-- 根评论：`rootId/rootFloor/rootAuthorId/parentId/parentFloor/parentAuthorId` 全部为空。
+- 根评论：`rootId/rootAuthorId/parentId/parentAuthorId` 全部为空。
 - 回复：`root*` 和 `parent*` 全部必填。
 - Notification 不应为了创建评论 / 回复通知再同步回查 Comment 或 Content；本事件必须携带文章作者、根评论和直接父评论定位事实。
 - Ranking 按本事件写 `COMMENT +1`，不读取评论正文。
@@ -63,10 +71,9 @@ Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 paylo
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `commentId` | int64 | 是 | 被删除入口评论 ID。 |
-| `postId` | string | 是 | Content `public_id`。 |
-| `floor` | int64 | 是 | 被删除入口评论楼层。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id` opaque reference。 |
 | `rootId` | int64 | 否 | 所属根评论 ID；删除根评论时可为空或等于 `commentId`，以实现文档固定为准。 |
-| `rootFloor` | int64 | 否 | 所属根评论楼层。 |
 | `authorId` | int64 | 是 | 被删除入口评论作者 User 内部 ID。 |
 | `deletedBy` | int64 | 否 | 删除操作者 User 内部 ID；系统任务可缺失。 |
 | `deletedByRole` | string | 是 | `AUTHOR`、`ADMIN` 或 `SYSTEM`。 |
@@ -88,8 +95,8 @@ Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 paylo
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `commentId` | int64 | 是 | Comment 内部评论 ID。 |
-| `postId` | string | 是 | Content `public_id`。 |
-| `floor` | int64 | 是 | 评论楼层。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id` opaque reference。 |
 | `commentAuthorId` | int64 | 是 | 评论作者 User 内部 ID。 |
 | `likedBy` | int64 | 是 | 点赞用户 User 内部 ID。 |
 | `occurredAt` | string | 是 | 点赞事实时间，RFC3339。 |
@@ -103,8 +110,8 @@ Comment 事件首版不携带 Content 内部 `post_id`。Ranking 需要把 paylo
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `commentId` | int64 | 是 | Comment 内部评论 ID。 |
-| `postId` | string | 是 | Content `public_id`。 |
-| `floor` | int64 | 是 | 评论楼层。 |
+| `publicId` | string | 是 | Content `public_id`。 |
+| `internalId` | int64 | 是 | Content 内部 `post_id` opaque reference。 |
 | `commentAuthorId` | int64 | 是 | 评论作者 User 内部 ID。 |
 | `unlikedBy` | int64 | 是 | 取消点赞用户 User 内部 ID。 |
 | `occurredAt` | string | 是 | 取消点赞事实时间，RFC3339。 |

@@ -13,5 +13,6 @@
 - Producer：`zhicore-comment`。
 - Exchange：`zhicore.events`。
 - Routing key：等于 `eventType`。
-- `postId` 是 Content `public_id` 字符串，Comment 不保存也不发布 Content 内部 `post_id`。
-- `commentId` 是 Comment 内部 `comments.id`，作为跨服务 opaque reference；外部 HTTP 仍可用 `(postId, floor)` 定位评论。
+- `publicId` 是 Content `public_id` 字符串，必填，用于 HTTP 关联、审计和 repair。
+- `internalId` 是 Content 内部 `post_id BIGINT` opaque reference，必填；Comment 在创建评论前通过 Content contract 校验文章并保存该引用。
+- `commentId` 是 Comment 内部 `comments.id`，作为跨服务 opaque reference；外部 HTTP 使用由该内部 ID 派生的 `(postId, commentId)` 字符串定位评论。

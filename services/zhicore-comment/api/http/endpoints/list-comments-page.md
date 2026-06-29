@@ -55,7 +55,7 @@
     "items": [
       {
         "postId": "p1K8x9Q2",
-        "floor": 26,
+        "commentId": "c1K8x9Q2",
         "author": {
           "publicId": "u_8x7K2m",
           "displayName": "azhi"
@@ -100,11 +100,11 @@
 ## 排序、分页和过滤
 
 - Page 分页从 `1` 开始。
-- `RECOMMENDED` 排序：`recommendedScore DESC, floor DESC`。`recommendedScore` 来自 `comment_recommended_rank`，首版公式为 `likeCount * 100 + freshnessBoost`。
-- `TIME` 排序：`floor DESC`。`floor` 是同一文章内单调递增创建序号，足以作为稳定时间锚点；`createdAt` 只作为展示和审计字段返回。
-- `HOT` 排序：`likeCount DESC, floor ASC`。同点赞数下优先展示更早楼层。
-- `RECOMMENDED` 查询先从 `comment_recommended_rank` 按 `(post_id, recommended_score DESC, floor DESC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要。
-- `HOT` 查询先从 `comment_hot_rank` 按 `(post_id, like_count DESC, floor ASC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要，避免大范围 `comments + stats` 排序 join。
+- `RECOMMENDED` 排序：`recommendedScore DESC, commentId DESC`。`recommendedScore` 来自 `comment_recommended_rank`，首版公式为 `likeCount * 100 + freshnessBoost`；这里的 `commentId` 指内部 `comments.id` 排序锚点，对外 cursor 不透明。
+- `TIME` 排序：`commentId DESC`。内部 `comments.id` 作为稳定时间锚点；`createdAt` 只作为展示和审计字段返回。
+- `HOT` 排序：`likeCount DESC, commentId ASC`。同点赞数下优先展示更早评论。
+- `RECOMMENDED` 查询先从 `comment_recommended_rank` 按 `(post_id, recommended_score DESC, comment_id DESC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要。
+- `HOT` 查询先从 `comment_hot_rank` 按 `(post_id, like_count DESC, comment_id ASC)` 取一页 `comment_id`，再批量加载 `comments`、`comment_stats` 和作者摘要，避免大范围 `comments + stats` 排序 join。
 - `likeCount` 来自异步更新的读模型，允许短暂最终一致；`viewer.liked` 如果返回，必须以 `comment_likes` 为强一致事实。
 - `size` 最大 `100`。
 - `totalComments` 来自 `comment_post_stats.total_comments`，统计根评论和回复的全部未删除评论。
@@ -116,7 +116,7 @@
 | 项 | 值 |
 | --- | --- |
 | Use case | `ListTopLevelCommentsByPage` |
-| 查询模型 | `RECOMMENDED` 走 `comment_recommended_rank(post_id, recommended_score DESC, floor DESC)`；`TIME` 走 `comments(post_id, floor DESC)`；`HOT` 走 `comment_hot_rank(post_id, like_count DESC, floor ASC)` 后批量补评论和统计；User 批量补作者摘要。 |
+| 查询模型 | `RECOMMENDED` 走 `comment_recommended_rank(post_id, recommended_score DESC, comment_id DESC)`；`TIME` 走 `comments(post_id, id DESC)`；`HOT` 走 `comment_hot_rank(post_id, like_count DESC, comment_id ASC)` 后批量补评论和统计；User 批量补作者摘要。 |
 | Ports | 首切必需 `CommentQueryRepository`、`CommentPostStatsRepository`、`CommentRecommendedRankRepository`、`UserProfileClient`；登录用户 `viewer.liked` 需要 `CommentLikeRepository` 或等价批量查询能力。 |
 | 事务边界 | 只读查询，不开启业务写事务。 |
 | 事件 | 无。 |

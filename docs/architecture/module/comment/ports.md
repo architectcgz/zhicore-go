@@ -7,13 +7,13 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 | Port | 职责 |
 | --- | --- |
 | `CommentCommandRepository` | `Comment` 聚合加载、保存、编辑、软删除、批量软删除回复。 |
-| `CommentFloorAllocator` | 在事务内为指定 `post_id` 分配下一个楼层号。 |
+| `CommentIDCodec` | 内部 `comments.id` 与对外 `commentId` 字符串互转，处理版本、前缀和解码错误。 |
 | `CommentQueryRepository` | 详情、文章评论列表、回复列表、游标分页、增量查询和管理端查询。 |
 | `CommentStatsRepository` | 初始化统计、原子增减回复数、批量应用点赞 delta、读取统计。 |
 | `CommentPostStatsRepository` | 维护文章级评论统计 `total_comments` / `total_top_level_comments`，并提供对账读取。 |
 | `CommentLikeRepository` | 点赞关系插入、删除、存在性检查和批量状态查询。 |
-| `CommentHotRankRepository` | 初始化顶级评论 HOT 排序行，按 `post_id + like_count DESC + floor ASC` 读取候选，批量更新点赞数。 |
-| `CommentRecommendedRankRepository` | 初始化顶级评论 RECOMMENDED 排序行，按 `post_id + recommended_score DESC + floor DESC` 读取候选，更新推荐分和可见性。 |
+| `CommentHotRankRepository` | 初始化顶级评论 HOT 排序行，按 `post_id + like_count DESC + comment_id ASC` 读取候选，批量更新点赞数。 |
+| `CommentRecommendedRankRepository` | 初始化顶级评论 RECOMMENDED 排序行，按 `post_id + recommended_score DESC + comment_id DESC` 读取候选，更新推荐分和可见性。 |
 | `CommentCounterDeltaRepository` | 追加、claim、标记完成或失败点赞计数 delta，供后台 worker 批量聚合。 |
 
 ## 可选端口
@@ -49,7 +49,7 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 
 | Port | 职责 |
 | --- | --- |
-| `ContentPostClient` | 校验文章存在、可见性、是否允许评论；返回 `postAuthorId` 供 `comment.created` 通知事件使用。 |
+| `ContentPostClient` | 校验文章存在、可见性、是否允许评论；返回 `postAuthorId` 和 Content 内部 `post_id` opaque reference，供 `comment.created` 事件和下游落账使用。 |
 | `UserProfileClient` | 获取评论作者摘要、批量用户摘要和用户状态；DTO 同时包含内部 `userId` 和外部 `publicId`。 |
 | `UserRelationClient` | 批量判断拉黑关系和互动权限。 |
 | `FileReferenceClient` | 校验 Upload 文件引用存在、类型和状态；批量解析展示 URL。 |
@@ -59,7 +59,7 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 
 首个交付切片只锁定创建根评论 / 回复和文章顶级评论传统分页。最小端口集先保持窄接口，`comment_hot_rank` 的读写可以先封装在 command / query repository 内，等 HOT 读模型或 worker 复杂度上升后再拆成独立 `CommentHotRankRepository`：
 
-- 必需端口：`TransactionRunner`、`CommentFloorAllocator`、`CommentCommandRepository`、`CommentQueryRepository`、`CommentStatsRepository`、`CommentPostStatsRepository`、`OutboxPublisher`、`ContentPostClient`、`UserProfileClient`、`UserRelationClient`、`FileReferenceClient`、`RateLimiter`、`Clock`。
+- 必需端口：`TransactionRunner`、`CommentIDCodec`、`CommentCommandRepository`、`CommentQueryRepository`、`CommentStatsRepository`、`CommentPostStatsRepository`、`OutboxPublisher`、`ContentPostClient`、`UserProfileClient`、`UserRelationClient`、`FileReferenceClient`、`RateLimiter`、`Clock`。
 - 可暂缓端口：`CommentLikeRepository`、`CommentCounterDeltaRepository`、`CommentCounterDeltaWorker`、缓存 store、`RankingClient`。
 - 首切顶级列表默认 `RECOMMENDED`，因此 `CommentRecommendedRankRepository` 应随首个列表切片进入；如果首切临时只交付 `TIME` 排序，必须在 contract 状态中明确标注，不得假装默认排序已完成。
 

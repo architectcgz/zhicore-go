@@ -2,6 +2,8 @@
 
 本文件记录 `zhicore-comment` 模块设计压测过程中已经确认的设计问题、结论、原因和后续依赖。
 
+> 当前事实源已在 2026-06-29 调整：Comment 外部定位改为 `(postId, commentId)`，`commentId` 由内部 `comments.id BIGINT IDENTITY` 派生；文章内 `floor` 不再作为资源 ID、排序锚点或 cursor 锚点。下表中早期涉及 `floor`、`parentFloor`、`rootFloor`、`CommentFloorAllocator` 或 `comment_post_counters` 的决策已被 `comment-id.md`、`api.md`、`data-events.md` 和 HTTP schema supersede。
+
 
 | # | 决策项 | Question | Decision | Rationale | Follow-up |
 | --- | --- | --- | --- | --- | --- |
@@ -67,7 +69,7 @@
 | 60 | 评论创建限流归属 | 评论创建限流放在 Gateway，还是 Comment 服务内？ | 两层都需要限流。Gateway 做入口粗粒度限流，Comment 做业务维度限流。 | Gateway 适合按 IP、用户全局 QPS、body size 等入口维度挡大流量；Comment 才理解 `postId`、作者、内容重复和评论写模型压力，应负责 `actorUserId + postId`、单用户周期配额、同内容短时间重复提交等业务限流。 | Comment 需要新增 `RateLimiter` / `AntiSpamPolicy` 端口或运行时组件；Gateway 和 Comment 的超限错误码、英文 message、Retry-After 语义需要统一。 |
 | 61 | 评论审核状态 | 评论内容是否需要审核 / 反垃圾状态，比如 `PENDING_REVIEW`，还是第一版只支持 `NORMAL` / `DELETED`？ | 第一版业务只启用 `NORMAL` / `DELETED`；不提前引入审核流。schema 可预留状态枚举演进空间，但不让 `PENDING_REVIEW` 进入当前主流程。 | 审核状态会影响创建响应、列表可见性、通知、文章评论数、Ranking、Admin 流程和用户体验。没有明确审核产品规则时提前加入会扩大状态机复杂度。第一版优先用限流、同步拒绝和后续 Admin 删除处理风险内容。 | 如果未来引入审核队列，必须重新定义创建事件、评论计数、通知触发和 Ranking 入账时机。 |
 | 62 | 评论创建事件时机 | 创建评论成功后，`comment.created` 事件应该在什么时机触发通知和计数？ | 第一版创建成功即视为可见，业务事务内写 `comment.created` outbox；Content、Ranking 和 Notification 可以消费该事件。 | 当前不引入审核中状态，创建成功就是公开评论事实。事件不需要等待额外审核流程。 | 如果未来引入审核状态，需要重新定义是审核通过后发 `comment.created`，还是新增 `comment.approved` 事件。 |
-| 63 | 创建评论前的文章校验 | 创建评论前，Comment 是否必须同步调用 Content 校验文章仍可评论？ | 必须同步调用 Content 校验文章存在、公开可见且允许评论，并获取 `postAuthorId` 用于通知事件。 | Comment 不能只相信前端页面状态；文章可能已删除、下架、关闭评论或权限变化。写入评论前必须由 Content 这个数据 owner 提供业务 guard。Content 不可用时创建评论失败，不先写评论再补偿。 | Content typed client 需要提供窄接口，例如 `CheckPostCommentable(postId)`，返回可评论状态和 `postAuthorId`。 |
+| 63 | 创建评论前的文章校验 | 创建评论前，Comment 是否必须同步调用 Content 校验文章仍可评论？ | 必须同步调用 Content 校验文章存在、公开可见且允许评论，并获取 `postAuthorId` 与 Content 内部 `post_id` opaque reference。 | Comment 不能只相信前端页面状态；文章可能已删除、下架、关闭评论或权限变化。写入评论前必须由 Content 这个数据 owner 提供业务 guard。Content 不可用时创建评论失败，不先写评论再补偿。Comment 事件要给 Ranking 等下游直接落账，因此写入时必须保存 Content 内部引用。 | Content typed client 需要提供窄接口，例如 `CheckPostCommentable(postId)`，返回可评论状态、`postAuthorId` 和 `internalId`。 |
 | 64 | 创建评论前的用户校验 | 创建评论前，是否要同步调用 User 校验作者状态和拉黑关系？ | 需要同步校验当前用户存在、状态可互动，并校验相关拉黑关系。 | 评论写入必须确认操作者仍是可互动用户；拉黑关系属于 User 拥有的互动权限事实，Comment 不能自行推断或跨库读取。 | 需要继续明确创建根评论和回复时分别校验哪些拉黑关系。 |
 | 65 | 创建评论的拉黑关系校验范围 | 创建根评论和回复时，拉黑关系具体校验哪些人？ | 创建根评论时，校验 `postAuthorId` 是否拉黑 `actorUserId`；创建回复时，校验 `postAuthorId` 和 `parentAuthorId` 是否拉黑 `actorUserId`，任一成立则禁止回复。除非根评论作者同时也是文章作者或直接父评论作者，否则不额外校验根评论作者。 | 文章作者拥有文章评论区的基础互动边界，直接父评论作者是本次回复的直接互动对象。根评论作者不是每条楼中楼回复的直接互动对象，额外校验会让深层回复被无关用户阻断。 | User relation contract 需要支持批量检查多组 `blockerId -> blockedId`，避免回复创建时多次同步调用。 |
 | 66 | 创建评论校验依赖失败语义 | 如果 User / Content 校验服务短暂不可用，创建评论要降级放行还是失败？ | 失败，不降级放行，不写本地评论事实。 | Content 和 User 校验都是写入前置 guard。放行会产生不可评论文章下的评论、被拉黑后的互动、禁用用户继续写入等脏事实，后续补偿成本高。创建评论失败后由前端提示重试更可控。 | 对外错误应映射为服务不可用类错误，英文 message 稳定；需要配套 timeout、retry 和熔断策略。 |

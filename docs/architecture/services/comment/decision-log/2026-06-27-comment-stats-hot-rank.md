@@ -9,6 +9,8 @@
 - [Comment Application Service 设计](../../../module/comment/service.md)
 - [Comment HTTP Schema](../../../../../services/zhicore-comment/api/http/README.md)
 
+> 当前事实源已在 2026-06-29 调整：Comment 不再使用文章内 `floor` 作为定位或排序锚点，改用 PostgreSQL identity 生成的内部 `comments.id` 及其派生的对外 `commentId`。本文保留 2026-06-27 当时的 HOT 读模型取舍背景；涉及 `floor` 的字段和索引以 `docs/architecture/module/comment/comment-id.md` 与 `data-events.md` 为准。
+
 ## 结论
 
 Comment 第一阶段采用：
