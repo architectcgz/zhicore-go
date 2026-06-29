@@ -71,15 +71,14 @@ ranking-post:<internalPostId>
 
 | 事件来源 | 输入字段 | 解析策略 |
 | --- | --- | --- |
-| Content 事件 | `payload.postId` 存在 | 直接使用 Content 内部 `post_id`。 |
-| Content 事件 | 只有 `payload.publicPostId` | 调用 Content `ResolvePublicId` 得到内部 `post_id`。 |
-| Comment 事件 | `payload.postId` | 该字段是 Content `public_id`；调用 Content `ResolvePublicId` 得到内部 `post_id`。 |
+| Content 事件 | `payload.internalId` | 直接使用 Content 内部 `post_id`。 |
+| Comment 事件 | `payload.internalId` | 直接使用 Content 内部 `post_id`。 |
 
 解析失败语义：
 
-- transient 失败：nack / requeue 或进入 retry。
-- Content 确认 not found / deleted：按事件类型进入 DLQ 或 no-op 告警。
-- 未解析出内部 `post_id` 时不得写 `ranking_event_ledger`、`ranking_delta_bucket` 或 `ranking_post_state`。
+- 缺少 `publicId` / `internalId` 等 contract 字段：进入 DLQ。
+- `internalId` 非法：进入 DLQ，不按 `publicId` 同步补查。
+- HTTP path 入站、repair 和 reconcile 仍可通过 Content contract 解析 `publicId`，但事件摄入主路径不做同步解析。
 
 ## 扩容模式：Ranking 私有 shard router
 
@@ -146,7 +145,7 @@ DLQ payload 必须保留：
 - `eventId`
 - `eventType`
 - `producer`
-- `publicPostId` 或 Comment `postId`
+- `publicId`
 - `commentId`（如有）
 - `reason`
 - `traceId` / `requestId`（如有）
@@ -176,8 +175,8 @@ DLQ payload 必须保留：
 - 两个事件乱序到达后，bucket pending delta 和 state 结果正确。
 - 已 flushed bucket 收到迟到事件后，下一轮 flush 只应用新增 pending delta。
 - `visibility_changed` 旧 `aggregateVersion` 或较旧 `occurredAt` 不覆盖新投影。
-- Content resolve transient 失败不写 ledger 并触发 retry。
-- Comment `postId` 按 Content `public_id` 解析，不当作内部 `post_id` 使用。
+- 事件缺少 `internalId` 不写 ledger / projection，并进入 DLQ。
+- Comment `internalId` 按 Content 内部 `post_id` opaque reference 使用，`publicId` 不当作内部 `post_id` 使用。
 
 sharded router 模式必须额外覆盖：
 

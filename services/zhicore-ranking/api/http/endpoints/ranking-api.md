@@ -73,7 +73,7 @@ Ranking 不复制 Content 字段定义；`post` 的字段形态以 Content typed
 | `score` | number | 是 | Ranking 热度分。 |
 | `generatedAt` | string | 是 | 候选生成时间，RFC3339。 |
 
-外部 HTTP 不返回内部 `post_id`。如果服务间 typed client 需要内部 `postId`，应在 `libs/contracts/clients/ranking` 单独定义 internal DTO。
+外部 HTTP 不返回内部 `post_id`。如果服务间 typed client 需要内部引用，应在 `libs/contracts/clients/ranking` 单独定义包含 `internalId` / `publicId` 的 DTO。
 
 ### `HotPostCandidateSet`
 

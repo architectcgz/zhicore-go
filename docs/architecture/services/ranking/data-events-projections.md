@@ -41,24 +41,24 @@ Ranking 消费的跨服务事件：
 
 | 事件 | 来源 | 指标 | Delta | 关键字段 | 说明 |
 | --- | --- | --- | --- | --- | --- |
-| `content.post.viewed` | Content | `VIEW` | `+1` | `eventId`、`publicPostId`、`postId?`、`viewerId?`、`ipHash?`、`occurredAt`、`publishedAt` | 先做浏览去重和上限控制 |
-| `content.post.published` | Content | 可见性 / 元数据 | - | `eventId`、`publicPostId`、`postId?`、`authorId`、`publishedAt`、`topicIds?`、`occurredAt` | 标记文章可进入公开榜单，刷新 metadata 快照 |
-| `content.post.updated` | Content | 元数据 | - | `eventId`、`publicPostId`、`postId?`、`authorId?`、`publishedAt?`、`topicIds?`、`occurredAt` | 刷新 author / publishedAt / topicIds 等 Ranking 所需 metadata |
-| `content.post.deleted` | Content | 可见性 | - | `eventId`、`publicPostId`、`postId?`、`deletedAt`、`occurredAt` | 标记文章不可进入公开榜单，不删除热度 ledger |
-| `content.post.visibility_changed` | Content | 可见性 | - | `eventId`、`publicPostId`、`postId?`、`oldVisibility`、`newVisibility`、`publicVisible`、`reason`、`occurredAt`、`aggregateVersion?` | 覆盖撤回、下架、隐藏、恢复、重新公开等状态变化 |
-| `content.post.tags.updated` | Content | 元数据 | - | `eventId`、`publicPostId`、`postId?`、`topicIds`、`occurredAt` | 刷新 topic 派生榜所需 topicIds |
-| `content.post.liked` | Content | `LIKE` | `+1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`likedBy`、`occurredAt` | 上游保证点赞幂等 |
-| `content.post.unliked` | Content | `LIKE` | `-1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`unlikedBy`、`occurredAt` | 负增量由源服务显式发出 |
-| `content.post.favorited` | Content | `FAVORITE` | `+1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`favoritedBy`、`occurredAt` | 收藏增量 |
-| `content.post.unfavorited` | Content | `FAVORITE` | `-1` | `eventId`、`publicPostId`、`postId?`、`authorId`、`unfavoritedBy`、`occurredAt` | 负增量 |
-| `comment.created` | Comment | `COMMENT` | `+1` | `eventId`、`postId`、`commentId`、`authorId`、`createdAt` | `postId` 是 Content `public_id`，Ranking 解析为内部 `post_id` 后落账 |
-| `comment.deleted` | Comment | `COMMENT` | `-affectedCount` | `eventId`、`postId`、`affectedCount`、`deletedAt` | 根评论删除时按 affectedCount 回滚；`postId` 是 Content `public_id` |
-| `comment.liked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`postId`、`likedBy` | 如产品要求计入文章热度，必须先扩展指标、权重、bucket 列和 replay 规则 |
-| `comment.unliked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`postId`、`unlikedBy` | 同上 |
+| `content.post.viewed` | Content | `VIEW` | `+1` | `eventId`、`publicId`、`internalId`、`viewerId?`、`ipHash?`、`occurredAt`、`publishedAt` | 先做浏览去重和上限控制 |
+| `content.post.published` | Content | 可见性 / 元数据 | - | `eventId`、`publicId`、`internalId`、`authorId`、`publishedAt`、`topicIds?`、`occurredAt` | 标记文章可进入公开榜单，刷新 metadata 快照 |
+| `content.post.updated` | Content | 元数据 | - | `eventId`、`publicId`、`internalId`、`authorId?`、`publishedAt?`、`topicIds?`、`occurredAt` | 刷新 author / publishedAt / topicIds 等 Ranking 所需 metadata |
+| `content.post.deleted` | Content | 可见性 | - | `eventId`、`publicId`、`internalId`、`deletedAt`、`occurredAt` | 标记文章不可进入公开榜单，不删除热度 ledger |
+| `content.post.visibility_changed` | Content | 可见性 | - | `eventId`、`publicId`、`internalId`、`oldVisibility`、`newVisibility`、`publicVisible`、`reason`、`occurredAt`、`aggregateVersion?` | 覆盖撤回、下架、隐藏、恢复、重新公开等状态变化 |
+| `content.post.tags.updated` | Content | 元数据 | - | `eventId`、`publicId`、`internalId`、`topicIds`、`occurredAt` | 刷新 topic 派生榜所需 topicIds |
+| `content.post.liked` | Content | `LIKE` | `+1` | `eventId`、`publicId`、`internalId`、`authorId`、`likedBy`、`occurredAt` | 上游保证点赞幂等 |
+| `content.post.unliked` | Content | `LIKE` | `-1` | `eventId`、`publicId`、`internalId`、`authorId`、`unlikedBy`、`occurredAt` | 负增量由源服务显式发出 |
+| `content.post.favorited` | Content | `FAVORITE` | `+1` | `eventId`、`publicId`、`internalId`、`authorId`、`favoritedBy`、`occurredAt` | 收藏增量 |
+| `content.post.unfavorited` | Content | `FAVORITE` | `-1` | `eventId`、`publicId`、`internalId`、`authorId`、`unfavoritedBy`、`occurredAt` | 负增量 |
+| `comment.created` | Comment | `COMMENT` | `+1` | `eventId`、`publicId`、`internalId`、`commentId`、`authorId`、`createdAt` | `internalId` 是 Content 内部 `post_id`，Ranking 直接落账 |
+| `comment.deleted` | Comment | `COMMENT` | `-affectedCount` | `eventId`、`publicId`、`internalId`、`affectedCount`、`deletedAt` | 根评论删除时按 affectedCount 回滚；`internalId` 是 Content 内部 `post_id` |
+| `comment.liked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`publicId`、`internalId`、`likedBy` | 如产品要求计入文章热度，必须先扩展指标、权重、bucket 列和 replay 规则 |
+| `comment.unliked` | Comment | 第一阶段不消费 | - | `eventId`、`commentId`、`publicId`、`internalId`、`unlikedBy` | 同上 |
 
 Go 目标默认先实现 Content 互动、Content 可见性控制事件和评论创建 / 删除。评论点赞是否计入文章热度必须在事件 contract 阶段明确，不能在 Ranking 内自行推断。
 
-Content 事件中的 `publicPostId` 是稳定契约字段；`postId?` 是 Content 可选携带的内部 `post_id`，仅用于减少 Ranking 解析调用。Comment 事件中的 `postId` 是 Content `public_id` 字符串，首版不携带 Content 内部 `post_id`。HTTP API 的 `{postId}` path 值使用 Content `public_id`。
+事件 payload 中统一使用 `publicId` / `internalId` 命名：`publicId` 是 Content `public_id`；`internalId` 是 Content 内部 `post_id` opaque reference。Content 和 Comment 事件都必须携带两者，Ranking 使用 `internalId` 落账和聚合，`publicId` 只用于审计、DLQ、repair、快照和 HTTP 出站转换。HTTP API 的 `{postId}` path 值使用 Content `public_id`。
 
 ## 热度事件摄入
 
@@ -69,8 +69,8 @@ Content 事件中的 `publicPostId` 是稳定契约字段；`postId?` 是 Conten
 ```text
 事务前：
   decode RabbitMQ JSON
-  + 校验 eventId、eventType、publicPostId、occurredAt、delta
-  + 解析内部 postId；transient error 时 nack/requeue，确定性 not found / deleted 进入 DLQ
+  + 校验 eventId、eventType、publicId、internalId、occurredAt、delta
+  + 使用 internalId 作为内部 post_id；缺失或非法属于 producer contract 错误，进入 DLQ
   + view dedup / view cap 过滤；被拦截事件 ack 但不写 ledger
 
 单个 PostgreSQL 事务：
@@ -88,8 +88,8 @@ Content 事件中的 `publicPostId` 是稳定契约字段；`postId?` 是 Conten
 ```text
 事务前：
   decode RabbitMQ JSON
-  + 校验 eventId、eventType、publicPostId、occurredAt
-  + 解析内部 postId；transient error 时 nack/requeue，确定性 not found 进入 DLQ 或 no-op 告警
+  + 校验 eventId、eventType、publicId、internalId、occurredAt
+  + 使用 internalId 作为内部 post_id；缺失或非法属于 producer contract 错误，进入 DLQ
 
 单个 PostgreSQL 事务：
   INSERT ranking_projection_event_inbox(event_id, ...)

@@ -71,11 +71,9 @@ Ports 放在 `services/zhicore-ranking/internal/ranking/ports`，按能力和用
 ```text
 事务前：
   decode RabbitMQ JSON
-  + 校验 eventId、eventType、publicPostId、occurredAt、delta
-  + 若 payload 携带内部 postId：校验格式并作为 opaque reference
-  + 若 payload 未携带内部 postId：ContentPostClient.ResolvePublicId(publicPostId)
-      - not found / deleted：记录告警并投递 DLQ
-      - transient error：nack/requeue 或按 consumer retry 策略重试
+  + 校验 eventId、eventType、publicId、internalId、occurredAt、delta
+  + 将 internalId 作为 Content 内部 post_id opaque reference
+      - 缺失或非法：记录 producer contract 错误并投递 DLQ
   + view dedup / view cap 过滤；被拦截事件 ack 但不写 ledger
 
 单个 PostgreSQL 事务：
@@ -91,7 +89,7 @@ Ports 放在 `services/zhicore-ranking/internal/ranking/ports`，按能力和用
   ack RabbitMQ
 ```
 
-消费侧不直接写 Redis、不直接更新 `ranking_post_state`。`event_id` 是消费幂等键；进入 Ranking 内部后的 `post_id` 是局部顺序和 bucket 聚合键。只携带 `publicPostId` 时，Ranking decoder 通过 Content contract 解析后再落账。
+消费侧不直接写 Redis、不直接更新 `ranking_post_state`。`event_id` 是消费幂等键；进入 Ranking 内部后的 `post_id` 是局部顺序和 bucket 聚合键。事件缺少 `internalId` 时不能落账，也不在高频消费路径上通过 `publicId` 同步补字段。
 
 可见性 / 元数据投影是独立于热度 ledger 的消费路径：它写 projection inbox，更新 `ranking_post_state.public_visible` 和元数据快照，Redis 移除失败不回滚 PostgreSQL。完整流程见 [data-events-projections.md](data-events-projections.md)。
 

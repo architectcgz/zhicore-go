@@ -18,7 +18,7 @@
 
 Ranking API 暴露文章榜、创作者榜、话题榜、热门候选集和管理员 rebuild 入口。Ranking 拥有分数、排名和榜单物化，不拥有文章详情、用户资料或话题源事实。
 
-对外 `postId` 使用 Content 的公开 ID。Ranking 内部 `post_id BIGINT` 不出现在外部 HTTP response。服务间候选集可以额外返回内部 `postId`，但外部 HTTP 只返回 `publicPostId`。
+对外 `postId` 使用 Content 的公开 ID。Ranking 内部 `post_id BIGINT` 不出现在外部 HTTP response。服务间 typed client 候选集可以额外返回 `internalId`，但外部 HTTP 只返回公开文章 ID 字段。
 
 ## 公共规则
 

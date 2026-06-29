@@ -72,7 +72,7 @@ Ranking 保留当前前端和服务间使用的路径。字段级 request / resp
 | `/api/v1/ranking/admin/rebuild-from-ledger` | 管理员全量补算，返回 `operationId`。 |
 | `/api/v1/ranking/admin/rebuild-operations/{operationId}` | 查询 rebuild 操作状态。 |
 
-分页页码从 `0` 开始；`size/limit` 必须按配置限制最大值。周榜使用 ISO week-based year 和 week number。服务间候选集可同时返回内部 `postId` 和 `publicPostId`，但外部 HTTP response 不暴露内部 `post_id`。
+分页页码从 `0` 开始；`size/limit` 必须按配置限制最大值。周榜使用 ISO week-based year 和 week number。服务间 typed client 候选集可同时返回 `internalId` 和 `publicId`，但外部 HTTP response 不暴露内部 `post_id`。
 
 字段级 contract 见 `services/zhicore-ranking/api/http/README.md` 和 `services/zhicore-ranking/api/http/endpoints/ranking-api.md`。
 

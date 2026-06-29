@@ -233,7 +233,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 
 ### Contract 确认
 
-- [ ] Content 事件是否包含 `publicPostId`、`publishedAt`，并在可用时携带内部 `postId`？
+- [ ] Content 事件是否包含必填 `publicId`、`internalId` 和 `publishedAt`？
 - [ ] Content 可见性事件是否包含 `publicVisible`、`oldVisibility/newVisibility`、`reason` 和可用于乱序保护的版本或时间？
 - [ ] Comment 删除事件是否明确 `affectedCount`？
 - [ ] 浏览事件是否包含 `viewerId` 或 `ipHash`？
@@ -246,7 +246,7 @@ Ranking 的服务私有配置由 `runtime` 读取和校验，字段名最终以 
 
 ### 边界测试
 
-- [ ] `publicPostId` 解析 not found 是否进入 DLQ？
+- [ ] 事件缺少 `internalId` 或 `internalId` 非法是否进入 DLQ？
 - [ ] Redis 全部失败时查询是否能回源 PostgreSQL？
 - [ ] Replay 期间新到事件是否会被 nack/requeue 或暂停消费？
 - [ ] 周期榜超出活跃窗口时是否查询 MongoDB archive？

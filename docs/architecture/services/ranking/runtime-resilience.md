@@ -22,8 +22,8 @@
 | 文章详情榜查询 | `2s` 到 `3s` | Ranking 查询和 Content 批量详情共享预算。 |
 | 候选集查询 | `500ms` 到 `1s` | 优先 Redis candidate；必要时回源 PostgreSQL 构建小批候选。 |
 | 周期榜查询 | `1s` 到 `2s` | 活跃窗口 Redis / PostgreSQL；冷历史 MongoDB archive。 |
-| 单条事件摄入 | `1s` 到 `3s` | 含 decode、可选 Content publicId 解析、view dedup 和 PostgreSQL 事务。 |
-| 单条可见性事件投影 | `1s` 到 `3s` | 含 decode、可选 Content publicId 解析、projection inbox 和 PostgreSQL 投影事务。 |
+| 单条事件摄入 | `1s` 到 `3s` | 含 decode、contract 校验、view dedup 和 PostgreSQL 事务。 |
+| 单条可见性事件投影 | `1s` 到 `3s` | 含 decode、contract 校验、projection inbox 和 PostgreSQL 投影事务。 |
 | bucket flush 单批次 | `5s` 到 `15s` | 按批次 claim，单个 bucket 使用短事务。 |
 | snapshot / candidate refresh 单轮 | `5s` 到 `30s` | 使用临时 Redis key + rename；失败保留上一版。 |
 | archive 单轮 | `10s` 到 `60s` | 按周期和批次限制，失败可重试。 |
@@ -47,7 +47,7 @@
 | `redis` | `ranking.view_cap` | 单篇文章日浏览上限 | `50ms..200ms` | 不重试放大延迟；可短时本机严格 fallback | `redis.ranking.view_cap` | view consumer 独立限并发 | 短时本机 fallback；超过窗口 ack 并丢弃 view，不写 ledger | 防刷边界不可长期 fail-open。 |
 | `redis` | `ranking.lock` | rebuild、snapshot、candidate、archive、backfill lock | `50ms..200ms` | 最多一次快速重试 | `redis.ranking.lock` | 锁操作独立限并发 | 可用 PostgreSQL advisory lock 替代；否则跳过本轮或返回 `1004` | 不能多实例并发执行非幂等任务。 |
 | `rabbitmq` | `ranking.consume` | Content / Comment 热度、可见性和元数据事件输入 | broker 配置 + handler `1s..3s` | 按 consumer retry / DLQ 策略 | `rabbitmq.ranking.consume` | consumer concurrency 配置 | RabbitMQ 不可用时暂停摄入；HTTP 查询继续服务已有榜单 | 事件未 ack 前可重投；已落账 / 已投影事件靠 `event_id` no-op。 |
-| `content-service` | `post.resolve_public_id` | 事件 payload 缺内部 `postId`、HTTP path 入站解析 | `500ms..1s` | 只读调用最多 2 次总尝试 | `content.post.resolve_public_id` | consumer / HTTP 分别限并发 | transient 失败：consumer nack / query 返回 `1004`；not found / deleted：DLQ 或业务 404 | 不把无法解析的 publicId 写进 ledger。 |
+| `content-service` | `post.resolve_public_id` | HTTP path 入站解析、repair / reconcile 兜底 | `500ms..1s` | 只读调用最多 2 次总尝试 | `content.post.resolve_public_id` | HTTP / job 分别限并发 | transient 失败：query 返回 `1004` 或 job 退避重试；not found / deleted：业务 404 或 repair 记录告警 | 事件摄入主路径要求 payload 携带 `internalId`，不靠同步解析补字段。 |
 | `content-service` | `post.batch_get_details` | `ListHotPostsWithDetails`、元数据补齐 | `1s..2s` | 最多 2 次总尝试 | `content.post.batch_get_details` | 详情查询限并发 | 详情 endpoint 返回 `1004`；分数 / ID endpoint 不依赖详情 | Ranking 不伪造文章详情。 |
 | `content-service` | `post.metadata_backfill` | author、publishedAt、topicIds 补齐 | `1s..3s` | job 内退避重试 | `content.post.metadata_backfill` | backfill worker 限并发 | 本轮失败，保留缺失元数据并记录 degraded；creator/topic 投影延后 | 热度账本不因展示元数据缺失回滚。 |
 | `content-service` | `post.visibility_reconcile` | 修复可见性投影漂移 | `1s..3s` | job 内退避重试 | `content.post.visibility_reconcile` | reconcile worker 限并发 | 本轮失败，保留现有投影并打 degraded metric；公开榜单仍按本地投影过滤 | reconcile 是兜底，不是查询主路径。 |
@@ -67,11 +67,11 @@
 | 周期榜冷历史查询 | MongoDB 不可用 | 失败 `1004` / `503`；不伪装为空历史榜。 |
 | `GetHotPostCandidates` | Redis candidate 不可用或 stale | 优先回源 PostgreSQL 构建小批候选；回源失败返回 degraded，让 Comment 使用本地旧缓存或空候选。 |
 | `IngestRankingEvent` | PostgreSQL 不可用 | nack / requeue 或进入 DLQ；不 ack 未落账事件。 |
-| `IngestRankingEvent` | Content publicId 解析 transient 失败 | nack / requeue；Content 确认 not found / deleted 时 DLQ 并告警。 |
+| `IngestRankingEvent` | 事件缺少 `internalId` 或 `internalId` 非法 | 进入 DLQ 并记录 producer contract 错误，不按 `publicId` 同步补查。 |
 | `IngestRankingEvent` view dedup / cap | Redis 短时不可用 | 使用本机严格 fallback；超过降级窗口后 ack 并丢弃 view，不写 ledger。 |
 | `IngestRankingEvent` 非 view 事件 | Redis 不可用 | 正常写 ledger / bucket；非 view 指标不依赖 Redis dedup。 |
 | `ApplyContentVisibilityEvent` | PostgreSQL 不可用 | nack / requeue 或进入 DLQ；不 ack 未更新 projection 的事件。 |
-| `ApplyContentVisibilityEvent` | Content publicId 解析 transient 失败 | nack / requeue；Content 确认 not found 时 DLQ 或 no-op 告警，不更新 projection。 |
+| `ApplyContentVisibilityEvent` | 事件缺少 `internalId` 或 `internalId` 非法 | 进入 DLQ 并记录 producer contract 错误，不更新 projection。 |
 | `ApplyContentVisibilityEvent` | Redis 移除榜单成员失败 | PostgreSQL projection 已提交则不回滚；记录 `redis_visibility_remove_failed`，等待 snapshot / visibility reconcile 修复。 |
 | `ApplyContentVisibilityEvent` | 事件乱序或迟到 | 以 `occurredAt` / `aggregateVersion` 的目标 contract 规则判定；不能用消费时间覆盖较新的 projection。 |
 | `FlushRankingBuckets` | PostgreSQL 不可用 | 本轮失败，bucket 保持未 flushed 或 owner 超时释放；不丢弃 pending delta。 |
@@ -112,7 +112,7 @@ Redis 在 Ranking 中按职责区分故障语义：
 - duplicate `event_id` 直接 ack，不进入 DLQ。
 - transient Content / PostgreSQL / handler timeout 使用 nack / requeue 或 broker retry；超过阈值进入 DLQ。
 - Content 可见性 / 元数据事件消费失败时不能 ack；重复 `event_id` 命中 projection inbox 后 ack no-op。
-- DLQ 必须保留 event id、event type、source service、publicPostId、reason、traceId，不记录敏感 payload。
+- DLQ 必须保留 event id、event type、source service、publicId、reason、traceId，不记录敏感 payload。
 - rebuild barrier 开启时 consumer 不写业务表；可以暂停拉取或 nack / requeue 等待 broker 重投。
 
 ## 健康检查

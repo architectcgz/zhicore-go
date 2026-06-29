@@ -12,6 +12,18 @@
 - rebuild 必须持有 Redis lock 或配置允许的 PostgreSQL advisory lock；无锁时拒绝启动。
 - 首期 `force=true` 不允许，返回 `1008`；未来允许覆盖 stale lock 前必须先补更强审计和人工确认策略。
 
+## 创作者榜和话题榜 Rebuild
+
+创作者榜和话题榜第一阶段没有独立的 PostgreSQL 权威表，从 `ranking_post_state.author_id` / `topic_ids` 派生后物化到 Redis。
+
+`rebuild-from-ledger` 完成后，创作者榜和话题榜的重建流程：
+
+1. PostgreSQL rebuild 阶段完成后，`ranking_post_state` 已包含最新 `author_id`、`topic_ids`、`hot_score`。
+2. Snapshot refresh 阶段按 `author_id` 聚合文章分数，构建创作者榜；按 `topic_ids` 聚合，构建话题榜；写入对应 Redis ZSET。
+3. 如果 Redis snapshot 阶段失败（进入 `PARTIAL_FAILED`），创作者榜/话题榜 Redis key 保留上一版；可在告警后手动触发 snapshot refresh 修复。
+
+结论：创作者榜和话题榜的 rebuild **不需要重放 ledger**，直接从 rebuild 后的 `ranking_post_state` 聚合即可。这是第一阶段的合理简化；如未来创作者榜需要独立权威历史，再引入 `ranking_creator_state` PostgreSQL 表。
+
 ## 权限
 
 HTTP endpoint：
