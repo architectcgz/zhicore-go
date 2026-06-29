@@ -50,6 +50,9 @@ docs/architecture/services/<service>/
 | Comment | `comment/page-design.md` | 评论区、回复、评论点赞和审核入口 |
 | Message | `message/page-design.md` | 私信会话、聊天线程、未读和发送状态 |
 | Notification | `notification/page-design.md` | 通知中心、偏好、免打扰和投递状态 |
+| Search | `search/page-design.md` | 搜索框、建议、热门词、历史和结果列表 |
+| Ranking | `ranking/page-design.md` | 热榜、周期榜、创作者 / 话题榜和 rebuild |
+| Upload | `upload/page-design.md` | 上传组件、批量上传、URL 解析和媒体入口 |
 
 Gateway 的服务级专题文档：
 
