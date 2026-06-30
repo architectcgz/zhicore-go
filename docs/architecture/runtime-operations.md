@@ -208,6 +208,22 @@ panic recovery 只能放在明确 owner 边界内，不新增跨服务通用 `Sa
 
 如果 goroutine 没有明确 logger、ctx、task name、业务失败状态或生命周期 owner，先修 owner 接线，不用 no-op logger、`context.Background()` 或共享 recover helper 掩盖问题。
 
+## Consumer 部署和分片
+
+API 进程和 consumer / worker 进程可以分离部署。关键异步流水线默认优先使用独立 worker 进程，让 HTTP API、MQ 消费、重试、DLQ 和补偿拥有独立扩缩容、发布、readiness 和资源限制。
+
+有序事件族的 RabbitMQ 分区规则以 `docs/contracts/events.md` 为准：固定 `64` 个逻辑分片，按稳定业务 `partitionKey` 哈希到分片队列。worker 实例数量只表示当前消费容量，不参与消息路由。
+
+规则：
+
+- 不使用 `hash(key) % workerCount`，也不把 worker 实例编号写进 routing key。
+- 新增或减少 worker 实例不得改变同一 `partitionKey` 对应的分片队列。
+- 每个分片队列同一时间只允许一个 active consumer；多 worker 订阅同一队列时使用 RabbitMQ `Single Active Consumer` 或等价单活配置。
+- 严格局部有序的队列使用 `manual ack`，业务处理和必要持久化提交后 ack；失败消息未处理完成前不得让同分片后续消息越过。
+- 部署文档记录真实 worker 副本数、资源限制和 readiness 策略；事件 contract 和服务设计只记录 `partitionCount=64`、队列命名、`partitionKey`、ack / retry / DLQ 语义。
+
+示例：原来部署 `5` 个 worker，后来增加到 `6` 个 worker，`hash(postId) % 64 = 6` 的事件仍进入第 `6` 个逻辑分片队列。变化的只是 RabbitMQ 把该队列的 active consumer 分配给哪个 worker 实例；消息不因为 worker 数从 `5` 变成 `6` 而重新路由。
+
 ## 熔断和降级
 
 当前个人项目阶段不强制引入复杂熔断库，但所有下游 client 必须保留以下扩展点：

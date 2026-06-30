@@ -21,6 +21,30 @@ comment.created
 user.profile.updated
 ```
 
+## 有序事件分区
+
+默认事件 contract 仍要求 consumer 容忍重复、乱序和迟到消息。只有当某个事件族明确需要“同一业务对象局部有序”时，才启用分区有序方案；该方案是优化投递和处理冲突，不替代 `eventId` 幂等、状态机校验、`aggregateVersion` 或 `occurredAt` 乱序保护。
+
+ZhiCore Go 采用固定 `64` 个逻辑分片作为有序事件族的默认方案：
+
+```text
+partition = hash(partitionKey) % 64
+queue = <consumer>.<event-family>.p<partition>
+```
+
+规则：
+
+- `partitionKey` 必须是稳定业务对象 ID，例如 `accountId`、`postId`、`commentId`、`recipientId`；不能使用 worker 实例编号、Pod 名称、delivery tag 或运行时 consumer 数量。
+- `64` 是长期稳定的逻辑分片数，不是当前 worker 实例数。日常扩缩容 worker 不改变 `partition = hash(key) % 64` 的结果。
+- 同一分片队列同一时间只能有一个 active consumer；可使用 RabbitMQ `Single Active Consumer`，或由部署配置保证每个队列只有一个活跃消费线程。
+- 严格局部有序时，分片队列使用 `manual ack`，业务处理和必要持久化提交后再 ack；同一队列内不得并发完成多条消息。
+- `prefetch` 默认按严格有序取 `1`。如果某个事件族把有序性降级为冲突优化而非正确性前提，必须在对应服务文档说明更高 `prefetch` / 并发的理由和乱序保护。
+- 失败重试不能让后续同分片消息越过失败消息；若选择 DLQ 后继续处理，必须在服务文档说明补偿、告警和状态机兜底。
+
+不要使用 `hash(key) % workerCount`。例如原来部署 `5` 个 worker，后来增加到 `6` 个 worker，如果路由按 worker 数取模，大量 key 会被重新映射，旧队列积压和新队列新消息会并行，破坏同一 key 的顺序。固定 64 分片时，`hash(key) % 64 = 6` 的消息始终进入第 `6` 个逻辑分片队列；新增 worker 只可能改变“由哪个 worker 实例成为该队列的 active consumer”，不改变消息进入哪个分片。
+
+真实 worker 数量属于部署容量，不属于事件 contract。文档和配置应记录 `partitionCount=64`、队列命名、`partitionKey`、`Single Active Consumer` / 单活策略、`prefetch`、ack / retry / DLQ 语义；具体线上当前部署了几个 worker 只记录在部署清单、运行配置或运维面板中，不写成路由规则。
+
 ## 事件归属
 
 - 事件归属跟随数据归属。

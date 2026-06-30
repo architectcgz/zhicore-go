@@ -39,6 +39,8 @@ binding keys:
   comment.*
 ```
 
+首期默认按低并发运行：一个 consumer 实例、单 handler 并发即可启动。Ranking 当前不是高 QPS 链路，多个 consumer 不是正确性前提，也不是默认部署要求；只有队列积压、消费延迟或单实例资源瓶颈被指标证明后，才逐步提高 handler 并发、启用本地 keyed worker，或进入 sharded router 模式。
+
 处理流程：
 
 ```text
@@ -91,6 +93,14 @@ ranking-post:<internalPostId>
 
 当单队列 + 数据库并发控制不能满足吞吐时，引入 Ranking 私有分片层。该层不改变 provider event contract。
 
+进入该模式前至少满足一个运行期信号：
+
+- `ranking.events` 持续积压，且单 consumer 已经稳定工作但无法追上入站事件。
+- 事件从入队到 PostgreSQL 事务提交的端到端延迟超过业务可接受范围。
+- handler 明显受 PostgreSQL / Redis / Content resolve 等 I/O 等待限制，提高单实例并发能稳定降低延迟。
+- 同一 `post_id` 的行锁冲突、bucket pending delta 增长或 flush 延迟已经成为可观测瓶颈。
+- 需要多实例高可用，同时 direct 模式的并发冲突已经影响延迟或告警噪声。
+
 ```text
 zhicore.events(topic)
   -> ranking.router.events(queue)
@@ -104,7 +114,7 @@ router 职责：
 
 1. 消费 `ranking.router.events`。
 2. decode envelope，解析内部 `post_id`。
-3. 计算 `shard = hash(internalPostId) % partitionCount`。
+3. 计算 `shard = hash(internalPostId) % partitionCount`，首期固定 `partitionCount=64`。
 4. 发布到私有 exchange / queue。
 5. publish confirm 成功后 ack 原始消息。
 
@@ -124,7 +134,15 @@ worker 职责：
 | direct exchange + 显式 shard key | 插件不可用 | router 计算 shard 后用 routing key `shard.<n>` 发布到固定队列。 |
 | 仅本地 keyed worker | 低 QPS 或单实例 | 不提供跨实例同 post 顺序，只减少单进程并发冲突。 |
 
-`partitionCount` 是部署级配置。变更 partitionCount 会改变 post 到 shard 的映射，必须 drain 旧队列后切换；不能在有积压时直接滚动修改。
+`partitionCount` 是逻辑分片数，首期固定为 `64`。它不是 worker 实例数；新增或减少 worker 只改变哪个实例消费某个 shard queue，不改变 `internalPostId` 到 shard 的映射。变更 `partitionCount` 会改变 post 到 shard 的映射，必须 drain 旧队列后切换；不能在有积压时直接滚动修改。
+
+示例：
+
+```text
+hash(internalPostId) % 64 = 6
+```
+
+该文章事件始终进入 `ranking.ingest.6`。如果原来部署 `5` 个 Ranking worker，后来增加到 `6` 个 worker，事件仍进入 `ranking.ingest.6`；变化的只是 `ranking.ingest.6` 的 active consumer 可能从某个旧 worker 切到新 worker。不能改成 `hash(internalPostId) % workerCount`，否则 worker 数变化会导致同一文章重新分配到不同队列，旧队列积压和新队列新消息可能并行处理。
 
 ## 顺序保证边界
 
@@ -164,10 +182,10 @@ DLQ payload 必须保留：
 | 配置 | 默认建议 | 说明 |
 | --- | --- | --- |
 | `ranking.consumer.mode` | `direct` | `direct`、`local_keyed`、`sharded_router`。 |
-| `ranking.consumer.prefetch` | `50` | 单 consumer 未 ack 消息上限。 |
-| `ranking.consumer.concurrency` | `4` | direct / local keyed 模式下 handler 并发。 |
+| `ranking.consumer.prefetch` | `1` | 首期按低并发逐条处理；确认吞吐瓶颈后再调高。 |
+| `ranking.consumer.concurrency` | `1` | direct / local keyed 模式下 handler 并发；默认单 handler，按 backlog / latency 指标扩容。 |
 | `ranking.consumer.local_partitions` | `64` | 本地 keyed worker 分片数。 |
-| `ranking.consumer.partition_count` | `16` | 私有 shard queue 数；变更需 drain。 |
+| `ranking.consumer.partition_count` | `64` | 私有 shard queue 数；逻辑分片数，不是 worker 实例数，变更需 drain。 |
 | `ranking.consumer.router_publish_timeout` | `500ms` | router 发布私有消息 confirm 超时。 |
 | `ranking.consumer.retry.max_attempts` | `5` | 进入 DLQ 前最大尝试次数。 |
 | `ranking.consumer.retry.backoff` | `exponential+jitter` | broker retry 或应用层 retry 策略。 |
