@@ -276,6 +276,8 @@ RETURNING e.*;
 
 每个有 outbox 的服务（Auth、User、Content、Comment）都必须遵守此 claim 模式。`FOR UPDATE SKIP LOCKED` 只能用于短事务内选中待 claim 行；claim 提交后再 publish RabbitMQ。不要在持有数据库行锁的事务里执行外部 publish，避免 broker 慢调用阻塞 outbox 表。
 
+outbox dispatcher 必须按 `docs/architecture/observability.md` 暴露 publish result、publish confirm duration、retry、pending、oldest pending、dead 和 stale claim 指标。MQ 有 publish confirm / nack / returned 等确认信号，但可靠性判断不能只看发布失败率；pending 持续增长、最老 pending 变旧或 dead 增加，才表示 outbox 已经无法按预期清空，需要告警和排障。
+
 Consumer 要求：
 
 - 用事件 JSON 的 `eventId`，或落库后的 `event_id`、业务唯一约束保证幂等。

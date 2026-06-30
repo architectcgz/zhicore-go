@@ -121,6 +121,7 @@ postgres.post.insert
 - 下游 client：请求数、错误数、duration、retry 次数。
 - DB / cache / MQ：操作数、错误数、duration、连接池摘要。
 - worker / consumer：处理数、失败数、重试数、dead-letter 数、lag 或 backlog。
+- producer outbox：publish 结果、confirm 耗时、retry、pending、oldest pending、dead 和 stale claim。
 
 标签规则：
 
@@ -147,6 +148,13 @@ postgres.post.insert
 | `zhicore_worker_job_duration_seconds` | histogram | `service`、`env`、`worker`、`operation`、`status` | worker / job 处理耗时 |
 | `zhicore_mq_consumer_lag` | gauge | `service`、`env`、`consumer`、`eventType` | consumer backlog / lag 摘要 |
 | `zhicore_mq_dead_letter_total` | counter | `service`、`env`、`consumer`、`eventType`、`reason` | dead-letter 计数 |
+| `zhicore_outbox_publish_total` | counter | `service`、`env`、`eventType`、`result`、`reason` | outbox dispatcher 发布结果计数 |
+| `zhicore_outbox_publish_duration_seconds` | histogram | `service`、`env`、`eventType`、`result` | outbox dispatcher publish confirm 耗时 |
+| `zhicore_outbox_retry_total` | counter | `service`、`env`、`eventType`、`reason` | outbox 事件进入 retry 的次数 |
+| `zhicore_outbox_pending_total` | gauge | `service`、`env`、`eventType` | outbox 当前待发送事件数 |
+| `zhicore_outbox_oldest_pending_seconds` | gauge | `service`、`env`、`eventType` | outbox 最老待发送事件年龄 |
+| `zhicore_outbox_dead_total` | counter | `service`、`env`、`eventType`、`reason` | outbox 事件超过重试阈值后进入 dead 的计数 |
+| `zhicore_outbox_claim_stale_total` | counter | `service`、`env` | dispatcher 重新接管过期 claim 的计数 |
 
 `status` 标签必须使用稳定枚举。下游 client 推荐值：
 
@@ -165,6 +173,20 @@ business_error
 unknown
 ```
 
+outbox publish 的 `result` 必须使用稳定枚举：
+
+```text
+success
+timeout
+nack
+returned
+network_error
+broker_unavailable
+confirm_timeout
+serialization_error
+unknown
+```
+
 规则：
 
 - counter 只递增；当前状态使用 gauge。
@@ -172,6 +194,7 @@ unknown
 - histogram bucket 由 exporter 或部署配置决定，但必须覆盖服务 timeout 附近的延迟区间。
 - `errorCode` 没有公开错误码时使用稳定内部分类，例如 `DEPENDENCY_TIMEOUT`，不要使用原始错误文本。
 - retry 指标同时保留每次 attempt 的日志字段和总 retry 次数；最终业务结果仍记录到 `zhicore_client_requests_total`。
+- outbox publish 失败率不能单独代表事件可靠性；必须同时看 pending 数、最老 pending 年龄、dead 数、retry 次数和 confirm latency。
 
 ## 运行期观测方式
 
@@ -187,6 +210,7 @@ unknown
 - 下游依赖：client QPS、错误率、timeout rate、retry rate、p95 / p99 latency，按 `provider + operation` 拆分。
 - resilience：`zhicore_client_circuit_state`、`zhicore_client_circuit_open_total`、`zhicore_client_degraded_total`、`zhicore_client_inflight`。
 - 异步处理：worker 成功 / 失败 / retry / dead-letter、consumer lag、处理耗时。
+- outbox 发布：publish 成功 / 失败 / nack / returned / confirm timeout、retry、pending、oldest pending、dead、stale claim 和 publish p95 / p99 latency。
 
 最小告警信号只定义“应被看见”的事件，不在本文件固化具体平台规则：
 
@@ -195,6 +219,10 @@ unknown
 - 下游失败率、timeout rate 或 retry rate 持续高于服务 README / 运维配置中记录的阈值。
 - HTTP `5xx`、`SERVICE_DEGRADED` 或 `DEPENDENCY_UNAVAILABLE` 持续出现。
 - worker dead-letter 增加、consumer lag 持续增长或 outbox 长时间无法清空。
+- outbox dead 数增加。
+- outbox pending 持续增长，或 oldest pending 超过服务 README / 运维配置中记录的阈值。
+- outbox publish failure / timeout / nack / returned rate 持续升高。
+- outbox publish p95 / p99 latency 接近 RabbitMQ publish confirm timeout。
 
 ## 脱敏规则
 

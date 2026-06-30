@@ -324,6 +324,7 @@ API 进程和 consumer / worker 进程可以分离部署。关键异步流水线
 - 下游 client timeout。
 - 写路径幂等策略。
 - worker/consumer ack、retry、dead-letter 或补偿策略。
+- 使用 producer outbox 的服务必须补齐 outbox publish result、retry、pending、oldest pending、dead、stale claim 和 confirm latency 指标。
 - 结构化日志字段和 operation 命名。
 - 服务 README 中的本地运行命令、配置示例和依赖说明。
 
