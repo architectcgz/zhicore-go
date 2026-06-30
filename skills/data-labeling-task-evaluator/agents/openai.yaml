@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data Labeling Task Evaluator"
+  short_description: "Create and grade model coding tasks"
+  default_prompt: "Use $data-labeling-task-evaluator to create a coding-labeling task, prepare the repo, and grade the submitted result."
