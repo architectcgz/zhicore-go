@@ -21,6 +21,40 @@ comment.created
 user.profile.updated
 ```
 
+## RabbitMQ 拓扑声明与配置归属
+
+跨服务事件拓扑必须版本化声明，不能只靠人工在 RabbitMQ 控制台创建，也不能把 exchange、queue、binding、DLX 或 retry 规则隐式散在业务代码里。
+
+推荐分层：
+
+```text
+项目仓库：声明 exchange / queue / binding / DLX / retry / routing key 规则
+部署/IaC：按环境创建这些 RabbitMQ 资源
+应用代码：使用这些名字，并在启动时校验或幂等 declare
+```
+
+规则：
+
+- 事件 contract 记录 `eventType`、routing key、payload version、producer、已知 consumer 和兼容性要求。
+- RabbitMQ topology 必须在项目内有可审查来源，至少记录 exchange、queue、binding、DLX、retry queue、TTL、durable、quorum/classic、prefetch 和 `Single Active Consumer` 等关键参数。
+- 生产和共享环境优先由部署流程创建拓扑，例如 RabbitMQ definitions、Terraform、Helm、Operator 或版本化部署脚本；不要依赖一次性手工点击。
+- 应用启动可以做 passive declare / 校验：确认必需 exchange、queue 和 binding 存在，参数不匹配时 fail fast。
+- 本地开发、测试或临时环境可以允许应用幂等 declare 拓扑；生产是否允许自动 declare 必须由部署策略显式决定，避免代码静默改动运行拓扑。
+- RabbitMQ 默认 exchange（空字符串 `""`）只适合简单点对点或本地临时场景；跨服务业务事件必须显式使用已声明的 exchange、queue 和 binding。
+
+Owner 约定：
+
+| 拓扑元素 | Owner | 说明 |
+| --- | --- | --- |
+| 共享事件 exchange | 平台 / 项目事件规范 | 当前公共跨服务事件默认使用 `zhicore.events` topic exchange。 |
+| producer routing key | producer 服务 | routing key 表达 producer 发布的业务事实，必须和事件 contract 同步演进。 |
+| consumer queue | consumer 服务 | 每个消费服务拥有自己的 queue，不能让多个业务服务共享同一个消费状态。 |
+| binding | consumer 服务 | binding 表达“我订阅哪些事件”，由 consumer 设计和部署声明。 |
+| retry queue / DLQ / DLX | consumer 服务 | 重试、dead-letter 和补偿语义跟随 consumer 的处理策略和幂等存储。 |
+| vhost、账号、权限、broker 地址 | 部署 / 运维配置 | 环境差异不进入事件 payload contract，必须通过配置和部署资产管理。 |
+
+变更 RabbitMQ topology 时，必须同步事件 contract、受影响服务文档和部署资产。新增 binding 或 queue 通常是 consumer 变更；新增事件类型或 routing key 通常是 producer contract 变更；修改 DLX、retry、TTL、prefetch 或 single-active 语义属于 consumer 运行策略变更。
+
 ## 有序事件分区
 
 默认事件 contract 仍要求 consumer 容忍重复、乱序和迟到消息。只有当某个事件族明确需要“同一业务对象局部有序”时，才启用分区有序方案；该方案是优化投递和处理冲突，不替代 `eventId` 幂等、状态机校验、`aggregateVersion` 或 `occurredAt` 乱序保护。
