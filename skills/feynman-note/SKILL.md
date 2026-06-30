@@ -1,170 +1,195 @@
 ---
 name: feynman-note
-description: Use when user asks to create/record learning notes, mentions Feynman method, or after technical discussions that should be preserved for spaced repetition review
+description: Use when user asks to create or record notes, says note/记录/记一下, mentions Feynman method, asks for 普通记录 or 费曼记录, or wants technical discussion preserved for review without losing the user's original wording.
 ---
 
 # Feynman Note Skill
 
-Create structured learning notes with automated review scheduling.
+Create notes in the shared notes repo. Choose **普通记录** or **费曼记录** first, then apply only that mode's structure and constraints.
 
-## When to Use
+## Mode Selection
 
-- User says "创建费曼笔记" / "create Feynman note" / "记录知识点"
-- User mentions Feynman method / 费曼学习法
-- After technical discussion user wants to preserve for review
+Default to **普通记录** when the user says:
 
-## Iron Rules - No Exceptions
+- `记录到 note`
+- `记一下`
+- `记录下来`
+- `保存一下`
+- `记录知识点`
 
-### File Location
-**MUST** save to `feynman/<filename>.md` directory.
+Use **费曼记录** only when the user explicitly says:
 
-**Never:**
-- Save to repository root
-- Create subdirectories under feynman/
-- Use different directory names
+- `费曼笔记`
+- `费曼记录`
+- `整理成费曼`
+- `复习卡片`
+- `自测问题`
+- `知识缺口`
+- `闭卷复述`
 
-### Review Schedule
-**MUST** set `next_review: <tomorrow's date>`.
+If the user asks for `总结`、`整理`、`提炼`, summarize first only if requested, then record the summarized result. Do not silently convert 普通记录 into 费曼记录.
 
-**Never:**
-- Calculate "reasonable" intervals (7 days, 2 weeks, etc.)
-- Use spaced repetition formulas
-- Adjust based on topic difficulty
+## Shared Rules
 
-**Why:** Review scheduling is user's decision after first review. Always start with tomorrow.
+- Notes repo: `/home/azhi/workspace/projects/notes`.
+- Use today's date for `created` and `reviewed`.
+- If content to record is missing or ambiguous, ask `要记录的正文是哪一段？`.
+- If content exists in the immediately preceding discussion, do not ask; infer a short title and tags.
+- Do not invent technical details from general knowledge.
+- After writing, validate frontmatter fields relevant to the selected mode.
+- Commit and push the notes repo after creating the note unless the user asks not to.
 
-### Confidence Level
-**MUST** set `confidence: 2/5`.
+## 普通记录
 
-**Never:**
-- Evaluate topic difficulty yourself
-- Adjust based on user's background
-- Use different starting values
+普通记录的目标是“忠实保存可直接阅读的内容”，不是学习卡片。
 
-**Why:** Confidence is user's self-assessment after review, not AI's prediction.
+### Directory
 
-### Content Filling
-**Ask user** for explanation content when not provided in discussion.
+Save to:
 
-**Never:**
-- Generate complete explanations yourself
-- "Help" by writing framework content
-- Fill in technical details from your knowledge
-
-**Why:** Feynman method requires user to articulate understanding in their own words.
-
-## Workflow
-
-### 1. Gather Information
-
-Ask user (single question):
-```
-主题：<topic>
-标签：<suggest tags based on topic>
-核心问题：<suggest 1-2 core questions>
-
-这样可以吗？
+```bash
+/home/azhi/workspace/projects/notes/records/<kebab-case-filename>.md
 ```
 
-**If user provided explanation in discussion:** Use it directly.
-**If not provided:** Ask "我的解释部分是现在写，还是留空等你复习时填写？"
+Create `records/` if it does not exist.
 
-### 2. Create Note
+### Template
 
-**MUST use template file:**
+Prefer copying the template first:
+
+```bash
+cp /home/azhi/workspace/projects/notes/.templates/record-note-template.md \
+   /home/azhi/workspace/projects/notes/records/<kebab-case-filename>.md
+```
+
+### Standard Framework
+
+```markdown
+---
+title: "<topic>"
+tags: [tag1, tag2]
+created: YYYY-MM-DD
+type: record
+source: chat
+related: []
+---
+
+# <topic>
+
+<原文或用户指定内容>
+```
+
+### Rules
+
+- Preserve the source wording as directly as possible.
+- Do not summarize, reorganize, polish, expand, add examples, add conclusions, or add self-test questions.
+- Only fix obvious Markdown breakage, such as broken list indentation or missing code fences.
+- If the source is the assistant's previous answer, record that answer's content, not a new answer.
+- Do not set `next_review` or `confidence`; those are 费曼记录特性.
+
+## 费曼记录
+
+费曼记录的目标是“帮助复习和自测”，可以结构化整理，但仍不能编造未提供的内容。
+
+### Directory
+
+Save to:
+
+```bash
+/home/azhi/workspace/projects/notes/feynman/<kebab-case-filename>.md
+```
+
+### Template
+
+MUST copy the template first:
+
 ```bash
 cp /home/azhi/workspace/projects/notes/.templates/feynman-note-template.md \
    /home/azhi/workspace/projects/notes/feynman/<kebab-case-filename>.md
 ```
 
-**Never:**
-- Create note from scratch
-- Use your own format
-- Skip the template
+Then fill:
 
-**Then fill these fields (no negotiation):**
 ```yaml
 ---
 title: "<topic>"
-tags: [tag1, tag2, tag3]
-created: 2026-06-19        # Today
-reviewed: 2026-06-19       # Today
-next_review: 2026-06-20    # Tomorrow (always)
-confidence: 2/5            # Default (always)
-type: permanent            # Default
-related: []                # Empty initially
+tags: [tag1, tag2]
+created: YYYY-MM-DD
+reviewed: YYYY-MM-DD
+next_review: YYYY-MM-DD   # tomorrow
+confidence: 2/5
+type: permanent
+related: []
 ---
 ```
 
-**File location:**
+### Standard Framework
+
+Use the template sections as intended:
+
+- `# 核心问题`: one question the note answers.
+- `# 我的解释（闭卷复述）`: user's explanation or explicitly requested summary.
+- `# 知识缺口`: unclear points, only from user-provided content or explicit analysis request.
+- `# 关键细节`: `什么`、`为什么`、`何时用`、`验证方法`.
+- `# 反向问题（自测）`: self-test questions.
+- `# 关联`: related notes.
+- `# 一句话总结`: concise recall sentence.
+
+### Iron Rules
+
+- `next_review` MUST be tomorrow's date.
+- `confidence` MUST start at `2/5`.
+- Do not choose a longer interval.
+- Do not set confidence from perceived difficulty.
+- Do not add self-test questions or knowledge gaps unless the user asked for 费曼记录 or asked to summarize/extract them.
+
+## Validation
+
+For 普通记录:
+
 ```bash
-/home/azhi/workspace/projects/notes/feynman/<kebab-case-filename>.md
+head -20 records/<filename>.md | grep -E "^(title|tags|created|type|source|related):"
 ```
 
-### 3. Validate Format
+Required fields: `title`, `tags`, `created`, `type: record`, `source`, `related`.
 
-Run validation:
+For 费曼记录:
+
 ```bash
-# Check YAML
 head -20 feynman/<filename>.md | grep -E "^(title|tags|created|reviewed|next_review|confidence|type):"
-
-# All 7 fields must exist
-# Date format: YYYY-MM-DD
-# Tags format: [tag1, tag2]
-# Confidence format: X/5
 ```
 
-If validation fails, fix automatically before git operations.
+Required fields: `title`, `tags`, `created`, `reviewed`, `next_review`, `confidence`, `type`.
 
-### 4. Git Workflow
+## Git Workflow
 
 ```bash
 cd /home/azhi/workspace/projects/notes
-git add feynman/<filename>.md
-git commit -m "Add: <topic> 笔记
-
-- 费曼学习法整理
-- 记录知识缺口和反向问题"
-
+git add records/<filename>.md  # 普通记录
+git add feynman/<filename>.md  # 费曼记录
+git commit -m "docs(note): 记录 <topic>"
 git push
 ```
 
-### 5. Confirm Completion
+Use exact paths. Do not stage unrelated notes.
 
-Report:
-```
-✅ 笔记已创建：feynman/<filename>.md
-✅ 已提交并推送到 GitHub
-📅 明天（<next_review date>）会收到复习提醒
-📝 当前信心水平：2/5（首次记录）
-```
-
-Remind user:
-- Tomorrow: GitHub Actions will create review reminder Issue
-- After review: update `next_review` and `confidence` fields
-- Fill knowledge gaps as you research them
-
-## Common Mistakes - STOP
+## Common Mistakes
 
 | Mistake | Why Wrong | Correct Action |
-|---------|-----------|----------------|
-| Save to root directory | Not in feynman/ folder | Always use feynman/ |
-| Set next_review to 7 days | "Reasonable interval" | Always tomorrow |
-| Set confidence to 4/5 | "Simple topic" | Always 2/5 |
-| Generate full explanation | "Help the user" | Ask if they want to write it |
-| Skip validation | "Looks correct" | Always run validation script |
-| Create own format | "Simpler than template" | Always copy template file first |
-| Missing YAML frontmatter | "Markdown is fine" | Must have `---` delimited YAML |
+| --- | --- | --- |
+| Putting 普通记录 under `feynman/` | It will enter Feynman review reminders | Save to `records/` |
+| Adding `next_review` to 普通记录 | Review scheduling is a Feynman feature | Omit review fields |
+| Rewriting a record request | User asked to save readable content | Preserve wording |
+| Creating self-test questions for 普通记录 | Adds unrequested Feynman traits | Only add in 费曼记录 |
+| Treating all notes as Feynman notes | Mixes two workflows | Select mode first |
 
-## Red Flags - You're Doing It Wrong
+## Red Flags
 
-If you think any of these, STOP:
-- "7 days is more reasonable for this topic"
-- "They seem confident, let me set 4/5"
-- "I'll write a framework to help them"
-- "Root directory is fine for now"
-- "This is a simple note, no need to validate"
-- "The template is overkill, I'll create a simpler format"
-- "I can skip YAML frontmatter for this quick note"
+Stop and switch to 普通记录 if you think:
 
-**All of these mean:** Re-read Iron Rules section above.
+- "They said record, so I should make it more complete."
+- "All notes should use the Feynman template."
+- "A record needs knowledge gaps and reverse questions."
+- "I can put it in `feynman/` and leave sections blank."
+
+Stop and ask if you cannot identify what content should be recorded.
