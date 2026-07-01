@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/ports"
 )
 
 const (

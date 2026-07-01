@@ -27,5 +27,5 @@
 Go 设计注意点：
 
 - 用户资料归 User，`posts` 中的作者昵称和头像只是 Content 拥有的快照。
-- 文件资源归 Upload，Content 只保存 `file_id`。
+- 文件资源归 File service，Content 只保存 `file_id`。
 - 查询某个用户发表的文章由 Content 提供权威查询；当前不提供 User facade，用户主页直接调用 Content 作者过滤接口。

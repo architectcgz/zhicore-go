@@ -21,7 +21,7 @@ git commit -m "docs(配置): 确立环境变量规范" \
 
 ```bash
 git commit -m "fix(upload): 修正文件删除错误映射" \
-  -m "把外部 File Service 404 翻译为应用层文件不存在错误。" \
+  -m "把对象存储 404 翻译为应用层文件不存在错误。" \
   -m "补充 handler 回归测试，确保对外错误码保持稳定。"
 ```
 

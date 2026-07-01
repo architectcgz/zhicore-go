@@ -198,7 +198,7 @@ MongoDB body 保存结构：
 - `math`：LaTeX 字符串，后端不执行公式
 - `image`
 - `external_embed`：只允许 provider 白名单，不保存任意 iframe / HTML
-- `attachment_gallery`：只允许 Upload `file_id`
+- `attachment_gallery`：只允许 File `file_id`
 
 第一阶段仅预留、不开放发布：
 

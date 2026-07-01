@@ -60,8 +60,8 @@ comment_likes 插入/删除
 
 评论媒体是 `Comment` 聚合内的值对象或子对象：
 
-- `ImageFileIDs` 保存 Upload / File Service 返回的图片文件 ID。
-- `VoiceFileID` 保存 Upload / File Service 返回的语音文件 ID。
+- `ImageFileIDs` 保存 File service 返回的图片文件 ID。
+- `VoiceFileID` 保存 File service 返回的语音文件 ID。
 - `VoiceDuration` 保存语音时长。
 
 Comment 只拥有“评论引用了哪些媒体文件”和评论内容规则，不拥有文件元数据、对象存储路径、URL 生成 / 解析规则、签名 URL、CDN 规则或文件删除事实。查询 DTO 可以带展示 / 播放 URL，但这些 URL 是派生值。
@@ -88,8 +88,8 @@ Comment 只拥有“评论引用了哪些媒体文件”和评论内容规则，
 | `RootCommentID` | 根评论标识 | 根评论为空。 |
 | `ParentCommentID` | 直接被回复评论标识 | 根评论为空。 |
 | `CommentContent` | 评论文本 | 评论整体必须非空；文本最多 2000 字。 |
-| `ImageFileIDs` | 评论图片文件引用集合 | 最多 9 张；必须是 Upload / File Service 返回的 opaque file ID。 |
-| `VoiceFileID` / `VoiceDuration` | 评论语音文件引用和时长 | `VoiceFileID` 必须是 Upload / File Service 返回的 opaque file ID；语音不能与图片同时存在；时长必须为正数。 |
+| `ImageFileIDs` | 评论图片文件引用集合 | 最多 9 张；必须是 File service 返回的 opaque file ID。 |
+| `VoiceFileID` / `VoiceDuration` | 评论语音文件引用和时长 | `VoiceFileID` 必须是 File service 返回的 opaque file ID；语音不能与图片同时存在；时长必须为正数。 |
 | `CommentStatus` | 评论生命周期状态 | `NORMAL`、`DELETED`。 |
 | `DeletionMetadata` | 删除操作者、原因和时间 | 完整审计归 Admin。 |
 | `CommentStatsValue` | 非负计数值 | 点赞数和回复数不能为负。 |

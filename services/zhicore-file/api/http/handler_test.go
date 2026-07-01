@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	uploadhttp "github.com/architectcgz/zhicore-go/services/zhicore-upload/api/http"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
+	filehttp "github.com/architectcgz/zhicore-go/services/zhicore-file/api/http"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/application"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/ports"
 )
 
-func TestUploadImageUsesPublicAccessAndReturnsJavaCompatibleEnvelope(t *testing.T) {
+func TestUploadImageUsesPublicAccessAndReturnsFileEnvelope(t *testing.T) {
 	fileService := &fakeFileService{
 		uploadResult: ports.UploadResult{
 			FileID:        "file_123",
@@ -29,9 +29,9 @@ func TestUploadImageUsesPublicAccessAndReturnsJavaCompatibleEnvelope(t *testing.
 			InstantUpload: false,
 		},
 	}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", jpegHeaderBytes(), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "avatar.jpg", "image/jpeg", jpegHeaderBytes(), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -57,9 +57,9 @@ func TestUploadImageUsesPublicAccessAndReturnsJavaCompatibleEnvelope(t *testing.
 
 func TestUploadImageRejectsUnsupportedContentType(t *testing.T) {
 	fileService := &fakeFileService{}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "notes.txt", "text/plain", []byte("plain"), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "notes.txt", "text/plain", []byte("plain"), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -82,9 +82,9 @@ func TestUploadImageRejectsUnsupportedContentType(t *testing.T) {
 
 func TestUploadImageRejectsSpoofedContentType(t *testing.T) {
 	fileService := &fakeFileService{}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", []byte("not really a jpeg"), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "avatar.jpg", "image/jpeg", []byte("not really a jpeg"), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -104,9 +104,9 @@ func TestUploadImageRejectsSpoofedContentType(t *testing.T) {
 
 func TestUploadImageRejectsDisallowedExtension(t *testing.T) {
 	fileService := &fakeFileService{}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.txt", "image/png", pngHeaderBytes(), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "avatar.txt", "image/png", pngHeaderBytes(), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -123,9 +123,9 @@ func TestUploadImageRejectsOversizedMultipartBeforeService(t *testing.T) {
 	fileService := &fakeFileService{}
 	cfg := application.DefaultConfig()
 	cfg.MaxImageSize = 4
-	handler := uploadhttp.NewHandler(application.NewService(fileService, cfg))
+	handler := filehttp.NewHandler(application.NewService(fileService, cfg))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", bytes.Repeat([]byte("x"), 2<<20), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "avatar.jpg", "image/jpeg", bytes.Repeat([]byte("x"), 2<<20), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -151,10 +151,10 @@ func TestUploadImageKeepsTemporaryMultipartFileUntilServiceReadsIt(t *testing.T)
 	}
 	cfg := application.DefaultConfig()
 	cfg.MaxImageSize = 40 << 20
-	handler := uploadhttp.NewHandler(application.NewService(fileService, cfg))
+	handler := filehttp.NewHandler(application.NewService(fileService, cfg))
 
 	data := append(jpegHeaderBytes(), bytes.Repeat([]byte{0}, 33<<20)...)
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "large.jpg", "image/jpeg", data, nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image", "file", "large.jpg", "image/jpeg", data, nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -179,9 +179,9 @@ func TestUploadImageWithAccessPassesPrivateAccess(t *testing.T) {
 			UploadTime:   time.Date(2026, 6, 22, 10, 1, 0, 0, time.UTC),
 		},
 	}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image/with-access", "file", "private.jpg", "image/jpeg", jpegHeaderBytes(), map[string]string{
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image/with-access", "file", "private.jpg", "image/jpeg", jpegHeaderBytes(), map[string]string{
 		"accessLevel": "PRIVATE",
 	})
 	rr := httptest.NewRecorder()
@@ -198,9 +198,9 @@ func TestUploadImageWithAccessPassesPrivateAccess(t *testing.T) {
 
 func TestUploadImageWithAccessRequiresAccessLevel(t *testing.T) {
 	fileService := &fakeFileService{}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image/with-access", "file", "private.jpg", "image/jpeg", []byte("private"), nil)
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/image/with-access", "file", "private.jpg", "image/jpeg", []byte("private"), nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -220,9 +220,9 @@ func TestUploadImageWithAccessRequiresAccessLevel(t *testing.T) {
 
 func TestGetFileURLAndDeleteFileUsePathFileID(t *testing.T) {
 	fileService := &fakeFileService{fileURL: "https://cdn.example.com/file_123.jpg"}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/upload/file/file_123/url", nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/files/file_123/url", nil)
 	getRR := httptest.NewRecorder()
 	handler.ServeHTTP(getRR, getReq)
 
@@ -235,7 +235,7 @@ func TestGetFileURLAndDeleteFileUsePathFileID(t *testing.T) {
 		t.Fatalf("GET data=%q lastURLFileID=%q", getBody.Data, fileService.lastURLFileID)
 	}
 
-	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/upload/file/file_123", nil)
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/files/file_123", nil)
 	deleteRR := httptest.NewRecorder()
 	handler.ServeHTTP(deleteRR, deleteReq)
 
@@ -249,6 +249,23 @@ func TestGetFileURLAndDeleteFileUsePathFileID(t *testing.T) {
 	}
 	if fileService.lastDeleteFileID != "file_123" {
 		t.Fatalf("deleted file id = %q, want file_123", fileService.lastDeleteFileID)
+	}
+}
+
+func TestLegacyUploadPathIsNotRegistered(t *testing.T) {
+	fileService := &fakeFileService{}
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := multipartRequest(t, http.MethodPost, "/api/v1/upload/image", "file", "avatar.jpg", "image/jpeg", jpegHeaderBytes(), nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusOK {
+		t.Fatalf("legacy upload path unexpectedly succeeded")
+	}
+	if fileService.uploadCalled {
+		t.Fatalf("legacy upload path reached file service")
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/application"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/application"
 )
 
 type Handler struct {
@@ -31,12 +31,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) routes() {
-	h.mux.HandleFunc("POST /api/v1/upload/image", h.uploadImage)
-	h.mux.HandleFunc("POST /api/v1/upload/audio", h.uploadAudio)
-	h.mux.HandleFunc("POST /api/v1/upload/image/with-access", h.uploadImageWithAccess)
-	h.mux.HandleFunc("POST /api/v1/upload/images/batch", h.uploadImagesBatch)
-	h.mux.HandleFunc("GET /api/v1/upload/file/{fileId}/url", h.getFileURL)
-	h.mux.HandleFunc("DELETE /api/v1/upload/file/{fileId}", h.deleteFile)
+	h.mux.HandleFunc("POST /api/v1/files/image", h.uploadImage)
+	h.mux.HandleFunc("POST /api/v1/files/audio", h.uploadAudio)
+	h.mux.HandleFunc("POST /api/v1/files/image/with-access", h.uploadImageWithAccess)
+	h.mux.HandleFunc("POST /api/v1/files/images/batch", h.uploadImagesBatch)
+	h.mux.HandleFunc("GET /api/v1/files/{fileId}/url", h.getFileURL)
+	h.mux.HandleFunc("DELETE /api/v1/files/{fileId}", h.deleteFile)
 }
 
 func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {

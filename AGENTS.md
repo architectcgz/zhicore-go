@@ -55,7 +55,7 @@
 - 修改提交信息格式、commit-msg hook、`harness/policies/commit-message.json`、`scripts/check-commit-message.sh` 或 `scripts/install-githooks.sh` 前，先读 `docs/reviews/commit-message.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
-- 默认不破坏已发布外部 API contract；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把未登记的 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 属于该例外。
+- 默认不破坏已发布外部 API contract；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把未登记的 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 和 `zhicore-file` 属于该例外。
 
 ## 服务落点
 
@@ -69,7 +69,7 @@
 - `zhicore-search` -> `services/zhicore-search`
 - `zhicore-ranking` -> `services/zhicore-ranking`
 - `zhicore-admin` -> `services/zhicore-admin`
-- `zhicore-upload` -> `services/zhicore-upload`
+- `zhicore-file` -> `services/zhicore-file`
 - `zhicore-id-generator` -> `services/zhicore-id-generator`
 - `zhicore-ops` -> `services/zhicore-ops`
 - 旧共享模块 `zhicore-common`、`zhicore-client`、`zhicore-integration` 中的稳定技术原语和 contract 参考落到 `libs/kit` 与 `libs/contracts`，默认不是可部署的 Go 服务。

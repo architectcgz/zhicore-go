@@ -2,21 +2,21 @@
 
 ## 来源
 
-- 服务设计：`docs/architecture/services/upload/README.md`
-- 当前 API schema：`services/zhicore-upload/api/http/README.md`
-- Go handler：`services/zhicore-upload/api/http/handler.go`
-- Java 参考：`../zhicore-microservice/zhicore-upload/src/main/java/com/zhicore/upload/controller/FileUploadController.java`
+- 服务设计：`docs/architecture/services/file/README.md`
+- 当前 API schema：`services/zhicore-file/api/http/README.md`
+- Go handler：`services/zhicore-file/api/http/handler.go`
+- 历史 Java 参考：`../zhicore-microservice/zhicore-upload/src/main/java/com/zhicore/upload/controller/FileUploadController.java`
 
 ## 请求
 
 | 项 | 值 |
 | --- | --- |
 | 方法 | `POST` |
-| 主路径 | `/api/v1/upload/images/batch` |
+| 主路径 | `/api/v1/files/images/batch` |
 | 兼容别名 | 无 |
 | Content-Type | `multipart/form-data` |
 | 鉴权 | 匿名 / 服务间；不读取 `Authorization` 或 `X-User-Id` |
-| 幂等 | 无；秒传由外部 File Service 决定 |
+| 幂等 | 当前 HTTP contract 不保证幂等；秒传由 `zhicore-file` 后续 metadata / hash 规则决定 |
 
 ## Path 参数
 
@@ -86,9 +86,9 @@
 | 项 | 值 |
 | --- | --- |
 | Use case | `UploadImagesBatch(files, accessLevel)` |
-| Application owner | `services/zhicore-upload/internal/upload/application.Service` |
+| Application owner | `services/zhicore-file/internal/file/application.Service` |
 | Port | `ports.FileService.Upload` |
-| 事务边界 | 无本地事务；每个文件独立调用 File Service。 |
+| 事务边界 | 当前无本地事务；每个文件独立处理，后续 metadata 写入和对象存储写入必须在 File service 内定义补偿边界。 |
 | 事件 | 当前不发布事件。 |
 
 ## 测试要求

@@ -166,20 +166,20 @@
     原因：本地草稿只是 UX，不是服务端事实。
 
 39. **封面文件生命周期如何处理？**
-    结论：Content 不直接物理删除 Upload 文件，只释放引用 / 发事件，Upload 清理。
-    原因：Upload 拥有文件对象和物理清理语义。
+    结论：Content 不直接物理删除 File 文件，只释放引用 / 发事件，File service 清理。
+    原因：File service 拥有文件对象和物理清理语义。
 
 40. **发布前是否校验封面文件 facts？**
     结论：封面非必填；上传在前端点击上传时完成，保存草稿时绑定，发布只做引用防线。
     原因：发布链路不应承担上传流程。
 
 41. **上传封面但草稿未保存，谁清理 orphan 文件？**
-    结论：Upload 用 temporary / unbound TTL 清理。
+    结论：File service 用 temporary / unbound TTL 清理。
     原因：Content 还没记录引用，无法负责未绑定文件。
 
-42. **保存草稿时如何确认 Upload 引用？**
+42. **保存草稿时如何确认 File 引用？**
     结论：同步校验 facts，PG commit 后异步确认引用。
-    原因：不能把 Upload 调用放进 Content PG transaction。
+    原因：不能把 File service 调用放进 Content PG transaction。
 
 43. **正文和元数据是否必须一起保存？**
     结论：允许分开保存；可提供组合 SaveDraft。
@@ -246,7 +246,7 @@
     原因：第一阶段简单稳定，后续再做 CJK / 英文词权重。
 
 59. **媒体引用保存时校验还是发布时校验？**
-    结论：internal media 保存/发布校验 Upload facts；external media 只做格式和安全校验。
+    结论：internal media 保存/发布校验 File facts；external media 只做格式和安全校验。
     原因：外部媒体可用性不归 Content 控制。
 
 60. **是否允许外部媒体 URL？**
@@ -298,7 +298,7 @@
     原因：拖拽是编辑器交互，后端只关心最终内容结构。
 
 72. **`attachment_gallery` 是否允许外部附件 URL？**
-    结论：只允许 Upload `file_id`。
+    结论：只允许 File `file_id`。
     原因：附件涉及下载、安全、文件名、大小、类型、权限和清理。
 
 73. **`external_embed` 允许哪些 provider？**

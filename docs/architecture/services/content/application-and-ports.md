@@ -90,7 +90,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `EngagementCacheStore` | 点赞/收藏缓存 | Redis 状态和计数缓存；必须提供批量读取能力，cache error 只返回依赖状态，不把 unknown 伪装成 false |
 | `ReaderPresenceStore` | Presence 状态 | session、leave、presence 查询 |
 | `UserProfileClient` | User 服务调用 | 获取作者摘要 |
-| `FileResourceClient` | Upload 服务调用 | 解析或清理文件引用 |
+| `FileResourceClient` | File service调用 | 解析或清理文件引用 |
 | `BodyParserRegistry` | 正文 schema 解析 | 按 `schemaVersion` 选择 parser，输出 `NormalizedBody` |
 | `Clock` | 时间源 | 可测试的时间抽象 |
 
@@ -176,7 +176,7 @@ services/zhicore-content/
         publishers/      # OutboxPublisher
       body/              # 正文 copy-on-write 协调、parser registry 装配
       jobs/              # OutboxDispatcher、InternalEventWorker、BodyCleanupWorker、BodyRepairWorker
-      clients/           # User、Upload client
+      clients/           # User、File service client
     runtime/
       module.go          # 依赖注入和模块装配
 ```

@@ -44,7 +44,7 @@ Infrastructure 负责把具体技术错误翻译成 ports/domain 语义：
 
 - `sql.ErrNoRows` -> `ports.ErrFileNotFound`
 - Redis nil -> cache miss，而不是业务错误
-- 外部 File Service 404 -> `ports.ErrFileNotFound`
+- File metadata / object storage 404 -> `ports.ErrFileNotFound`
 - 外部超时 -> `ports.ErrDependencyUnavailable`
 
 Infrastructure 可以记录底层错误日志，但不能把底层错误文本直接作为对外 message。

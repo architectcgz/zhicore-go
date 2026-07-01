@@ -42,11 +42,11 @@
 | `parentCommentId` | string | 否 | 省略表示创建根评论 | 被回复评论的对外评论 ID。传入时创建回复；被回复评论必须存在、未删除且属于同一 `postId`。 |
 | `imageFileIds` | string[] | 否 | 省略或空数组表示无图片 | 图片文件引用，最多 9 个；语音评论不能同时传图片。 |
 | `voiceFileId` | string | 否 | 省略表示无语音 | 语音文件引用；不能与 `imageFileIds` 同时存在。 |
-| `voiceDuration` | int | 否 | `voiceFileId` 为空时必须省略 | 语音时长秒数；`voiceFileId` 非空时必须为正数，上限以 Upload contract 固定值为准。 |
+| `voiceDuration` | int | 否 | `voiceFileId` 为空时必须省略 | 语音时长秒数；`voiceFileId` 非空时必须为正数，上限以 File contract 固定值为准。 |
 
 评论整体必须至少包含 `content`、`imageFileIds` 或 `voiceFileId` 中的一项。
 
-`imageFileIds` 和 `voiceFileId` 必须是 Upload / File Service 返回的 opaque file ID。Comment 不接受系统内媒体的 CDN URL、对象存储 key、签名 URL 或相对路径作为写入事实；读取响应可以返回派生的 `imageUrls` / `voiceUrl`。
+`imageFileIds` 和 `voiceFileId` 必须是 File service 返回的 opaque file ID。Comment 不接受系统内媒体的 CDN URL、对象存储 key、签名 URL 或相对路径作为写入事实；读取响应可以返回派生的 `imageUrls` / `voiceUrl`。
 
 `parentCommentId` 可以指向根评论或任意回复。application 必须在同一事务内解析直接父评论，推导所属根评论，并校验同文章、未删除、根归属正确。
 
@@ -80,7 +80,7 @@
 | code | HTTP status | message 语义 | 触发条件 |
 | --- | --- | --- | --- |
 | `1001` | `400` | `Invalid request` | `postId` 格式非法、`parentCommentId` 格式非法、`imageFileIds` 数量超过 9、文件 ID 格式非法、`voiceDuration` 非法、图片和语音同时存在。 |
-| `1004` | `503` | `Service unavailable` | Content / User / Upload / PostgreSQL / outbox 依赖不可用。 |
+| `1004` | `503` | `Service unavailable` | Content / User / File service / PostgreSQL / outbox 依赖不可用。 |
 | `2006` | `401` | `Authentication required` | 缺少 Gateway 注入的 `X-User-Id`。 |
 | `4001` | `404` | `Post not found` | Content 返回文章不存在、不可见或不可评论。 |
 | `5001` | `404` | `Comment not found` | `parentCommentId` 指向的评论已删除或对当前用户不可见。 |
@@ -95,7 +95,7 @@
 - application 必须通过 Content contract 校验文章存在、可见且允许评论。
 - application 必须通过 User contract 校验作者存在、状态可互动。
 - 创建根评论时校验文章作者是否拉黑当前用户；创建回复时校验文章作者和直接父评论作者是否拉黑当前用户。
-- `imageFileIds` / `voiceFileId` 必须通过 Upload contract 校验存在、类型匹配且状态可用；Upload 不可用时写请求失败。
+- `imageFileIds` / `voiceFileId` 必须通过 File service contract 校验存在、类型匹配且状态可用；File service 不可用时写请求失败。
 - request body 中出现 `userId` 时不作为当前操作者，handler 应按未知字段策略拒绝或忽略；当前操作者只来自可信 `X-User-Id`。
 
 ## 排序、分页和过滤
@@ -115,6 +115,6 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖登录态缺失、空内容、文本过长、图片文件引用数量、图片文件引用格式、语音文件引用格式、语音图片互斥、父评论不存在 / 已删除、Content 校验失败、Upload 校验失败、User 状态失败和成功响应。
+- Handler contract test：待补，覆盖登录态缺失、空内容、文本过长、图片文件引用数量、图片文件引用格式、语音文件引用格式、语音图片互斥、父评论不存在 / 已删除、Content 校验失败、File 校验失败、User 状态失败和成功响应。
 - Application test：待补，覆盖 `commentId` 生成 / 编码、根评论创建、回复创建、统计初始化、文章级统计、outbox 写入和缓存失效语义。
 - System HTTP test：待补。

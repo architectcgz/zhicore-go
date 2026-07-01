@@ -215,7 +215,7 @@ import "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/con
                 '''
 package httpapi
 
-import "github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/application"
+import "github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/application"
 ''',
             )
             write_go_file(

@@ -5,7 +5,7 @@
 ## 来源与定位
 
 - 本文件是 Go 项目公开错误码的事实源。
-- 既有错误编号和语义可参考 `../zhicore-microservice` 中的 `ResultCode`、`ApiResponse`、`GlobalExceptionHandler` 和 Upload 内部错误标识，但 Go 服务公开错误码以本文件和服务级 HTTP schema 为准。
+- 既有错误编号和语义可参考 `../zhicore-microservice` 中的 `ResultCode`、`ApiResponse`、`GlobalExceptionHandler` 和历史上传内部错误标识，但 Go 服务公开错误码以本文件和服务级 HTTP schema 为准。
 
 ## 使用规则
 
@@ -13,7 +13,7 @@
 - 只有某个 endpoint 明确要求承接已发布历史行为时，才在服务级 HTTP schema 中登记兼容例外。
 - 服务级 HTTP schema 必须从本表中选择该服务公开的错误码子集，并补充 endpoint 级触发条件。
 - HTTP status 风格数字只作为历史例外保留；Go 新增错误优先使用 `1xxx` 到 `8xxx` 业务错误码。
-- Upload 的 `UPLOAD_001` 这类字符串是旧实现内部错误标识，不作为 Go 对外 `body.code`。
+- `UPLOAD_001` 这类字符串是旧实现内部错误标识，不作为 Go 对外 `body.code`。
 
 ## 范围归属
 
@@ -28,7 +28,7 @@
 | `5xxx` | Comment | 评论、回复、评论点赞。 |
 | `6xxx` | Message | 私信、会话、撤回、发信限制。 |
 | `7xxx` | Notification | 通知。 |
-| `8xxx` | Upload | 文件上传。 |
+| `8xxx` | File | 文件上传、解析和删除。 |
 
 ## HTTP 风格例外码
 
@@ -125,7 +125,7 @@
 | `4018` | `CONTENT_BODY_UNAVAILABLE` | i18n: `content.body.unavailable` | `published_body_id` 指向的 MongoDB 正文不可读；应创建 repair task 并告警。 |
 | `4019` | `CONTENT_BODY_INCONSISTENT` | i18n: `content.body.inconsistent` | PostgreSQL body hash 与 MongoDB body hash 不一致，或发布前 draft body 不可信。 |
 | `4020` | `EXTERNAL_EMBED_PROVIDER_NOT_ALLOWED` | i18n: `content.body.external_embed_provider_not_allowed` | `external_embed` provider 不在白名单内。 |
-| `4021` | `MEDIA_REF_INVALID` | i18n: `content.body.media_ref_invalid` | 正文中的 Upload `file_id`、附件、图片或媒体引用格式/权限/状态不合法。 |
+| `4021` | `MEDIA_REF_INVALID` | i18n: `content.body.media_ref_invalid` | 正文中的 File `file_id`、附件、图片或媒体引用格式/权限/状态不合法。 |
 | `4022` | `VALIDATION_ERROR_LIMIT_EXCEEDED` | i18n: `validation.error_limit_exceeded` | 字段级或 block 级校验错误超过返回上限。 |
 | `4023` | `COVER_UNAVAILABLE` | i18n: `content.cover.unavailable` | 草稿封面引用已经不可用或不可发布；封面非必填，为空不触发该错误。 |
 | `4024` | `BODY_SCHEMA_UNSUPPORTED` | i18n: `content.body.schema_unsupported` | MongoDB body 的 `schemaVersion` 当前服务不可读。 |
@@ -162,17 +162,17 @@
 | --- | --- | --- | --- |
 | `7001` | `NOTIFICATION_NOT_FOUND` | 通知不存在 | 通知不存在或当前用户不可见。 |
 
-## Upload 错误
+## File 错误
 
 | code | 历史 symbol | 默认 message | Go 使用 |
 | --- | --- | --- | --- |
 | `8001` | `FILE_TOO_LARGE` | 文件过大 | 文件大小超过业务限制。 |
 | `8002` | `FILE_TYPE_NOT_ALLOWED` | 文件类型不允许 | 文件 MIME type 或扩展名不允许。 |
-| `8003` | `UPLOAD_FAILED` | 上传失败 | 文件服务上传、删除、分片或哈希等失败的对外上传错误。 |
+| `8003` | `FILE_OPERATION_FAILED` | 文件操作失败 | 文件上传、删除、分片、哈希或 URL 解析等失败。 |
 
-## Upload 内部错误标识
+## 历史上传内部错误标识
 
-这些标识来自既有 Upload 内部错误分类，用于日志、异常分类或内部映射。Go 对外响应不要把这些字符串放进 `body.code`；如需暴露给调用方，必须先映射到上面的数字码并写入服务级 HTTP schema。
+这些标识来自既有上传内部错误分类，用于日志、异常分类或内部映射。Go 对外响应不要把这些字符串放进 `body.code`；如需暴露给调用方，必须先映射到上面的数字码并写入服务级 HTTP schema。
 
 | internal code | 含义 | 建议对外数字码 |
 | --- | --- | --- |

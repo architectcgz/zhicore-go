@@ -35,7 +35,7 @@
 - `zhicore-search`
 - `zhicore-ranking`
 - `zhicore-admin`
-- `zhicore-upload`
+- `zhicore-file`
 - `zhicore-id-generator`
 - `zhicore-ops`
 

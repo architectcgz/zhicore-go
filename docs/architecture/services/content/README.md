@@ -41,7 +41,7 @@
 
 `zhicore-content` 拥有文章主数据、文章发布生命周期、标签、分类、话题引用、文章互动写模型、文章统计、作者快照和内容服务内部投影。
 
-Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、通知收件箱或 Upload 文件对象。
+Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、通知收件箱或 File 文件对象。
 
 ## 关键设计结论
 
@@ -57,7 +57,7 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 - **Engagement viewer 状态使用三值语义**：`liked/favorited=true` 表示确认已互动，`false` 表示确认未互动，`null + degraded=true` 表示当前无法确认；前端不能把 unknown 当成未点赞或未收藏。
 - **浏览页面按主资源和附加资源分层加载**：文章列表 / 详情先加载主资源；文章不可用时不请求 engagement，文章可读后再加载互动状态。
 - **Content 需要服务内业务限流**：Gateway 粗限流只挡 IP / route 洪水；Content 还要按 actor、post、session、service caller、operation 和高成本资源保护草稿、发布、正文读取、互动、presence、管理端和内部调用。
-- **Content 需要按 provider + operation 声明 resilience policy**：User、Upload、MongoDB、Redis、RabbitMQ 和 PostgreSQL 的 timeout、retry、熔断、max-in-flight 与降级策略见 `runtime-resilience.md`，不能只在实现里临时写 timeout。
+- **Content 需要按 provider + operation 声明 resilience policy**：User、File service、MongoDB、Redis、RabbitMQ 和 PostgreSQL 的 timeout、retry、熔断、max-in-flight 与降级策略见 `runtime-resilience.md`，不能只在实现里临时写 timeout。
 
 ## 当前设计状态
 

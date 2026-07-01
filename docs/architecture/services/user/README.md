@@ -69,7 +69,7 @@ Check-in 属于 User 完整边界，但不进入首批 schema 细化。
 | 依赖 | 用途 |
 | --- | --- |
 | Auth | 注册同步初始化 profile；主动注销由 Auth 编排；管理员封禁和账号状态归 Auth。 |
-| Upload / File Service | 写头像前校验 `avatarFileId`；前端 HTTP 查询时解析 `avatarUrl`。 |
+| File service | 写头像前校验 `avatarFileId`；前端 HTTP 查询时解析 `avatarUrl`。 |
 | Content | 消费 `user.profile.updated` 刷新作者快照；用户主页文章列表直接走 Content 作者过滤接口。 |
 | Comment | 写路径调用 User availability 和 block check；查询路径批量获取 UserSimple 作者摘要。 |
 | Message | 查询 block/follow 和 `strangerMessageAllowed`。 |

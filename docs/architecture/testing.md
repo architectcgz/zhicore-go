@@ -127,7 +127,7 @@ make check
 
 行为相关改动如果不新增测试，交付说明或 review 记录必须写明原因，例如：
 
-- 已有 `services/zhicore-upload/api/http` handler test 覆盖该行为。
+- 已有 `services/zhicore-file/api/http` handler test 覆盖该行为。
 - 改动只调整文档、索引或结构检查脚本，已运行 `bash scripts/check-structure.sh`。
 - 改动只能通过手动验证，已记录命令、输入和结果。
 

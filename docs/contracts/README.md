@@ -37,6 +37,7 @@ Go 服务的对外 contract 优先由服务级 HTTP schema 和 provider-owned ty
 当前 Go-first API reset：
 
 - `zhicore-content`：`services/zhicore-content/api/http/` 是新的 Content HTTP contract 事实源；Java 只作为业务能力参考，不作为 path、字段或响应约束。
+- `zhicore-file`：`services/zhicore-file/api/http/` 是新的 File HTTP contract 事实源；旧 `/api/v1/upload/...` 不保留兼容。
 
 已发布外部 contract 必须保持的内容包括：
 

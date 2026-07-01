@@ -34,7 +34,7 @@ docs/architecture/services/<service>/
 | Search | `search/README.md` | `search/service-design.search.png` | `search/service-detail.drawio` | `search/service-detail.png` |
 | Ranking | `ranking/README.md` | `ranking/service-design.ranking.png` | `ranking/service-detail.drawio` | `ranking/service-detail.png` |
 | Admin | `admin/README.md` | `admin/service-design.admin.png` | `admin/service-detail.drawio` | `admin/service-detail.png` |
-| Upload | `upload/README.md` | `upload/service-design.upload.png` | `upload/service-detail.drawio` | `upload/service-detail.png` |
+| File | `file/README.md` | `file/service-design.file.png` | `file/service-detail.drawio` | `file/service-detail.png` |
 | ID Generator | `id-generator/README.md` | `id-generator/service-design.id-generator.png` | `id-generator/service-detail.drawio` | `id-generator/service-detail.png` |
 | Ops | `ops/README.md` | `ops/service-design.ops.png` | `ops/service-detail.drawio` | `ops/service-detail.png` |
 
@@ -52,7 +52,7 @@ docs/architecture/services/<service>/
 | Notification | `notification/page-design.md` | 通知中心、偏好、免打扰和投递状态 |
 | Search | `search/page-design.md` | 搜索框、建议、热门词、历史和结果列表 |
 | Ranking | `ranking/page-design.md` | 热榜、周期榜、创作者 / 话题榜和 rebuild |
-| Upload | `upload/page-design.md` | 上传组件、批量上传、URL 解析和媒体入口 |
+| File | `file/page-design.md` | 上传组件、批量上传、URL 解析和媒体入口 |
 | Admin | `admin/page-design.md` | 管理端总览、审核、举报和审计 |
 | Gateway | `gateway/page-design.md` | 内部路由、认证、限流和下游诊断 |
 | Ops | `ops/page-design.md` | 对账、修复、事件回放和 worker 状态 |
@@ -143,7 +143,7 @@ Ranking 的服务级专题文档：
 | Search | `search/service-design.search.png` |
 | Ranking | `ranking/service-design.ranking.png` |
 | Admin | `admin/service-design.admin.png` |
-| Upload | `upload/service-design.upload.png` |
+| File | `file/service-design.file.png` |
 | ID Generator | `id-generator/service-design.id-generator.png` |
 | Ops | `ops/service-design.ops.png` |
 

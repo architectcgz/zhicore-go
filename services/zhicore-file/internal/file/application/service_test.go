@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/ports"
 )
 
 func TestUploadImagesBatchReturnsErrorWhenAnyFileFailsValidation(t *testing.T) {

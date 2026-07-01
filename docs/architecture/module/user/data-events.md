@@ -17,7 +17,7 @@ Check-in 属于 User 完整边界，但不进入首批 schema 细化；后续再
 User 不拥有：
 
 - Auth `accounts`、password、role、token、封禁状态。
-- Upload / File Service 文件元数据和 URL。
+- File service 文件元数据和 URL。
 - Content 文章、Comment 评论、Message 私信、Notification 通知。
 
 本地表之间不建数据库 FK，跨服务也不建 FK。关系完整性由 application/repository 事务、唯一约束、计数非负保护和测试维护。
@@ -230,7 +230,7 @@ published_at
 - Message 查询 `GetStrangerMessageSetting` 和 block/follow contract。
 - 用户不存在或设置缺失时，陌生人私信默认返回 `false`。
 
-### Upload / File Service
+### File service
 
 - 写头像前同步校验 `avatarFileId`。
 - 前端 HTTP 读 profile 时解析 `avatarUrl`。

@@ -303,7 +303,7 @@ API 进程和 consumer / worker 进程可以分离部署。关键异步流水线
 - 数据库写入：唯一索引、状态机条件更新、乐观锁版本。
 - outbox：`event_id` 唯一。
 - consumer：inbox / ledger / `event_id` 唯一约束。
-- 上传：文件 hash、外部 File Service 返回的 file id 或业务引用唯一约束。
+- 上传：文件 hash、File service 返回的 file id 或业务引用唯一约束。
 - 定时任务：任务 key、claim token、lease 过期时间。
 
 要求：

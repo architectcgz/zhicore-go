@@ -1,4 +1,4 @@
-module github.com/architectcgz/zhicore-go/services/zhicore-upload
+module github.com/architectcgz/zhicore-go/services/zhicore-file
 
 go 1.22
 

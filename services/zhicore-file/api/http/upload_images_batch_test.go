@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	uploadhttp "github.com/architectcgz/zhicore-go/services/zhicore-upload/api/http"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-upload/internal/upload/ports"
+	filehttp "github.com/architectcgz/zhicore-go/services/zhicore-file/api/http"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/application"
+	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/ports"
 )
 
 func TestUploadImagesBatchRejectsPartialFailureInsteadOfDroppingInvalidFiles(t *testing.T) {
@@ -25,9 +25,9 @@ func TestUploadImagesBatchRejectsPartialFailureInsteadOfDroppingInvalidFiles(t *
 			ContentType:  "image/jpeg",
 		},
 	}
-	handler := uploadhttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
 
-	req := batchMultipartRequest(t, http.MethodPost, "/api/v1/upload/images/batch", []multipartFile{
+	req := batchMultipartRequest(t, http.MethodPost, "/api/v1/files/images/batch", []multipartFile{
 		{name: "ok.jpg", contentType: "image/jpeg", data: jpegHeaderBytes()},
 		{name: "bad.txt", contentType: "text/plain", data: []byte("plain")},
 	}, nil)

@@ -2,22 +2,22 @@
 
 ## 来源
 
-- 服务设计：`docs/architecture/services/upload/README.md`
-- 当前 API schema：`services/zhicore-upload/api/http/README.md`
-- Go handler：`services/zhicore-upload/api/http/handler.go`
-- Go contract test：`services/zhicore-upload/api/http/handler_test.go`
-- Java 参考：`../zhicore-microservice/zhicore-upload/src/main/java/com/zhicore/upload/controller/FileUploadController.java`
+- 服务设计：`docs/architecture/services/file/README.md`
+- 当前 API schema：`services/zhicore-file/api/http/README.md`
+- Go handler：`services/zhicore-file/api/http/handler.go`
+- Go contract test：`services/zhicore-file/api/http/handler_test.go`
+- 历史 Java 参考：`../zhicore-microservice/zhicore-upload/src/main/java/com/zhicore/upload/controller/FileUploadController.java`
 
 ## 请求
 
 | 项 | 值 |
 | --- | --- |
 | 方法 | `POST` |
-| 主路径 | `/api/v1/upload/image` |
+| 主路径 | `/api/v1/files/image` |
 | 兼容别名 | 无 |
 | Content-Type | `multipart/form-data` |
 | 鉴权 | 匿名 / 服务间；不读取 `Authorization` 或 `X-User-Id` |
-| 幂等 | 无；秒传由外部 File Service 决定 |
+| 幂等 | 当前 HTTP contract 不保证幂等；秒传由 `zhicore-file` 后续 metadata / hash 规则决定 |
 
 ## Path 参数
 
@@ -37,7 +37,7 @@
 
 ## 成功响应 `data`
 
-`data` 为 `UploadFile`，字段见 `services/zhicore-upload/api/http/README.md`。
+`data` 为 `UploadFile`，字段见 `services/zhicore-file/api/http/README.md`。
 
 示例：
 
@@ -73,8 +73,8 @@
 ## 权限和可见性
 
 - 本 endpoint 不校验业务 owner。
-- 上传成功后返回的 `fileId` 由业务服务保存引用；头像、封面、评论媒体等归属校验不属于 Upload。
-- 返回 URL 是否长期公开由 `PUBLIC` 访问级别和 File Service 决定。
+- 上传成功后返回的 `fileId` 由业务服务保存引用；头像、封面、评论媒体等业务归属校验不属于 File service。
+- 返回 URL 是否长期公开由 `PUBLIC` 访问级别和 `zhicore-file` URL 策略决定。
 
 ## 排序、分页和过滤
 
@@ -85,12 +85,12 @@
 | 项 | 值 |
 | --- | --- |
 | Use case | `UploadImage(file, PUBLIC)` |
-| Application owner | `services/zhicore-upload/internal/upload/application.Service` |
+| Application owner | `services/zhicore-file/internal/file/application.Service` |
 | Port | `ports.FileService.Upload` |
-| 事务边界 | 无本地事务；外部 File Service 拥有文件元数据。 |
+| 事务边界 | 当前无本地事务；后续 metadata 写入和对象存储写入必须在 File service 内定义补偿边界。 |
 | 事件 | 当前不发布事件。 |
 
 ## 测试要求
 
-- Handler contract test：`TestUploadImageUsesPublicAccessAndReturnsJavaCompatibleEnvelope`、`TestUploadImageRejectsUnsupportedContentType`。
+- Handler contract test：`TestUploadImageUsesPublicAccessAndReturnsFileEnvelope`、`TestUploadImageRejectsUnsupportedContentType`。
 - System HTTP test：待补。

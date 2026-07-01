@@ -167,7 +167,7 @@
 | `UserID`、`OwnerID` | 作者或操作者引用 |
 | `TagID`、`TagName`、`TagSlug` | 标签标识、名称和唯一 slug |
 | `CategoryID`、`TopicID` | 分类和话题引用 |
-| `FileID` | Upload 拥有的文件引用，例如封面或正文媒体 |
+| `FileID` | File service 拥有的文件引用，例如封面或正文媒体 |
 | `PostTitle`、`PostExcerpt` | 标题和摘要，封装长度、空值和摘要规则 |
 | `PostStatus` | 文章生命周期状态 |
 | `OwnerSnapshot` | 作者昵称、头像文件引用和资料版本快照 |
@@ -194,7 +194,7 @@
 | `EngagementPolicy` | 判断文章是否可点赞或收藏 |
 | `InternalEventPriorityPolicy` | 为 Content 内部事件分级 |
 
-基础设施检查由 application 编排。例如正文是否存在需要查询 MongoDB，这不属于领域服务职责；Upload 文件状态、User 作者状态、审核服务可用性也都不进入 domain。
+基础设施检查由 application 编排。例如正文是否存在需要查询 MongoDB，这不属于领域服务职责；File 文件状态、User 作者状态、审核服务可用性也都不进入 domain。
 
 ## 工厂
 

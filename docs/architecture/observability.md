@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | `ts` | 日志时间 | UTC 时间或日志库标准时间字段 |
 | `level` | 日志级别 | `DEBUG`、`INFO`、`WARN`、`ERROR` |
-| `service` | 服务名 | 例如 `zhicore-upload` |
+| `service` | 服务名 | 例如 `zhicore-file` |
 | `env` | 运行环境 | 例如 `local`、`dev`、`prod` |
 | `operation` | 稳定操作名 | 例如 `upload.image`、`content.post.publish` |
 | `requestId` | HTTP 请求关联 ID | 有请求边界时必须有 |

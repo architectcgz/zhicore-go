@@ -43,8 +43,8 @@ Content HTTP API 分为五组：
 | `postId` | string | 是 | 文章公开 ID。 |
 | `authorId` | string | 是 | 作者 ID，来自 User 的稳定公开或 opaque ID。 |
 | `authorName` | string | 否 | Content 作者快照。 |
-| `authorAvatarFileId` | string | 否 | Upload 文件引用。 |
-| `authorAvatarUrl` | string | 否 | 可展示头像 URL；由 Content 通过 Upload contract 解析或留空。 |
+| `authorAvatarFileId` | string | 否 | File 文件引用。 |
+| `authorAvatarUrl` | string | 否 | 可展示头像 URL；由 Content 通过 File service contract 解析或留空。 |
 | `title` | string | 是 | 标题。 |
 | `summary` | string | 否 | 摘要。 |
 | `coverFileId` | string | 否 | 封面文件引用。 |
@@ -79,7 +79,7 @@ Content HTTP API 分为五组：
 
 可发布 block 类型：`paragraph`、`heading`、`quote`、`list`、`code_block`、`table`、`collapsible`、`math`、`image`、`external_embed`、`attachment_gallery`。预留但不可发布：`mention`、`poll`、`custom_widget`。
 
-系统内上传文件的正文 block 必须保存 Upload / File Service 返回的 `fileId`；如响应中包含 `url`，它只能作为运行时解析出的展示派生值。第三方外部资源必须使用 `external_embed` 或显式外部 URL 字段，不和系统内文件引用混用。
+系统内上传文件的正文 block 必须保存 File service 返回的 `fileId`；如响应中包含 `url`，它只能作为运行时解析出的展示派生值。第三方外部资源必须使用 `external_embed` 或显式外部 URL 字段，不和系统内文件引用混用。
 
 ### `Tag`
 
@@ -211,7 +211,7 @@ Body：
 | --- | --- | --- | --- |
 | `title` | string | 否 | 草稿阶段可空；发布时必填。最大 200。 |
 | `summary` | string | 否 | 用户摘要。 |
-| `coverFileId` | string | 否 | Upload 文件引用。 |
+| `coverFileId` | string | 否 | File 文件引用。 |
 | `topicId` | string | 否 | 话题引用，拆 Topic 服务前由 Content 管理。 |
 | `categoryId` | string | 否 | 分类引用。 |
 | `tags` | string[] | 否 | 最多 10 个标签 slug 或名称。 |

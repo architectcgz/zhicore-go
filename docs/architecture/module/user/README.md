@@ -20,7 +20,7 @@ User 不拥有账号、凭证、角色、封禁、JWT 或 token 生命周期：
 - 管理员封禁归 Auth，用 `BANNED` 表达；User 不保存 `banned` 状态。
 - 普通用户主动注销由 Auth 编排：Auth 调 User `DeactivateUserProfile` 后失效账号和 token。
 - 管理员资料逻辑删除归 User，通常由 Admin facade 调 User `MarkUserDeleted`；它用于资料治理和合规隐藏，不等同 Auth 封禁。
-- 头像文件事实归 Upload / File Service；User 只保存 `avatarFileId`，前端 HTTP 响应中的 `avatarUrl` 是运行时派生字段。
+- 头像文件事实归 File service；User 只保存 `avatarFileId`，前端 HTTP 响应中的 `avatarUrl` 是运行时派生字段。
 - 用户文章列表不属于 User facade；用户主页文章列表直接调用 Content 作者过滤接口。
 
 Gateway 保持薄入口：校验 JWT、清理客户端伪造身份 header、注入当前操作者内部 `X-User-Id` 并路由请求。Gateway 不解析业务目标 `publicId`。

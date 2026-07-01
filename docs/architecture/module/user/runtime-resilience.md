@@ -69,7 +69,7 @@ User 作为 provider 的 typed client endpoint 必须区分“业务不存在”
 - HTTP server read、write、idle、header 和 shutdown timeout。
 - PostgreSQL query timeout、transaction timeout、pool size。
 - Redis dial/read/write timeout、rate limit fallback window、本机 fallback 容量。
-- Upload/File Service base URL、timeout、retry、breaker、max-in-flight。
+- File service base URL、timeout、retry、breaker、max-in-flight。
 - 可选 Auth account verify client base URL、timeout、retry、breaker、max-in-flight。
 - RabbitMQ publish confirm timeout、dispatcher concurrency、retry backoff、dead threshold。
 - 每个 circuit breaker 的统计窗口、最小请求数、失败率阈值、连续失败阈值、打开时长和半开探测数。

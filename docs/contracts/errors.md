@@ -63,7 +63,7 @@ Go 项目公开错误码使用下列范围；完整码值见 `docs/contracts/err
 | `5xxx` | Comment |
 | `6xxx` | Message |
 | `7xxx` | Notification |
-| `8xxx` | Upload |
+| `8xxx` | File |
 
 HTTP status 可以作为粗分类，但不能替代稳定业务错误码。已发布接口如果当前只返回 HTTP status 作为 `code`，Go 服务必须在服务级 HTTP contract 中标记为历史例外；后续要改成业务码时，作为独立 API 演进任务处理。
 

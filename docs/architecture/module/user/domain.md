@@ -103,7 +103,7 @@ Check-in 属于 User 完整边界，但不进入首批实现或字段级 contrac
 | `PublicID` | User 外部公开标识 | 前端 URL 和 HTTP response 使用；User 本地生成和持久化 |
 | `AccountID` | Auth 账号引用 | User 本地唯一；不等同 `UserID` |
 | `Nickname` | 唯一昵称 | trim；`1..15`；大小写敏感唯一；禁止危险字符 |
-| `AvatarFileID` | 头像文件引用 | 可空；文件事实归 Upload/File Service |
+| `AvatarFileID` | 头像文件引用 | 可空；文件事实归 File service |
 | `Bio` | 简介 | 最大 100；纯文本；允许少量换行；禁止危险字符 |
 | `ProfileVersion` | 资料版本 | 公开资料变化时由 repository 原子递增 |
 | `UserStatus` | User 资料生命周期状态 | `ACTIVE`、`DEACTIVATED`、`DELETED` |
@@ -120,7 +120,7 @@ Check-in 属于 User 完整边界，但不进入首批实现或字段级 contrac
 | `RelationshipPolicy` | 校验关注、取关、拉黑、解除拉黑的规则。 |
 | `CursorPolicy` | 定义关系列表 cursor 锚点语义，不编码具体 Base64。 |
 
-领域服务不依赖数据库、Redis、HTTP client、JWT、Upload SDK 或 RabbitMQ。
+领域服务不依赖数据库、Redis、HTTP client、JWT、File SDK 或 RabbitMQ。
 
 ## 工厂
 

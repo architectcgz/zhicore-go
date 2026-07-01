@@ -87,7 +87,7 @@
 | code | HTTP status | message 语义 | 触发条件 |
 | --- | --- | --- | --- |
 | `1001` | `400` | `Invalid request` | `postId` 格式非法、`page` / `size` 越界、`sort` 非法。 |
-| `1004` | `503` | `Service unavailable` | Content / PostgreSQL / Redis 依赖不可用且无法降级。User 摘要或 Upload URL 解析失败时查询可降级。 |
+| `1004` | `503` | `Service unavailable` | Content / PostgreSQL / Redis 依赖不可用且无法降级。User 摘要或 File URL 解析失败时查询可降级。 |
 | `4001` | `404` | `Post not found` | Content 返回文章不存在或不可见。 |
 
 ## 权限和可见性

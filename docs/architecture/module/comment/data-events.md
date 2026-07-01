@@ -15,7 +15,7 @@ Comment 拥有：
 - `comment_recommended_rank`
 - Comment 服务自己的 `outbox_events`
 
-评论图片只保存 Upload / File Service 返回的图片文件 ID；语音只保存语音文件 ID。可展示图片 URL 和可播放语音 URL 由查询时解析或缓存派生，不作为 Comment 持久化事实。文件元数据、对象存储路径、签名 URL、CDN 规则和文件删除事实归 Upload / File Service。
+评论图片只保存 File service 返回的图片文件 ID；语音只保存语音文件 ID。可展示图片 URL 和可播放语音 URL 由查询时解析或缓存派生，不作为 Comment 持久化事实。文件元数据、对象存储路径、签名 URL、CDN 规则和文件删除事实归 File service。
 
 `comments.post_id` 和相关表的 `post_id` 保存 Content 对外 `postId` 字符串，例如 `p1K8x9Q2`，用于 HTTP 定位和查询分区。`comments.content_internal_id` 保存 Content 内部 `post_id BIGINT` opaque reference，用于 Comment 发布事件时给 Ranking 等下游直接落账；Comment 不依赖该 ID 的生成方式、连续性或可读含义。
 

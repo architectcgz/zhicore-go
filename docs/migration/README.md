@@ -24,7 +24,7 @@
 | `zhicore-search` | `services/zhicore-search` |
 | `zhicore-ranking` | `services/zhicore-ranking` |
 | `zhicore-admin` | `services/zhicore-admin` |
-| `zhicore-upload` | `services/zhicore-upload` |
+| `zhicore-file` | `services/zhicore-file` |
 | `zhicore-id-generator` | `services/zhicore-id-generator` |
 | `zhicore-ops` | `services/zhicore-ops` |
 
@@ -38,7 +38,7 @@
 
 ## 推荐实现顺序
 
-1. `zhicore-upload`：主要是代理/集成逻辑，API 边界相对清晰。
+1. `zhicore-file`：文件生命周期 owner，先收口上传、URL 解析和删除，再扩展 metadata、MinIO adapter 和清理 worker。
 2. `zhicore-search`：查询型服务，依赖 Elasticsearch 和 RabbitMQ consumer。
 3. `zhicore-ranking`：Redis 读模型和定时任务较多，适合在事件模型稳定后迁移。
 4. `zhicore-auth`、`zhicore-user`、`zhicore-comment`、`zhicore-content`：核心写服务，涉及 PostgreSQL、Redis、事件和跨服务调用。
@@ -51,7 +51,7 @@
 
 - 前端暂时不修改。Go 服务替换既有实现时，必须保留已发布外部 API 路径、请求参数、响应封装、字段语义、错误码和权限行为，除非服务级 schema 已登记 Go-first API reset。
 - 当前开发阶段不做灰度。Gateway 可以切换本地或部署路由，但不能把 API 形态变化传递给前端。
-- 在所有调用方被明确调整并验证前，旧接口必须继续可用；需要重做的接口作为独立 API 演进任务处理。
+- 在所有调用方被明确调整并验证前，旧接口必须继续可用；需要重做的接口作为独立 API 演进任务处理。已登记为 Go-first API reset 的服务按服务级 HTTP schema 执行，不要求保留旧外部形态。
 - 运行时不规划 Java/Go 并存；Go 服务按模块逐步替换既有实现。
 - 优先通过本地环境、网关或部署路由逐个服务接入 Go 目标实现。
 - 移除旧实现前，必须记录已替换端点和验证证据。

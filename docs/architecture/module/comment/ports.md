@@ -52,7 +52,7 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 | `ContentPostClient` | 校验文章存在、可见性、是否允许评论；返回 `postAuthorId` 和 Content 内部 `post_id` opaque reference，供 `comment.created` 事件和下游落账使用。 |
 | `UserProfileClient` | 获取评论作者摘要、批量用户摘要和用户状态；DTO 同时包含内部 `userId` 和外部 `publicId`。 |
 | `UserRelationClient` | 批量判断拉黑关系和互动权限。 |
-| `FileReferenceClient` | 校验 Upload 文件引用存在、类型和状态；批量解析展示 URL。 |
+| `FileReferenceClient` | 校验 File 文件引用存在、类型和状态；批量解析展示 URL。 |
 | `RankingClient` | 读取热门文章候选；不拥有 Ranking 分数。 |
 
 ## 首个切片端口范围
@@ -72,8 +72,8 @@ Ports 放在 `services/zhicore-comment/internal/comment/ports`，按能力和用
 - cache store 不把 Redis key 字符串泄漏给 application；application 只表达“失效文章评论列表、根评论回复列表、首页快照”等语义。
 - client adapter 负责把 HTTP status、Feign / REST 错误、超时和熔断结果翻译为 module-local 错误；具体 resilience policy 见 `runtime-resilience.md`。
 - `OutboxPublisher` 只负责在业务事务内追加事件，dispatcher 的 claim、发送、retry/dead 状态更新属于 infrastructure job。
-- Comment 不提供媒体上传 facade；Upload 只通过 `FileReferenceClient` 作为文件事实 owner 被调用。
-- 查询路径的 User 摘要和 Upload URL 解析可以降级返回占位或省略 URL；写路径校验不能降级放行。
+- Comment 不提供媒体上传 facade；File service 只通过 `FileReferenceClient` 作为文件事实 owner 被调用。
+- 查询路径的 User 摘要和 File URL 解析可以降级返回占位或省略 URL；写路径校验不能降级放行。
 
 ## Go 包落点
 

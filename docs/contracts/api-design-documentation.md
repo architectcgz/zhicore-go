@@ -126,7 +126,7 @@ services/<service>/api/http/
 
 | 优先级 | 服务 | 原因 | 推荐动作 |
 | --- | --- | --- | --- |
-| 1 | Upload | 已有 handler 和测试，但缺 HTTP schema | 补 `api/http/README.md` 和 6 个 endpoint contract |
+| 1 | File | 已有 handler、测试和 Go-first HTTP schema | 按 File metadata / MinIO / 引用治理切片继续扩展 contract |
 | 2 | Content | 已有 Go-first 大草案 | 按实现切片拆出单 endpoint 或 API family contract |
 | 3 | User / Comment / Notification / Ranking | 服务设计细，但字段级 contract 未固定 | 按首个实现切片提取 HTTP schema |
 | 4 | Gateway / Admin / Message / Search / ID Generator / Ops | 需先确认保留范围或是否实现 | 先补服务级 HTTP README 的待提取项，再按切片展开 |

@@ -4,7 +4,7 @@
 
 ## HTTP Contract 基线
 
-Go HTTP contract 优先由服务级 schema 固定。未登记 Go-first API reset 的服务在替换既有实现时不得破坏已发布外部接口；Java 只作为核对既有行为的参考来源。当前 `zhicore-content` 已登记为 Go-first API reset，Content 的 Go HTTP schema 是新事实源，Java 只作为业务能力参考。
+Go HTTP contract 优先由服务级 schema 固定。未登记 Go-first API reset 的服务在替换既有实现时不得破坏已发布外部接口；Java 只作为核对既有行为的参考来源。当前 `zhicore-content` 和 `zhicore-file` 已登记为 Go-first API reset，对应服务的 Go HTTP schema 是新事实源，Java 只作为业务能力参考。
 
 已发布外部接口需要保留：
 

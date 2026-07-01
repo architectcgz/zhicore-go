@@ -49,7 +49,7 @@ Ports 放在 `services/zhicore-user/internal/user/ports`，按能力和用例族
 | `RelationshipCacheStore` | block/follow pair 和列表缓存；首批可不启用。 |
 | `FollowStatsCacheStore` | `user:{userId}:follow_stats` 缓存。 |
 
-`avatarUrl` 不缓存进 User profile 缓存。若需要缓存 URL，只能在 FileURLResolver 或 Upload/File Service adapter 内遵守 File Service TTL。
+`avatarUrl` 不缓存进 User profile 缓存。若需要缓存 URL，只能在 FileURLResolver 或 File service adapter 内遵守 File Service TTL。
 
 ## Typed Client Provider Contract
 

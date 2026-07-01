@@ -6,7 +6,7 @@
 
 ## 适用范围
 
-- 实现一个完整 Go 目标服务，例如 `zhicore-upload`。
+- 实现一个完整 Go 目标服务，例如 `zhicore-file`。
 - 实现一个服务内 API 族，例如 `zhicore-auth` 的 `/api/v1/auth`。
 - 从服务设计、目标产品语义和已发布外部 contract 中固定 Go 实现需要的事实。
 - 判断某个服务交付切片是否达到可交付状态。

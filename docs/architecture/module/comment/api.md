@@ -96,4 +96,4 @@ HTTP handler
 
 - Admin 删除可以从 Admin facade 进入，但最终 mutation 属于 Comment。Comment 只保存 `deletedBy`、`deleteReason`、`deletedAt` 等执行删除所需的最小元数据。
 - Admin 删除必须携带 `deleteReason`；作者删除不要求原因。完整审核审计仍归 Admin。
-- Comment 不提供媒体上传 facade。前端先调用 Upload 获得文件 ID，Comment 创建 / 更新只接收并校验 `imageFileIds` / `voiceFileId`。
+- Comment 不提供媒体上传 facade。前端先调用 File service 获得文件 ID，Comment 创建 / 更新只接收并校验 `imageFileIds` / `voiceFileId`。
