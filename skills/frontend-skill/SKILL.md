@@ -85,6 +85,19 @@ Avoid:
 
 If a panel can become plain layout without losing meaning, remove the card treatment.
 
+## Async Interaction Code
+
+For app surfaces with networked interactions, stateful workflows, uploads, search, filters, autosave, polling, or streaming, make async behavior explicit in the code instead of relying on `async/await` readability.
+
+- Do not write independent I/O as consecutive `await` calls; start independent work together and join it with `Promise.all`, `Promise.allSettled`, or a domain-specific coordinator.
+- Choose failure semantics before composing requests: core data may fail the workflow, while optional recommendations, ads, metrics, or previews should usually degrade locally.
+- Treat every `await` as a state handoff point. Re-check request identity, selected item, route, cache version, and mounted state before committing UI updates after the wait.
+- Thread cancellation and timeout signals through every layer that starts or awaits I/O. A top-level `AbortController` is not enough if inner helpers drop the `signal`.
+- Avoid holding UI or domain locks across `await`; shrink the critical section or snapshot state before waiting.
+- Do not hide CPU-bound long-running work behind `async/await`. Move expensive parsing, transforms, export generation, or image processing off the UI/main event loop into a Web Worker, server job, thread pool, process pool, or chunked scheduler; `await` only waits for completion and does not change where synchronous computation runs.
+- Keep async boundaries intentional. Converting a low-level sync helper to async can force broad call-site rewrites, so expose async only at boundaries that truly own I/O or scheduling.
+- Load [Async Interaction Code Examples](references/async-interaction-code.md) when implementing or reviewing these flows.
+
 ## Imagery
 
 Imagery must do narrative work.
