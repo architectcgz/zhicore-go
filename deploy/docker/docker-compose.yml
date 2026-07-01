@@ -1,0 +1,47 @@
+# ZhiCore Go 本地开发依赖编排。
+# 启动：docker compose -f deploy/docker/docker-compose.yml up -d
+# 停止：docker compose -f deploy/docker/docker-compose.yml down
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: zhicore-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: zhicore
+      RABBITMQ_DEFAULT_PASS: zhicore
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: zhicore-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: zhicore
+      POSTGRES_PASSWORD: zhicore
+      # 本地开发不预设各服务数据库；各服务 migration 工具按需创建。
+      # 生产环境数据库由部署流程（Terraform / Cloud SQL）独立管理。
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhicore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  postgres_data:

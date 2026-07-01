@@ -1,0 +1,291 @@
+{
+  "rabbit_version": "3.13",
+  "exchanges": [
+    {
+      "name": "zhicore.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "zhicore-search:content-post-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-search.content-post.dead"
+      }
+    },
+    {
+      "name": "zhicore-ranking:content-post-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-ranking.content-post.dead"
+      }
+    },
+    {
+      "name": "zhicore-ranking:comment-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-ranking.comment.dead"
+      }
+    },
+    {
+      "name": "zhicore-notification:content-post-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-notification.content-post.dead"
+      }
+    },
+    {
+      "name": "zhicore-notification:comment-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-notification.comment.dead"
+      }
+    },
+    {
+      "name": "zhicore-notification:user-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-notification.user.dead"
+      }
+    },
+    {
+      "name": "zhicore-content:user-profile-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-content.user-profile.dead"
+      }
+    },
+    {
+      "name": "zhicore-content:comment-consumer",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "zhicore.dlx",
+        "x-dead-letter-routing-key": "zhicore-content.comment.dead"
+      }
+    },
+    {
+      "name": "zhicore-search:content-post-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-ranking:content-post-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-ranking:comment-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-notification:content-post-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-notification:comment-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-notification:user-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-content:user-profile-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "zhicore-content:comment-consumer.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-search:content-post-consumer",
+      "destination_type": "queue",
+      "routing_key": "content.post.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-ranking:content-post-consumer",
+      "destination_type": "queue",
+      "routing_key": "content.post.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-ranking:comment-consumer",
+      "destination_type": "queue",
+      "routing_key": "comment.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-notification:content-post-consumer",
+      "destination_type": "queue",
+      "routing_key": "content.post.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-notification:comment-consumer",
+      "destination_type": "queue",
+      "routing_key": "comment.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-notification:user-consumer",
+      "destination_type": "queue",
+      "routing_key": "user.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-content:user-profile-consumer",
+      "destination_type": "queue",
+      "routing_key": "user.profile.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.events",
+      "vhost": "/",
+      "destination": "zhicore-content:comment-consumer",
+      "destination_type": "queue",
+      "routing_key": "comment.*",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-search:content-post-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-search.content-post.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-ranking:content-post-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-ranking.content-post.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-ranking:comment-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-ranking.comment.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-notification:content-post-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-notification.content-post.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-notification:comment-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-notification.comment.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-notification:user-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-notification.user.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-content:user-profile-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-content.user-profile.dead",
+      "arguments": {}
+    },
+    {
+      "source": "zhicore.dlx",
+      "vhost": "/",
+      "destination": "zhicore-content:comment-consumer.dlq",
+      "destination_type": "queue",
+      "routing_key": "zhicore-content.comment.dead",
+      "arguments": {}
+    }
+  ]
+}
