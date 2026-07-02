@@ -168,7 +168,7 @@ description: Use for TDD - write test first, watch it fail, write minimal code, 
 description: Use when executing implementation plans with independent tasks in the current session
 
 # ✅ GOOD: Triggering conditions only
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: Use when implementing behavior-changing features, bug fixes, or logic refactors
 ```
 
 **Content:**
@@ -527,7 +527,7 @@ Make it easy for agents to self-check when rationalizing:
 Add to description: symptoms of when you're ABOUT to violate the rule:
 
 ```yaml
-description: use when implementing any feature or bugfix, before writing implementation code
+description: use when implementing behavior-changing features, bug fixes, or logic refactors
 ```
 
 ## RED-GREEN-REFACTOR for Skills

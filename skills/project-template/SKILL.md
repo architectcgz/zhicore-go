@@ -45,7 +45,7 @@ It does not own harness initialization, workflow installation, or documentation 
 9. Start from `assets/project-agents-template.md`, then remove irrelevant placeholders and specialize the rules to the actual project.
 10. Keep `AGENTS.md` as a repository navigation and routing file. Do not copy global preferences, skill indexes, full documentation taxonomies, or broad personal workflow rules into it.
 11. Preserve minimal-diff behavior. If an `AGENTS.md` already exists, patch it instead of replacing it wholesale unless the user explicitly asks for a rewrite.
-12. Add a project-specific testing prompt when the repository has tests or an obvious test surface. The prompt should tell future agents which test layers exist, to write or update the narrowest relevant tests first, and to run the smallest relevant test command after changing tests.
+12. Add a project-specific testing prompt when the repository has tests or an obvious test surface. The prompt should tell future agents which test layers exist, to write or update the narrowest relevant tests first for behavior/logic changes, to avoid defaulting simple UI / presentation-only edits into TDD, and to run the smallest relevant test command after changing tests.
 13. Add test file placement rules when the repository has tests or an obvious test surface.
    - Backend templates should distinguish package-local tests, internal test utilities, system/API tests, runtime/integration tests, architecture guardrails, and shared testkit helpers.
    - Frontend templates should distinguish colocated owner tests, feature/page/shared/API/store/router/runtime/config tests, root-level cross-cutting guard tests, and shared test setup/helpers.

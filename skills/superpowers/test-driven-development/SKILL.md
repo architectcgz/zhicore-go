@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: Use when implementing behavior-changing features, bug fixes, refactors that move or reshape logic, or frontend/backend code with state, validation, data flow, permissions, async behavior, algorithms, contracts, persistence, or reproducible defects. Do not use for simple presentational UI-only changes.
 ---
 
 # Test-Driven Development (TDD)
@@ -15,15 +15,19 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 ## When to Use
 
-**Always:**
-- New features
-- Bug fixes
-- Refactoring
+First classify the implementation surface. TDD is mandatory for logic-bearing slices, not for every file edit.
+
+**Always use for:**
+- New behavior-bearing features
+- Bug fixes with a reproducible behavior or regression
+- Refactoring that moves, extracts, or reshapes logic, state ownership, data flow, public contracts, permissions, persistence, or async behavior
 - Behavior changes
 - Frontend logic changes such as state, validation, derived data, permissions, async flows, stores, composables, reducers, or interaction rules
 
-**Usually do not use:**
-- Pure presentational UI work: spacing, color, typography, static layout, copy-only edits, or visual polish with no behavior change
+**Do not default to TDD for:**
+- Simple UI or presentation-only work: spacing, color, typography, static layout, copy-only edits, visual polish, or responsive tweaks with no behavior change
+- Moving existing controls, labels, or markup between existing UI containers when emitted events, state semantics, permissions, validation, and data flow stay the same
+- Mechanical style or template edits where the right verification is typecheck, build, component render, screenshot, or manual UI check rather than a new failing test
 
 **Exceptions (ask your human partner):**
 - Throwaway prototypes
@@ -32,9 +36,11 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
-If a frontend task mixes visual work and logic, split it. Keep TDD for the logic-bearing slice and validate the pure UI slice with the smallest sufficient visual/manual check.
+If a frontend task mixes visual work and logic, split it. Keep TDD for the logic-bearing slice and validate the pure UI slice with the smallest sufficient visual/manual check. If the task is pure UI, say `No TDD` briefly and proceed directly to implementation plus focused verification.
 
 ## The Iron Law
+
+For TDD-required slices:
 
 ```
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
@@ -362,6 +368,8 @@ Extract validation for multiple fields if needed.
 
 ## Verification Checklist
 
+Use this checklist only after the scope has been classified as TDD-required.
+
 Before marking work complete:
 
 - [ ] Every new function/method has a test
@@ -400,8 +408,8 @@ When adding mocks or test utilities, read @testing-anti-patterns.md to avoid com
 ## Final Rule
 
 ```
-Production code → test exists and failed first
+TDD-required production behavior code → test exists and failed first
 Otherwise → not TDD
 ```
 
-No exceptions without your human partner's permission.
+No exceptions for TDD-required slices without your human partner's permission. Pure UI / presentation-only work is outside this skill's default scope and should be verified with the smallest sufficient non-TDD check.

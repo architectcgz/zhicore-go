@@ -7,7 +7,7 @@ description: Use when you have a spec or requirements for a multi-step task, bef
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD where applicable. Frequent commits.
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
@@ -54,6 +54,16 @@ Always report the actual saved path. When using `docs/plan/exploratory/`, briefl
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
+## Testing Workflow Classification
+
+Before writing task steps, classify each implementation slice:
+
+- `TDD`: behavior, state, data flow, validation, permissions, async flow, algorithm, API contract, persistence, or reproducible bug changes.
+- `No TDD`: pure presentation work such as spacing, color, typography, static layout, copy-only edits, visual polish, or moving existing controls without changing event/state semantics.
+- `Mixed`: split into a TDD logic slice and a direct UI slice when practical.
+
+Do not add fake failing-test steps to simple UI tasks. For `No TDD` slices, require direct implementation plus the smallest sufficient visual/manual/component/type/build verification.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
@@ -68,10 +78,18 @@ This structure informs the task decomposition. Each task should produce self-con
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
+
+For TDD-required slices:
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
+- "Commit" - step
+
+For pure UI / presentation slices:
+- "Inspect the current component and owner styles" - step
+- "Apply the focused UI change" - step
+- "Run type/build/component render or visual/manual check" - step
 - "Commit" - step
 
 Every executable step must be represented by a checkbox. The executor is required to flip each checkbox from `- [ ]` to `- [x]` immediately after the step's expected result is reached, before continuing to later steps. Plans should make this easy by keeping steps small and objectively verifiable.
@@ -94,7 +112,7 @@ Every executable step must be represented by a checkbox. The executor is require
 ---
 ```
 
-## Task Structure
+## Behavior Or Logic Task Structure
 
 ````markdown
 ### Task N: [Component Name]
@@ -134,12 +152,36 @@ Expected: PASS
 Check the repository's `AGENTS.md`, `CLAUDE.md`, or commit policy before writing the command. Include task metadata when the project requires it, use the project's required message shape, and do not copy a generic one-line commit example into repositories with stricter rules.
 ````
 
+## Simple UI Task Structure
+
+Use this shape only when the task is pure presentation or markup placement and does not change event/state semantics.
+
+```markdown
+### Task N: [UI Surface]
+
+**Testing stance:** No TDD - pure UI / presentation-only change.
+
+**Files:**
+- Modify: `exact/path/to/component.vue:123-145`
+
+- [ ] **Step 1: Inspect the current component structure and style owner**
+
+- [ ] **Step 2: Apply the focused UI change**
+
+- [ ] **Step 3: Run the smallest sufficient verification**
+
+Run: `pnpm typecheck` or targeted component/render/screenshot/manual check
+Expected: PASS / visually confirms the requested layout
+
+- [ ] **Step 4: Commit this slice according to the target repository policy**
+```
+
 ## Remember
 - Exact file paths always
 - Complete code in plan (not "add validation")
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, TDD where applicable, frequent commits
 - Project documentation language always overrides this skill's English examples
 
 ## Plan Review Loop

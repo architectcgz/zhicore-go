@@ -15,7 +15,7 @@ Use this overview only when the Superpowers collection itself is relevant. For o
 
 ### Development Cycle & Quality
 
-- **test-driven-development** - RED-GREEN-REFACTOR cycle for all features and bugfixes
+- **test-driven-development** - RED-GREEN-REFACTOR cycle for behavior-bearing features, bugfixes, and logic refactors
 - **verification-before-completion** - Always verify changes work before claiming completion
 - **systematic-debugging** - Root-cause analysis approach for bugs and failures
 
@@ -49,7 +49,7 @@ Use this overview only when the Superpowers collection itself is relevant. For o
 
 1. **Skill routing questions**: Use `using-superpowers` when the task is about skill discovery or invocation discipline.
 2. **Creative or implementation design**: Consider `brainstorming` when the task actually involves shaping new behavior.
-3. **Feature or bugfix implementation**: Use `test-driven-development` when test-first implementation is required by task or local policy.
+3. **Feature or bugfix implementation**: Use `test-driven-development` when the change carries behavior or logic and test-first implementation is required by task or local policy. Do not route simple UI / presentation-only edits into TDD by default.
 4. **Completion claims**: Apply `verification-before-completion` before claiming changes are complete or passing.
 5. **Failures and bugs**: Follow `systematic-debugging` when investigating unexpected behavior.
 6. **Skill authoring**: Use `writing-skills` when creating, editing, or validating skills unless a user instruction explicitly narrows the process.
@@ -59,7 +59,7 @@ Use this overview only when the Superpowers collection itself is relevant. For o
 These skills enforce discipline through:
 - **Explicit rules** (not suggestions)
 - **Verification requirements** (evidence over assertions)
-- **Test-first mindset** (RED-GREEN-REFACTOR for code and docs)
+- **Test-first mindset** (RED-GREEN-REFACTOR for behavior-bearing code and docs)
 - **Systematic approaches** (root-cause over quick fixes)
 
 All superpowers skills are designed to resist rationalization under pressure. They include explicit counters to common excuses and enforce the letter of the rules, not just the spirit.

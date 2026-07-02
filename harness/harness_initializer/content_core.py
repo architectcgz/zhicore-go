@@ -170,10 +170,10 @@ echo "[T2] AGENTS documents the test workflow"
 if [[ ! -f AGENTS.md ]]; then
   fail_msg "missing AGENTS.md for test workflow guidance"
 else
-  if grep -qiE 'write or update the narrowest relevant tests first|write or update the narrowest relevant test first' AGENTS.md; then
-    pass_msg "AGENTS requires narrowest relevant tests first"
+  if grep -qiE '((behavior|logic|state|validation|permission|async|contract).{0,120}(write or update the narrowest relevant tests? first)|(write or update the narrowest relevant tests? first).{0,120}(behavior|logic|state|validation|permission|async|contract)|((行为|逻辑|状态|数据流|权限|校验|异步|算法|接口契约|可复现 bug).{0,120}最窄相关测试)|(最窄相关测试.{0,120}(行为|逻辑|状态|数据流|权限|校验|异步|算法|接口契约|可复现 bug)))' AGENTS.md; then
+    pass_msg "AGENTS scopes narrowest relevant tests first to behavior/logic changes"
   else
-    fail_msg "AGENTS must require writing or updating the narrowest relevant tests first"
+    fail_msg "AGENTS must require narrowest relevant tests first for behavior/logic changes, without defaulting simple UI/presentation-only edits into TDD"
   fi
 
   if grep -qiE 'smallest relevant test command|smallest relevant test' AGENTS.md; then
