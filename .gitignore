@@ -1,5 +1,6 @@
 _quarantine/
 /memory/
+codex/config.toml
 **/__pycache__/
 *.pyc
 *.pyo
