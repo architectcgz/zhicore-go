@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing behavior-changing features, bug fixes, refactors that move or reshape logic, or frontend/backend code with state, validation, data flow, permissions, async behavior, algorithms, contracts, persistence, or reproducible defects. Do not use for simple presentational UI-only changes.
+description: Use when implementing behavior-changing features, bug fixes, refactors that move or reshape live logic, or frontend/backend code with state, validation, data flow, permissions, async behavior, algorithms, contracts, persistence, or reproducible defects. Do not use for simple presentational UI-only changes or pure removals/retirements that do not change supported behavior.
 ---
 
 # Test-Driven Development (TDD)
@@ -28,6 +28,9 @@ First classify the implementation surface. TDD is mandatory for logic-bearing sl
 - Simple UI or presentation-only work: spacing, color, typography, static layout, copy-only edits, visual polish, or responsive tweaks with no behavior change
 - Moving existing controls, labels, or markup between existing UI containers when emitted events, state semantics, permissions, validation, and data flow stay the same
 - Mechanical style or template edits where the right verification is typecheck, build, component render, screenshot, or manual UI check rather than a new failing test
+- Pure removals, retirements, or cleanup of dead code, unused branches, stale flags, compatibility shims, or unreachable paths when supported behavior, public contracts, and migration guarantees stay the same
+
+For pure removal-only tasks, do not invent a failing test whose only signal is "the deleted thing is gone". Verify with the smallest sufficient check instead: call-site search, existing regression coverage, typecheck/build, targeted runtime checks, or manual validation. If the removal changes supported behavior, public contracts, permissions, state transitions, error handling, or migration semantics, it is a behavior change and TDD applies.
 
 **Exceptions (ask your human partner):**
 - Throwaway prototypes
@@ -37,6 +40,8 @@ First classify the implementation surface. TDD is mandatory for logic-bearing sl
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
 If a frontend task mixes visual work and logic, split it. Keep TDD for the logic-bearing slice and validate the pure UI slice with the smallest sufficient visual/manual check. If the task is pure UI, say `No TDD` briefly and proceed directly to implementation plus focused verification.
+
+If a task mixes behavior changes with cleanup or removal, split it the same way. Keep TDD on the behavior-changing slice; verify the pure removal slice with focused non-TDD checks.
 
 ## The Iron Law
 
@@ -409,7 +414,8 @@ When adding mocks or test utilities, read @testing-anti-patterns.md to avoid com
 
 ```
 TDD-required production behavior code → test exists and failed first
-Otherwise → not TDD
+Pure removal / retirement / no-behavior-change cleanup → smallest sufficient non-TDD verification
+Otherwise → classify the slice before choosing
 ```
 
-No exceptions for TDD-required slices without your human partner's permission. Pure UI / presentation-only work is outside this skill's default scope and should be verified with the smallest sufficient non-TDD check.
+No exceptions for TDD-required slices without your human partner's permission. Pure UI / presentation-only work and pure removal-only cleanup are outside this skill's default scope and should be verified with the smallest sufficient non-TDD check.
