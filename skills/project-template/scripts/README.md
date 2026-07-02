@@ -8,6 +8,8 @@
   - 同时替换文件内容、输出路径以及 `_template-tree.txt` 中的占位符
 - `bash ~/.agents/harness/project-template-init.sh`
   - 提供模板短名和更顺手的参数名
+  - 当目标目录不在现有 Git 仓库内时，自动初始化新仓库
+  - 新仓库必须设置本地 `user.name` / `user.email`，避免继承错误的全局提交人
   - 适合日常工作流或 agent 调用
 
 便捷入口示例：
@@ -19,13 +21,17 @@ bash ~/.agents/harness/project-template-init.sh backend-go \
   --dest /tmp/example-backend \
   --module github.com/acme/example-service \
   --service example-service \
-  --domain example
+  --domain example \
+  --git-user-name "Example User" \
+  --git-user-email "example@example.invalid"
 
 bash ~/.agents/harness/project-template-init.sh frontend-vue \
   --dest /tmp/example-frontend \
   --app-name example-frontend \
   --auth-redirect /student/dashboard \
-  --login-path /login
+  --login-path /login \
+  --git-user-name "Example User" \
+  --git-user-email "example@example.invalid"
 ```
 
 示例：

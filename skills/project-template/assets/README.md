@@ -23,3 +23,9 @@
 - `bash ~/.agents/harness/project-template-init.sh frontend-vue ...`
 
 它只是对 `scripts/apply_project_template.py` 的外层包装，不复制模板渲染逻辑。
+
+额外约束：
+
+- 当 `--dest` 不属于任何现有 Git 仓库时，包装脚本会在目标目录自动执行 `git init`
+- 初始化新仓库时必须显式提供本地提交人信息：`--git-user-name` 与 `--git-user-email`；交互式终端下也可以按提示输入
+- 如果目标目录已经位于某个 Git 仓库内，包装脚本不会改动现有仓库的 Git 配置

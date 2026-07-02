@@ -13,6 +13,9 @@ Usage:
     --module <go-module> \
     --service <service-name> \
     --domain <domain-name> \
+    [--git-user-name <name>] \
+    [--git-user-email <email>] \
+    [--skip-git-init] \
     [--force] [--dry-run]
 
   bash ~/.agents/harness/project-template-init.sh frontend-vue \
@@ -20,6 +23,9 @@ Usage:
     --app-name <app-name> \
     [--auth-redirect <route>] \
     [--login-path <route>] \
+    [--git-user-name <name>] \
+    [--git-user-email <email>] \
+    [--skip-git-init] \
     [--force] [--dry-run]
 
 Description:
@@ -43,6 +49,46 @@ resolve_template() {
       printf '%s\n' "$1"
       ;;
   esac
+}
+
+is_nonempty_value() {
+  local value="$1"
+  [[ -n "${value//[[:space:]]/}" ]]
+}
+
+resolve_git_identity() {
+  local field="$1"
+  local value="$2"
+  local prompt=""
+
+  case "$field" in
+    name)
+      prompt="Git user.name"
+      ;;
+    email)
+      prompt="Git user.email"
+      ;;
+    *)
+      echo "FAIL: unsupported git identity field: $field" >&2
+      exit 1
+      ;;
+  esac
+
+  if is_nonempty_value "$value"; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+
+  if [[ -t 0 ]]; then
+    read -r -p "$prompt: " value
+  fi
+
+  if ! is_nonempty_value "$value"; then
+    echo "FAIL: git user $field is required for new repositories; pass --git-user-name and --git-user-email or rerun interactively" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$value"
 }
 
 if [[ $# -lt 1 ]]; then
@@ -74,6 +120,9 @@ domain_name=""
 app_name=""
 auth_redirect="/student/dashboard"
 login_path="/login"
+git_user_name=""
+git_user_email=""
+skip_git_init=0
 force=0
 dry_run=0
 passthrough=()
@@ -114,6 +163,20 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "FAIL: --login-path requires a value" >&2; exit 1; }
       login_path="$2"
       shift 2
+      ;;
+    --git-user-name)
+      [[ $# -ge 2 ]] || { echo "FAIL: --git-user-name requires a value" >&2; exit 1; }
+      git_user_name="$2"
+      shift 2
+      ;;
+    --git-user-email)
+      [[ $# -ge 2 ]] || { echo "FAIL: --git-user-email requires a value" >&2; exit 1; }
+      git_user_email="$2"
+      shift 2
+      ;;
+    --skip-git-init)
+      skip_git_init=1
+      shift
       ;;
     --force)
       force=1
@@ -190,4 +253,35 @@ if [[ "$dry_run" -eq 1 ]]; then
   cmd+=(--dry-run)
 fi
 
-exec "${cmd[@]}"
+"${cmd[@]}"
+
+if [[ "$dry_run" -eq 1 ]]; then
+  exit 0
+fi
+
+dest_root="$(cd "$dest" && pwd)"
+git_root=""
+if git_root="$(git -C "$dest_root" rev-parse --show-toplevel 2>/dev/null)"; then
+  if [[ "$git_root" == "$dest_root" ]]; then
+    echo "[project-template-init] keep existing git repository: $git_root"
+  else
+    echo "[project-template-init] destination already belongs to git repository: $git_root"
+  fi
+  exit 0
+fi
+
+if [[ "$skip_git_init" -eq 1 ]]; then
+  echo "[project-template-init] skip git initialization for new directory: $dest_root"
+  exit 0
+fi
+
+# New project roots must carry an explicit local commit identity instead of inheriting an agent default.
+git_user_name="$(resolve_git_identity name "$git_user_name")"
+git_user_email="$(resolve_git_identity email "$git_user_email")"
+
+git init "$dest_root" >/dev/null
+git -C "$dest_root" config user.name "$git_user_name"
+git -C "$dest_root" config user.email "$git_user_email"
+
+echo "[project-template-init] initialized git repository: $dest_root"
+echo "[project-template-init] configured local git identity: $git_user_name <$git_user_email>"
