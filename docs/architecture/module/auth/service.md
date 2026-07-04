@@ -4,8 +4,8 @@
 
 | Use case | 职责 |
 | --- | --- |
-| `RegisterAccount` | 校验登录标识唯一性、hash 密码、创建账号、分配默认角色，并在同一事务内写 `auth.account.registered` outbox 事件。User profile 初始化由 User 服务异步消费该事件完成，不在 Auth 事务内同步调用。 |
-| `Login` | 按登录标识加载账号，校验状态和密码，创建 PostgreSQL refresh session，签发 access / refresh token，并尽力写 Redis 缓存和限流状态。 |
+| `RegisterAccount` | 校验登录标识唯一性、hash 密码；事务 A 创建或复用未过期 `PENDING_PROFILE` account / credential；同步调用 User `CreateProfileForAccount` 获取非零 `userId`；事务 B 用真正激活时刻写 `auth_accounts.user_id`、切 `ACTIVE`、授予默认 `ROLE_USER` 并写 `auth.account.registered` outbox。 |
+| `Login` | 按登录标识加载账号，校验状态和密码；`ACTIVE` 账号必须已有非零 `userId`；先生成并校验 refresh token material（`sessionId/tokenId/plaintext/hash/expiresAt`），再持久化 PostgreSQL refresh session metadata，最后基于已确定的 session 真相签发 access token，并把 refresh plaintext 返回给上层。 |
 | `RefreshToken` | 以 PostgreSQL refresh session 和 token hash 为真相源校验 refresh token，执行 token rotation；疑似重放时吊销当前 session 或升级账号级处置。 |
 | `Logout` | 吊销当前 refresh token，按需要写 access token 黑名单。 |
 | `ChangePassword` | 校验旧凭证，更新 password hash，事务后吊销账号全部 refresh token。 |
@@ -46,23 +46,41 @@
 
 ## 事务边界
 
-**注册事务**：
+**注册事务 A（pending account）**：
 
 ```text
 auth_accounts
 + auth_password_credentials
-+ auth_account_roles
+```
+
+Auth 先落本地 pending 账号和凭证，不授予默认角色，也不写 `auth.account.registered`：
+
+- pending 账号不进入有效 principal，也不允许登录。
+- 默认 `ROLE_USER` 不在 pending 阶段生效。
+- Auth 本地事务失败时，不调用 User。
+- 当 email 已存在未过期 pending 时，事务 A 复用原 `accountId`，更新 pending nickname / credential，让下一次重试能继续闭合 User 幂等初始化和事务 B。
+
+**同步 User 初始化**：
+
+```text
+事务 A 提交
+-> User CreateProfileForAccount(accountId, nickname)
+```
+
+- User 按 `accountId` 幂等创建 profile 并返回内部 `userId`。
+- 只有拿到 `userId` 后，Auth 才能把账号切成可用状态。
+- 这里必须同步闭合，避免“注册成功但无法登录 / `users/me` 404”的裂缝。
+
+**注册事务 B（激活账号）**：
+
+```text
+auth_accounts(user_id, status=ACTIVE, clear pending marker)
++ auth_account_roles(default ROLE_USER)
 + auth_outbox_events(auth.account.registered)
 ```
 
-事务提交即代表注册成功，Auth 立即返回成功响应。User profile 初始化由 User 服务异步消费 `auth.account.registered` 事件完成：
-
-- User consumer 消费事件，创建 profile，写入 `users` 表。
-- consumer 幂等：若 profile 已存在（重复消费）则 no-op。
-- consumer 失败：按 User 服务 consumer retry / DLQ 策略重试；最终 profile 必然被创建。
-- profile 短暂不存在（事件尚未消费）属于已知最终一致窗口，通常 < 1s；首次登录查询用户资料前若需要确认 profile 已初始化，可以在查询侧容忍 profile not-found 并提示"资料加载中"。
-
-**不再采用同步调用**：Auth 本地提交后立即调用 User 初始化是不正确的设计，因为 Auth 事务已提交后再同步调用失败，Auth 无法回滚，产生孤儿账号或需要复杂补偿。
+- `auth.account.registered` 只表达已经 `ACTIVE` 且已有 `userId` 的账号事实。
+- 如果 User 初始化失败或事务 B 失败，Auth 不向客户端承诺注册成功，也不写 registered 事件。
 
 **密码、状态和角色命令**：
 

@@ -12,22 +12,23 @@
 - `refresh_token` 只通过 HttpOnly cookie 传输，不在响应 body 返回。
 - `logout`、`DELETE /sessions/current` 和撤销当前 session 的响应必须尽力清理 `refresh_token` 和 `csrf_token` cookie。
 - `202 PROCESSING` 表示安全撤销已受理但 Gateway 可见的 Redis 撤销投影尚未确认完成；前端不能提示“被盗 token 已失效”，应按 `operationId` 查询。
+- `202 PROCESSING` 仍使用成功 envelope：HTTP status 为 `202`，但 body `code` 固定为 `200`，异步处理标识放在 `data.operationId`，不新增专用错误码。
 - 成功和失败响应使用 `docs/contracts/http.md` 定义的 ZhiCore envelope。
 
 ## Endpoint 索引
 
 | Endpoint | Use case | 设计文档 | Contract 状态 |
 | --- | --- | --- | --- |
-| `POST /api/v1/auth/register` | `RegisterAccount` | `endpoints/register.md` | 草案 |
-| `POST /api/v1/auth/login` | `Login` | `endpoints/login.md` | 草案 |
-| `POST /api/v1/auth/refresh` | `RefreshToken` | `endpoints/refresh.md` | 草案 |
-| `POST /api/v1/auth/logout` | `Logout` | `endpoints/logout.md` | 草案 |
-| `GET /api/v1/auth/me` | `GetCurrentPrincipal` | `endpoints/me.md` | 草案 |
-| `GET /api/v1/auth/csrf` | `GetCSRFToken` | `endpoints/csrf.md` | 草案 |
-| `GET /api/v1/auth/sessions` | `ListSessions` | `endpoints/list-sessions.md` | 草案 |
-| `DELETE /api/v1/auth/sessions/current` | `RevokeCurrentSession` | `endpoints/revoke-current-session.md` | 草案 |
-| `DELETE /api/v1/auth/sessions/{sessionId}` | `RevokeSession` | `endpoints/revoke-session.md` | 草案 |
-| `GET /api/v1/auth/security-operations/{operationId}` | `GetSecurityOperation` | `endpoints/get-security-operation.md` | 草案 |
+| `POST /api/v1/auth/register` | `RegisterAccount` | `endpoints/register.md` | 已验证 |
+| `POST /api/v1/auth/login` | `Login` | `endpoints/login.md` | 已验证 |
+| `POST /api/v1/auth/refresh` | `RefreshToken` | `endpoints/refresh.md` | 已验证 |
+| `POST /api/v1/auth/logout` | `Logout` | `endpoints/logout.md` | 已验证 |
+| `GET /api/v1/auth/me` | `GetCurrentPrincipal` | `endpoints/me.md` | 已验证 |
+| `GET /api/v1/auth/csrf` | `GetCSRFToken` | `endpoints/csrf.md` | 已验证 |
+| `GET /api/v1/auth/sessions` | `ListSessions` | `endpoints/list-sessions.md` | 已验证 |
+| `DELETE /api/v1/auth/sessions/current` | `RevokeCurrentSession` | `endpoints/revoke-current-session.md` | 已验证 |
+| `DELETE /api/v1/auth/sessions/{sessionId}` | `RevokeSession` | `endpoints/revoke-session.md` | 已验证 |
+| `GET /api/v1/auth/security-operations/{operationId}` | `GetSecurityOperation` | `endpoints/get-security-operation.md` | 已验证 |
 
 ## 服务级公开错误码子集
 

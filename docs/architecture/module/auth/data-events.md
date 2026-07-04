@@ -29,20 +29,23 @@ Redis key、TTL、敏感信息边界和 Gateway cache miss 语义见 `redis-keys
 
 | 事件 | 触发用例 | 主要 payload | 当前 / 目标 consumer | outbox 要求 |
 | --- | --- | --- | --- | --- |
-| `auth.account.registered` | `RegisterAccount` | `accountId`、`username`、`email`、`occurredAt` | User 初始化 profile；Notification 或运营读模型如需要欢迎事件再消费 | 关键事件，使用 producer outbox |
+| `auth.account.registered` | `RegisterAccount` 激活事务 B | `accountId`、`userId`、`email`、`occurredAt` | Notification、运营读模型或权限投影等已激活账号 consumer；不再用于驱动 User 初始化 profile | 关键事件，使用 producer outbox |
 | `auth.account.disabled` | `DisableAccount` | `accountId`、`occurredAt`、`reason` | Gateway 清理认证缓存；Admin 记录审计；User 可限制资料更新 | 关键事件，使用 producer outbox |
 | `auth.account.enabled` | `EnableAccount` | `accountId`、`occurredAt` | Gateway 清理认证缓存；Admin 记录审计 | 关键事件，使用 producer outbox |
 | `auth.role.changed` | `AssignRole` / `RemoveRole` | `accountId`、`roles`、`occurredAt` | Gateway 清理角色缓存；Admin 记录审计 | 关键事件，使用 producer outbox |
 | `auth.password.changed` | `ChangePassword` | `accountId`、`occurredAt` | 安全审计；默认不广播给业务服务 | 可选，按审计 owner 决定 |
 
-事件 payload 不包含 password hash、JWT、refresh token、Authorization header 或完整请求 body。
+事件 payload 不包含 password hash、JWT、refresh token、Authorization header、nickname 或完整请求 body。
 
 ## 与 User 的一致性
 
-注册需要同时形成账号和用户资料。第一阶段推荐同步初始化 User profile，并登记补偿：
+注册需要同时形成账号和用户资料。当前采用同步初始化 User profile：
 
-- Auth 本地事务提交失败：不调用 User。
-- Auth 本地事务提交成功但 User 初始化失败：返回注册失败或待补偿状态，写补偿任务或 outbox，不向客户端承诺完整可用账号。
-- User profile 已存在：按幂等成功或冲突处理，具体语义必须在 User profile 初始化 contract 中登记。
+- 事务 A：Auth 创建 `PENDING_PROFILE` account / credential，不授予默认 `ROLE_USER`，不写 `auth.account.registered`。
+- 同步调用：Auth 调 User `CreateProfileForAccount(accountId, nickname)`，User 按 `accountId` 幂等返回 `userId`。
+- 事务 B：Auth 写 `auth_accounts.user_id`、切 `ACTIVE`、授予默认 `ROLE_USER`、写 `auth.account.registered` outbox。
+- Auth 本地事务 A 失败：不调用 User。
+- User 初始化失败：返回错误，不写 `auth.account.registered`，也不把 pending 账号伪装成注册成功。
+- 事务 B 失败：返回错误，前端可重试；User 端因 `accountId` 幂等会返回同一个 `userId`，Auth 再补齐本地激活事务。
 
-如果改成纯事件驱动，必须定义 `PendingProfile` 或等价状态，避免登录后 `me` 成功但用户资料接口 404。
+`auth.account.registered` 只在账号已经 `ACTIVE` 且存在 `userId` 时发布，避免下游消费到“注册成功但 profile 尚未闭合”的半成品事实。

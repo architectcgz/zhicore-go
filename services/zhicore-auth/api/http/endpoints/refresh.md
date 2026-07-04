@@ -10,8 +10,8 @@
 - 限流设计：`docs/architecture/module/auth/rate-limiting.md`
 - Gateway route risk：`docs/architecture/services/gateway/route-risk-policy.md`
 - 当前 API schema：`services/zhicore-auth/api/http/README.md`
-- Go handler：待实现
-- Go contract test：待补
+- Go handler：`services/zhicore-auth/api/http/handler.go`
+- Go contract test：`services/zhicore-auth/api/http/auth_handler_test.go`
 
 ## 请求
 
@@ -79,6 +79,8 @@ Redis 短时不可用但 Auth DB 正常且 Gateway 能回源 Auth `ValidateAcces
 
 账号或 session 存在未完成安全 operation，或高风险撤销刚发生且 Gateway 可见投影未完成时，refresh 不签发新 token，可返回 HTTP `202` 表示安全同步中。
 
+`202` 仍使用成功 envelope，body `code` 固定为 `200`；异步处理标识放在 `data.operationId`。
+
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `operationId` | string | 是 | 相关安全 operation ID。 |
@@ -114,5 +116,5 @@ Redis 短时不可用但 Auth DB 正常且 Gateway 能回源 Auth `ValidateAcces
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖正常 rotation、CSRF 失败、refresh replay、revoked session、Redis 正常、Redis 短时降级成功、Redis 不可用且 Gateway 不可回源返回 `503`、安全 operation `202`。
+- Handler contract test：已验证，覆盖正常 rotation、CSRF 失败和安全 operation `202`。
 - System HTTP test：待补。

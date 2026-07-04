@@ -6,8 +6,8 @@
 - 模块 API 设计：`docs/architecture/module/auth/api.md`
 - 模块 service 设计：`docs/architecture/module/auth/service.md`
 - 当前 API schema：`services/zhicore-auth/api/http/README.md`
-- Go handler：待实现
-- Go contract test：待补
+- Go handler：`services/zhicore-auth/api/http/handler.go`
+- Go contract test：`services/zhicore-auth/api/http/auth_handler_test.go`
 
 ## 请求
 
@@ -92,5 +92,5 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖成功返回 principal、缺身份 header、已撤销 session、禁用/封禁状态、profile 字段不返回。
+- Handler contract test：已验证，覆盖成功返回 principal、缺身份 header 和 profile 字段不返回。
 - System HTTP test：待补。

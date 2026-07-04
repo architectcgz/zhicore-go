@@ -9,8 +9,8 @@
 - 限流设计：`docs/architecture/module/auth/rate-limiting.md`
 - Redis 降级决策：`docs/architecture/module/auth/decision-log.md`
 - 当前 API schema：`services/zhicore-auth/api/http/README.md`
-- Go handler：待实现
-- Go contract test：待补
+- Go handler：`services/zhicore-auth/api/http/handler.go`
+- Go contract test：`services/zhicore-auth/api/http/auth_handler_test.go`
 
 ## 请求
 
@@ -93,5 +93,5 @@ Redis 不可用时，首期不走注册成功自动登录。账号和 User profi
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖正常注册并自动登录、Redis 不可用不自动登录、email token 无效、email 冲突、pending retry、密码策略失败。
+- Handler contract test：已验证，覆盖正常注册并自动登录、email 冲突、pending retry、密码策略失败和 email 格式非法。
 - System HTTP test：待补。

@@ -7,8 +7,8 @@
 - 模块 service 设计：`docs/architecture/module/auth/service.md`
 - 数据模型：`docs/architecture/module/auth/data-model.md`
 - 当前 API schema：`services/zhicore-auth/api/http/README.md`
-- Go handler：待实现
-- Go contract test：待补
+- Go handler：`services/zhicore-auth/api/http/handler.go`
+- Go contract test：`services/zhicore-auth/api/http/auth_handler_test.go`
 
 ## 请求
 
@@ -81,5 +81,5 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖分页默认值、最大 `size`、当前 session 标记、敏感字段不返回。
+- Handler contract test：已验证，覆盖分页默认值、当前 session 标记和敏感字段不返回。
 - System HTTP test：待补。
