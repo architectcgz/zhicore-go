@@ -53,9 +53,10 @@ Act as a frontend engineering agent for frontend implementation, refactor, inter
 26. Split composables by one page capability domain, such as `useXxxTabs`, `useXxxDetail`, `useXxxActions`, `useXxxMetrics`, or `useXxxPreview`; do not create a new catch-all utility.
 27. For form controls such as inputs, selects, textareas, search fields, and filters, drive background, border, placeholder, caret, focus ring, and inner highlight through theme tokens or semantic CSS variables, then check both light and dark themes.
 28. Avoid broad generic local class names that are likely to collide with global styles. Prefer component- or page-scoped naming unless the project already provides a shared class.
-29. Reusable shell components such as modal, drawer, popover, panel, empty state, card, table, and form wrappers must not ship with visible scaffold or demo prose as runtime defaults. Keep examples in tests, docs, stories, or comments.
-30. When a frontend handler, watcher, computed branch, or async flow enforces a non-obvious business rule or exception path, keep the comment adjacent to that code and describe the user/business trigger plus resulting behavior, not the syntax itself.
-31. When a component, composable, store, or route workflow keeps branching on the same discriminator, read `references/design-pattern-selection.md` before extending the branch.
+29. Treat Vue scoped CSS `:deep()`, `::v-deep`, `/deep/`, and `>>>` as last-resort escape hatches. Prefer props, variants, slots, wrapper classes, CSS variables, tokens, or component ownership changes first. If deep styling is unavoidable for a third-party or under-exposed existing component, keep the selector narrow and document why the boundary must be pierced.
+30. Reusable shell components such as modal, drawer, popover, panel, empty state, card, table, and form wrappers must not ship with visible scaffold or demo prose as runtime defaults. Keep examples in tests, docs, stories, or comments.
+31. When a frontend handler, watcher, computed branch, or async flow enforces a non-obvious business rule or exception path, keep the comment adjacent to that code and describe the user/business trigger plus resulting behavior, not the syntax itself.
+32. When a component, composable, store, or route workflow keeps branching on the same discriminator, read `references/design-pattern-selection.md` before extending the branch.
 
 ## Workflow
 
@@ -131,6 +132,7 @@ Add `--alias @ --root src` when the project alias cannot be detected from `tscon
 - Use lazy loading for images and always provide `alt` text.
 - Drive modal and drawer alignment, blur, spacing, and layout behavior through CSS variables instead of brute-force global overrides.
 - Do not use `!important`; solve style conflicts through specificity, ownership, or variable inheritance.
+- Do not use Vue deep selectors as the default way to style child components. Use `:deep()` only for a narrow third-party or legacy component override after checking props, slots, wrapper classes, tokens, and CSS variables.
 - Do not mix the Options API and the Composition API unless required by legacy code.
 - Do not hardcode color values, font sizes, or spacing inline when the project already provides tokens or shared classes.
 - When a frontend project exposes alias paths such as `@/`, prefer alias imports for cross-directory shared modules, styles, and assets instead of deep relative paths. Keep relative paths for same-directory or clearly local companion files.

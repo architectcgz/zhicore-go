@@ -21,7 +21,9 @@ Read this file when the task involves mount-time side effects, DOM-heavy renderi
 - Prefer the project's existing utility-first or token-based styling approach over ad hoc component-local CSS.
 - Avoid arbitrary magic-number sizing unless there is a clear, documented reason tied to the design system or runtime layout constraint.
 - Use custom CSS when it improves clarity, but keep selectors shallow.
-- Treat repeated `:deep()` overrides as a smell unless you are intentionally adapting a third-party component boundary.
+- Treat Vue deep selectors (`:deep()`, `::v-deep`, `/deep/`, `>>>`) as last-resort scoped-style escapes, not as a normal styling pattern.
+- Before using a deep selector, check whether the same outcome can be owned through props, variants, slots, wrapper classes, design tokens, CSS variables, or a local component shell.
+- Allow deep selectors only for narrow third-party or legacy component overrides where the component does not expose a stable styling contract. Keep the selector as short as possible and add a short comment naming the blocked API or component boundary.
 
 ## Spacing ownership and layout boundaries
 
@@ -68,5 +70,4 @@ When building top-level dashboard metrics (e.g., Contest or Audit Log summaries)
 - **Visual Cue Icons**: Every metric item MUST pair its label with a relevant Lucide icon (e.g., Trophy for totals, Activity for status). Icons should be placed within the label's flex container (usually `justify-content: space-between`) to anchor the visual weight and provide immediate context. Without icons, the large numeric values can feel unanchored and visually monotonous.
 - **Theme-Aware Softening**: High-contrast white borders look great in light mode but are aggressive in dark mode. Define border and halo colors as variables and significantly reduce their opacity (e.g., from 0.8 to 0.05) in dark mode to maintain a soft, glow-like quality.
 - **Typography Sizing**: For critical metrics, use large bold values (e.g., 30px+) paired with clearly legible, high-weight labels (e.g., 15px bold). Zero-pad small numbers (e.g., `01`, `08`) to maintain a steady visual rhythm and dashboard aesthetic.
-
 
