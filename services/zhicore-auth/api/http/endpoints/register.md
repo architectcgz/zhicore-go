@@ -31,7 +31,7 @@
 
 无。
 
-## Body 字段
+## Body 字段 `RegisterReq`
 
 | 字段 | 类型 | 必填 | 空值语义 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -40,9 +40,9 @@
 | `password` | string | 是 | 不允许为空 | 明文密码只在本次请求中使用；服务端只保存 password hash。 |
 | `emailVerificationToken` | string | 是 | 不允许为空 | 邮箱验证码 verify 成功后签发的短期一次性 opaque token，`purpose=register`。 |
 
-## 成功响应 `data`
+## 成功响应 `RegisterResp`
 
-Redis 正常且 Gateway 可见的 session/version/principal 投影写入成功时，注册成功后可自动登录，返回 access token 并通过 `Set-Cookie` 写入 `refresh_token` 和 `csrf_token`。
+Redis 正常且 Gateway 可见的 session/version/principal 投影写入成功时，注册成功后可自动登录，返回 access token 并通过 `Set-Cookie` 写入 `refresh_token` 和 `csrf_token`。refresh token 不进入 body；CSRF token 只作为 `csrfToken` body 字段和 `csrf_token` cookie 给浏览器后续提交 `X-CSRF-Token` 使用。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |

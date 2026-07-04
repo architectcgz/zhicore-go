@@ -47,7 +47,7 @@
 
 无。
 
-## 成功响应 `data`
+## 成功响应 `LogoutResp`
 
 HTTP `200` 表示可执行的当前 session revoke 和 Gateway 可见撤销投影已完成；如果请求没有任何有效登录凭证，也可返回 `200` 表示已尽力清理本地 cookie。
 

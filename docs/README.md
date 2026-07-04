@@ -46,6 +46,9 @@
   - `docs/reviews/quality-gates.md`：本地质量门禁、验证命令选择和未来 CI 最低要求。
   - `docs/reviews/commit-message.md`：提交信息格式、commit-msg hook 和机械检查策略。
 - `docs/todos/debt/`：Go 服务交付过程中不能丢失的未解决技术债。
+- `docs/plan/`：跨服务或跨仓实施计划。
+  - `docs/plan/README.md`：实施计划索引。
+  - `docs/plan/impl-plan/`：需要按任务执行、review 和验证的正式实现计划。
 
 ## 部署说明
 

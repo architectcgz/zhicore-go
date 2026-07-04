@@ -49,9 +49,9 @@
 
 无。
 
-## 成功响应 `data`
+## 成功响应 `RefreshResp`
 
-Redis 正常时，Auth 基于 PostgreSQL refresh session 真相源校验 token hash，执行 rotation，签发新 access token 和新 refresh token，并覆盖 `refresh_token` 与 `csrf_token` cookie。
+Redis 正常时，Auth 基于 PostgreSQL refresh session 真相源校验 token hash，执行 rotation，签发新 access token 和新 refresh token，并覆盖 `refresh_token` 与 `csrf_token` cookie。refresh token 只来自 HttpOnly cookie，且新 refresh token 只通过 Set-Cookie 返回，不进入 body；CSRF 只通过 `X-CSRF-Token` header + `csrf_token` cookie 校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |

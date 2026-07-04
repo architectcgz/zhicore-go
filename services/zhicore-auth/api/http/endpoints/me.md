@@ -44,7 +44,7 @@
 
 无。
 
-## 成功响应 `data`
+## 成功响应 `AuthPrincipalResp`
 
 `auth/me` 只返回认证主体事实，不返回 User profile 字段。
 

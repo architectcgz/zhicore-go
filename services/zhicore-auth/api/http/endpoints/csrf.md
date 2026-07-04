@@ -33,7 +33,7 @@
 
 无。
 
-## 成功响应 `data`
+## 成功响应 `CsrfResp`
 
 响应必须设置非 HttpOnly `csrf_token` cookie，并在 body 返回同值，供前端后续提交 `X-CSRF-Token`。
 

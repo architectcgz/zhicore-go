@@ -29,7 +29,7 @@
 | --- | --- | --- | --- |
 | `postId` | string | 是 | Content 对外文章 ID。 |
 
-## Query 参数
+## Query 参数 `ListCommentsPageReq`
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -41,7 +41,7 @@
 
 无。
 
-## 成功响应 `data`
+## 成功响应 `TopLevelCommentPageResp`
 
 `data` 为 `TopLevelCommentPage`，`CommentItem` 字段见 `services/zhicore-comment/api/http/README.md`。
 

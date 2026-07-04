@@ -31,16 +31,16 @@
 
 无。
 
-## Body 字段
+## Body 字段 `LoginReq`
 
 | 字段 | 类型 | 必填 | 空值语义 | 说明 |
 | --- | --- | --- | --- | --- |
 | `email` | string | 是 | 不允许为空 | 登录邮箱。 |
 | `password` | string | 是 | 不允许为空 | 明文密码只用于本次校验。 |
 
-## 成功响应 `data`
+## 成功响应 `LoginResp`
 
-登录成功返回 access token；refresh token 只通过 HttpOnly `refresh_token` cookie 写入，不出现在 body。
+登录成功返回 access token；refresh token 只通过 HttpOnly `refresh_token` cookie 写入，不出现在 body。CSRF token 同时通过非 HttpOnly `csrf_token` cookie 和 `csrfToken` body 字段返回，后续变更 session 的请求必须通过 `X-CSRF-Token` header 提交。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |

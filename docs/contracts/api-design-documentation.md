@@ -122,6 +122,8 @@ services/<service>/api/http/
 
 实现或修改 HTTP handler 前，最低要求是达到 `Contract 草案`。已经存在 handler 但缺少 HTTP schema 的服务，必须先补 schema，再继续扩展 handler。
 
+`docs/plan/impl-plan/` 中的实现计划只记录执行切片、验证命令和 checkbox 状态，不替代 `services/<service>/api/http/README.md` 或 endpoint schema。计划推进时如果固定了字段级 contract，必须同步落到服务级 HTTP schema；不能只在计划里写“已完成”。
+
 ## 落地优先级
 
 | 优先级 | 服务 | 原因 | 推荐动作 |
