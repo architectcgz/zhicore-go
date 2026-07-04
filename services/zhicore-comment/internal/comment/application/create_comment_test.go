@@ -206,7 +206,7 @@ func TestCreateCommentRejectsDeletedParentWithoutWriting(t *testing.T) {
 	_, err := service.CreateComment(context.Background(), CreateCommentCommand{
 		ActorUserID:     44,
 		PostID:          "post_pub_3",
-		ParentCommentID: publicIDCodec{}.Encode(deleted.ID),
+		ParentCommentID: PublicCommentID(publicIDCodec{}.Encode(deleted.ID)),
 		Content:         "reply",
 	})
 	if !errors.Is(err, ErrParentCommentNotFound) {

@@ -27,6 +27,21 @@ var (
 	ErrCommentIDInvalid       = domain.ErrCommentIDInvalid
 )
 
+type UserID int64
+type PostID string
+type PublicCommentID string
+type CommentStatus string
+type CommentSort string
+
+const (
+	CommentStatusNormal  CommentStatus = "NORMAL"
+	CommentStatusDeleted CommentStatus = "DELETED"
+
+	CommentSortRecommended CommentSort = "RECOMMENDED"
+	CommentSortHot         CommentSort = "HOT"
+	CommentSortTime        CommentSort = "TIME"
+)
+
 type Dependencies struct {
 	Commands      ports.CommentCommandRepository
 	Queries       ports.CommentQueryRepository
@@ -60,9 +75,9 @@ type Service struct {
 }
 
 type CreateCommentCommand struct {
-	ActorUserID     domain.UserID
-	PostID          domain.PostID
-	ParentCommentID domain.PublicCommentID
+	ActorUserID     UserID
+	PostID          PostID
+	ParentCommentID PublicCommentID
 	Content         string
 	ImageFileIDs    []string
 	VoiceFileID     string
@@ -70,19 +85,19 @@ type CreateCommentCommand struct {
 }
 
 type CreateCommentResult struct {
-	PostID          domain.PostID
-	CommentID       domain.PublicCommentID
-	RootCommentID   domain.PublicCommentID
-	ParentCommentID domain.PublicCommentID
+	PostID          PostID
+	CommentID       PublicCommentID
+	RootCommentID   PublicCommentID
+	ParentCommentID PublicCommentID
 	CreatedAt       time.Time
 }
 
 type ListTopLevelCommentsQuery struct {
-	PostID       domain.PostID
-	ViewerUserID domain.UserID
+	PostID       PostID
+	ViewerUserID UserID
 	Page         int
 	Size         int
-	Sort         domain.CommentSort
+	Sort         CommentSort
 }
 
 type TopLevelCommentPage struct {
@@ -95,16 +110,16 @@ type TopLevelCommentPage struct {
 }
 
 type CommentItem struct {
-	PostID          domain.PostID
-	CommentID       domain.PublicCommentID
-	RootCommentID   domain.PublicCommentID
-	ParentCommentID domain.PublicCommentID
+	PostID          PostID
+	CommentID       PublicCommentID
+	RootCommentID   PublicCommentID
+	ParentCommentID PublicCommentID
 	Author          AuthorSummary
 	Content         string
 	ImageFileIDs    []string
 	VoiceFileID     string
 	VoiceDuration   int
-	Status          domain.CommentStatus
+	Status          CommentStatus
 	Stats           CommentStats
 	Viewer          *ViewerState
 	CreatedAt       time.Time
@@ -170,8 +185,10 @@ func NewService(deps Dependencies) (*Service, error) {
 
 func (s *Service) CreateComment(ctx context.Context, cmd CreateCommentCommand) (CreateCommentResult, error) {
 	now := s.clock.Now()
-	postID := domain.PostID(cmd.PostID)
-	if cmd.ActorUserID <= 0 || strings.TrimSpace(string(postID)) == "" {
+	actorID := domain.UserID(cmd.ActorUserID)
+	postID := domain.PostID(strings.TrimSpace(string(cmd.PostID)))
+	parentCommentID := domain.PublicCommentID(strings.TrimSpace(string(cmd.ParentCommentID)))
+	if actorID <= 0 || strings.TrimSpace(string(postID)) == "" {
 		return CreateCommentResult{}, ErrInvalidRequest
 	}
 	mediaInput := domain.CommentMediaInput{ImageFileIDs: cmd.ImageFileIDs, VoiceFileID: cmd.VoiceFileID, VoiceDuration: cmd.VoiceDuration}
@@ -183,23 +200,23 @@ func (s *Service) CreateComment(ctx context.Context, cmd CreateCommentCommand) (
 	if err != nil {
 		return CreateCommentResult{}, mapGuardError(err)
 	}
-	if err := s.userProfiles.EnsureUserCanComment(ctx, cmd.ActorUserID); err != nil {
+	if err := s.userProfiles.EnsureUserCanComment(ctx, actorID); err != nil {
 		return CreateCommentResult{}, mapGuardError(err)
 	}
 	if err := s.ensureMediaReferences(ctx, mediaInput); err != nil {
 		return CreateCommentResult{}, mapGuardError(err)
 	}
-	if err := s.rateLimiter.AllowCreateComment(ctx, ports.CreateCommentRateLimitInput{ActorUserID: cmd.ActorUserID, PostID: postID}); err != nil {
+	if err := s.rateLimiter.AllowCreateComment(ctx, ports.CreateCommentRateLimitInput{ActorUserID: actorID, PostID: postID}); err != nil {
 		return CreateCommentResult{}, mapGuardError(err)
 	}
-	if cmd.ParentCommentID == "" {
-		if err := s.ensureCommentAllowedByRelations(ctx, cmd.ActorUserID, post.AuthorID); err != nil {
+	if parentCommentID == "" {
+		if err := s.ensureCommentAllowedByRelations(ctx, actorID, post.AuthorID); err != nil {
 			return CreateCommentResult{}, err
 		}
 	} else {
 		// 回复写入的拉黑 guard 属于外部 User 事实，不能放进本地写事务。
 		// 事务外预读只用于拿 parentAuthorId；父评论存在性、状态和树结构仍由事务内 authoritative read 决定。
-		parentID, err := s.ids.Decode(cmd.ParentCommentID)
+		parentID, err := s.ids.Decode(parentCommentID)
 		if err != nil {
 			return CreateCommentResult{}, ErrCommentIDInvalid
 		}
@@ -208,7 +225,7 @@ func (s *Service) CreateComment(ctx context.Context, cmd CreateCommentCommand) (
 			return CreateCommentResult{}, mapGuardError(err)
 		}
 		if ok {
-			if err := s.ensureCommentAllowedByRelations(ctx, cmd.ActorUserID, post.AuthorID, preview.ParentAuthorID); err != nil {
+			if err := s.ensureCommentAllowedByRelations(ctx, actorID, post.AuthorID, preview.ParentAuthorID); err != nil {
 				return CreateCommentResult{}, err
 			}
 		}
@@ -218,29 +235,29 @@ func (s *Service) CreateComment(ctx context.Context, cmd CreateCommentCommand) (
 	var createdEvent domain.CommentCreated
 	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		if cmd.ParentCommentID == "" {
-			created, createdEvent, err = s.createTopLevel(txCtx, post, cmd, mediaInput, now)
+		if parentCommentID == "" {
+			created, createdEvent, err = s.createTopLevel(txCtx, post, actorID, cmd, mediaInput, now)
 			return err
 		}
-		target, err := s.replyTarget(txCtx, postID, cmd.ParentCommentID)
+		target, err := s.replyTarget(txCtx, postID, parentCommentID)
 		if err != nil {
 			return err
 		}
-		created, createdEvent, err = s.createReply(txCtx, post, cmd, mediaInput, now, target.Root, target.Parent)
+		created, createdEvent, err = s.createReply(txCtx, post, actorID, cmd, mediaInput, now, target.Root, target.Parent)
 		return err
 	}); err != nil {
 		return CreateCommentResult{}, err
 	}
 
 	result := CreateCommentResult{
-		PostID:    created.PostID,
-		CommentID: s.ids.Encode(created.ID),
+		PostID:    PostID(created.PostID),
+		CommentID: PublicCommentID(s.ids.Encode(created.ID)),
 		CreatedAt: created.CreatedAt,
 	}
 	if root, ok := createdEvent.RootComment(); ok {
 		parent, _ := createdEvent.ParentComment()
-		result.RootCommentID = s.ids.Encode(root.ID)
-		result.ParentCommentID = s.ids.Encode(parent.ID)
+		result.RootCommentID = PublicCommentID(s.ids.Encode(root.ID))
+		result.ParentCommentID = PublicCommentID(s.ids.Encode(parent.ID))
 	}
 	return result, nil
 }
@@ -250,25 +267,27 @@ func (s *Service) ListTopLevelCommentsByPage(ctx context.Context, query ListTopL
 	if err != nil {
 		return TopLevelCommentPage{}, err
 	}
-	if _, err := s.contentPosts.CheckPostCommentable(ctx, normalized.PostID); err != nil {
+	postID := domain.PostID(strings.TrimSpace(string(normalized.PostID)))
+	if _, err := s.contentPosts.CheckPostCommentable(ctx, postID); err != nil {
 		return TopLevelCommentPage{}, mapGuardError(err)
 	}
-	postStats, err := s.postStats.Get(ctx, normalized.PostID)
+	postStats, err := s.postStats.Get(ctx, postID)
 	if err != nil {
 		return TopLevelCommentPage{}, mapGuardError(err)
 	}
+	sort := domainCommentSort(normalized.Sort)
 	records, err := s.queries.ListTopLevelComments(ctx, ports.TopLevelCommentPageQuery{
-		PostID: normalized.PostID,
+		PostID: postID,
 		Page:   normalized.Page,
 		Size:   normalized.Size,
-		Sort:   normalized.Sort,
+		Sort:   sort,
 	})
 	if err != nil {
 		return TopLevelCommentPage{}, mapGuardError(err)
 	}
 
 	authorSummaries := s.loadAuthorSummaries(ctx, records.Items)
-	viewerLiked, err := s.loadViewerLiked(ctx, normalized.ViewerUserID, records.Items)
+	viewerLiked, err := s.loadViewerLiked(ctx, domain.UserID(normalized.ViewerUserID), records.Items)
 	if err != nil {
 		return TopLevelCommentPage{}, mapGuardError(err)
 	}
@@ -288,6 +307,7 @@ func (s *Service) ListTopLevelCommentsByPage(ctx context.Context, query ListTopL
 }
 
 func normalizeTopLevelPageQuery(query ListTopLevelCommentsQuery) (ListTopLevelCommentsQuery, error) {
+	query.PostID = PostID(strings.TrimSpace(string(query.PostID)))
 	if query.Page == 0 {
 		query.Page = 1
 	}
@@ -295,17 +315,28 @@ func normalizeTopLevelPageQuery(query ListTopLevelCommentsQuery) (ListTopLevelCo
 		query.Size = 20
 	}
 	if query.Sort == "" {
-		query.Sort = domain.CommentSortRecommended
+		query.Sort = CommentSortRecommended
 	}
-	if query.Page < 1 || query.Size < 1 || query.Size > 100 {
+	if query.PostID == "" || query.Page < 1 || query.Size < 1 || query.Size > 100 {
 		return ListTopLevelCommentsQuery{}, ErrInvalidRequest
 	}
 	switch query.Sort {
-	case domain.CommentSortRecommended, domain.CommentSortHot, domain.CommentSortTime:
+	case CommentSortRecommended, CommentSortHot, CommentSortTime:
 	default:
 		return ListTopLevelCommentsQuery{}, ErrInvalidRequest
 	}
 	return query, nil
+}
+
+func domainCommentSort(sort CommentSort) domain.CommentSort {
+	switch sort {
+	case CommentSortHot:
+		return domain.CommentSortHot
+	case CommentSortTime:
+		return domain.CommentSortTime
+	default:
+		return domain.CommentSortRecommended
+	}
 }
 
 func (s *Service) loadAuthorSummaries(ctx context.Context, records []ports.TopLevelCommentRecord) map[domain.UserID]ports.AuthorSummary {
@@ -346,21 +377,21 @@ func (s *Service) loadViewerLiked(ctx context.Context, viewerID domain.UserID, r
 func (s *Service) commentItem(record ports.TopLevelCommentRecord, author ports.AuthorSummary, viewerLiked map[domain.CommentID]bool) CommentItem {
 	comment := record.Comment
 	item := CommentItem{
-		PostID:        comment.PostID,
-		CommentID:     s.ids.Encode(comment.ID),
+		PostID:        PostID(comment.PostID),
+		CommentID:     PublicCommentID(s.ids.Encode(comment.ID)),
 		Author:        AuthorSummary{PublicID: author.PublicID, DisplayName: author.DisplayName, AvatarFileID: author.AvatarFileID, AvatarURL: author.AvatarURL, Unavailable: author.Unavailable},
 		Content:       comment.Content,
 		ImageFileIDs:  append([]string(nil), comment.Media.ImageFileIDs...),
 		VoiceFileID:   comment.Media.VoiceFileID,
 		VoiceDuration: comment.Media.VoiceDuration,
-		Status:        comment.Status,
+		Status:        CommentStatus(comment.Status),
 		Stats:         CommentStats{LikeCount: record.Stats.LikeCount, ReplyCount: record.Stats.ReplyCount},
 		CreatedAt:     comment.CreatedAt,
 		UpdatedAt:     comment.UpdatedAt,
 	}
 	if comment.IsReply() {
-		item.RootCommentID = s.ids.Encode(comment.RootID)
-		item.ParentCommentID = s.ids.Encode(comment.ParentID)
+		item.RootCommentID = PublicCommentID(s.ids.Encode(comment.RootID))
+		item.ParentCommentID = PublicCommentID(s.ids.Encode(comment.ParentID))
 	}
 	if viewerLiked != nil {
 		if liked, ok := viewerLiked[comment.ID]; ok {
@@ -377,8 +408,8 @@ func pageCount(total int64, size int) int {
 	return int((total + int64(size) - 1) / int64(size))
 }
 
-func (s *Service) createTopLevel(ctx context.Context, post ports.CommentablePost, cmd CreateCommentCommand, mediaInput domain.CommentMediaInput, now time.Time) (domain.Comment, domain.CommentCreated, error) {
-	draft, err := domain.NewTopLevelDraft(post.PostID, post.ContentInternalID, cmd.ActorUserID, cmd.Content, mediaInput, now)
+func (s *Service) createTopLevel(ctx context.Context, post ports.CommentablePost, actorID domain.UserID, cmd CreateCommentCommand, mediaInput domain.CommentMediaInput, now time.Time) (domain.Comment, domain.CommentCreated, error) {
+	draft, err := domain.NewTopLevelDraft(post.PostID, post.ContentInternalID, actorID, cmd.Content, mediaInput, now)
 	if err != nil {
 		return domain.Comment{}, nil, mapDomainValidationError(err)
 	}
@@ -405,8 +436,8 @@ func (s *Service) createTopLevel(ctx context.Context, post ports.CommentablePost
 	return stored, event, nil
 }
 
-func (s *Service) createReply(ctx context.Context, post ports.CommentablePost, cmd CreateCommentCommand, mediaInput domain.CommentMediaInput, now time.Time, root, parent domain.Comment) (domain.Comment, domain.CommentCreated, error) {
-	draft, err := domain.NewReplyDraft(post.PostID, post.ContentInternalID, cmd.ActorUserID, root, parent, cmd.Content, mediaInput, now)
+func (s *Service) createReply(ctx context.Context, post ports.CommentablePost, actorID domain.UserID, cmd CreateCommentCommand, mediaInput domain.CommentMediaInput, now time.Time, root, parent domain.Comment) (domain.Comment, domain.CommentCreated, error) {
+	draft, err := domain.NewReplyDraft(post.PostID, post.ContentInternalID, actorID, root, parent, cmd.Content, mediaInput, now)
 	if err != nil {
 		return domain.Comment{}, nil, mapDomainValidationError(err)
 	}

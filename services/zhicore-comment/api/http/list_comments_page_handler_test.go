@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 )
 
 func TestListCommentsPageDefaultsQueryAndOmitsAnonymousViewer(t *testing.T) {
@@ -20,7 +19,7 @@ func TestListCommentsPageDefaultsQueryAndOmitsAnonymousViewer(t *testing.T) {
 			CommentID: "c8001",
 			Author:    application.AuthorSummary{PublicID: "user_pub_1", DisplayName: "Alice"},
 			Content:   "hello",
-			Status:    domain.CommentStatusNormal,
+			Status:    application.CommentStatusNormal,
 			Stats:     application.CommentStats{LikeCount: 3, ReplyCount: 2},
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -55,7 +54,7 @@ func TestListCommentsPageParsesViewerAndQuery(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if service.listQuery.ViewerUserID != 88 || service.listQuery.Page != 2 || service.listQuery.Size != 10 || service.listQuery.Sort != domain.CommentSortHot {
+	if service.listQuery.ViewerUserID != 88 || service.listQuery.Page != 2 || service.listQuery.Size != 10 || service.listQuery.Sort != application.CommentSortHot {
 		t.Fatalf("list query = %#v", service.listQuery)
 	}
 }

@@ -12,7 +12,6 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 )
 
 const userIDHeaderName = "X-User-Id"
@@ -61,7 +60,7 @@ func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.CreateComment(r.Context(), application.CreateCommentCommand{
 		ActorUserID:     actorID,
 		PostID:          postID,
-		ParentCommentID: domain.PublicCommentID(strings.TrimSpace(req.ParentCommentID)),
+		ParentCommentID: application.PublicCommentID(strings.TrimSpace(req.ParentCommentID)),
 		Content:         req.Content,
 		ImageFileIDs:    req.ImageFileIDs,
 		VoiceFileID:     req.VoiceFileID,
@@ -207,7 +206,7 @@ func commentItemResponse(item application.CommentItem) commentItemResp {
 	}
 }
 
-func trustedUserIDFromRequest(r *http.Request) (domain.UserID, bool) {
+func trustedUserIDFromRequest(r *http.Request) (application.UserID, bool) {
 	raw := strings.TrimSpace(r.Header.Get(userIDHeaderName))
 	if raw == "" {
 		return 0, false
@@ -216,16 +215,16 @@ func trustedUserIDFromRequest(r *http.Request) (domain.UserID, bool) {
 	if err != nil || userID <= 0 {
 		return 0, false
 	}
-	return domain.UserID(userID), true
+	return application.UserID(userID), true
 }
 
-func postIDFromPath(w http.ResponseWriter, r *http.Request) (domain.PostID, bool) {
+func postIDFromPath(w http.ResponseWriter, r *http.Request) (application.PostID, bool) {
 	postID := strings.TrimSpace(r.PathValue("postId"))
 	if postID == "" {
 		writeValidationError(w)
 		return "", false
 	}
-	return domain.PostID(postID), true
+	return application.PostID(postID), true
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, out any) bool {
@@ -241,7 +240,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, out any) bool {
 	return true
 }
 
-func decodeListCommentsPageQuery(w http.ResponseWriter, r *http.Request) (int, int, domain.CommentSort, bool) {
+func decodeListCommentsPageQuery(w http.ResponseWriter, r *http.Request) (int, int, application.CommentSort, bool) {
 	values := r.URL.Query()
 	page, ok := decodePositiveIntQuery(w, values.Get("page"), 0, 1000000)
 	if !ok {
@@ -251,10 +250,10 @@ func decodeListCommentsPageQuery(w http.ResponseWriter, r *http.Request) (int, i
 	if !ok {
 		return 0, 0, "", false
 	}
-	sort := domain.CommentSort(strings.TrimSpace(values.Get("sort")))
+	sort := application.CommentSort(strings.TrimSpace(values.Get("sort")))
 	if sort != "" {
 		switch sort {
-		case domain.CommentSortRecommended, domain.CommentSortHot, domain.CommentSortTime:
+		case application.CommentSortRecommended, application.CommentSortHot, application.CommentSortTime:
 		default:
 			writeValidationError(w)
 			return 0, 0, "", false

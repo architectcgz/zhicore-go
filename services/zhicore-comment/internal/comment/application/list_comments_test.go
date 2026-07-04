@@ -45,7 +45,7 @@ func TestListTopLevelCommentsUsesRequestedSortAndReturnsPageTotals(t *testing.T)
 		ViewerUserID: 88,
 		Page:         1,
 		Size:         20,
-		Sort:         domain.CommentSortRecommended,
+		Sort:         CommentSortRecommended,
 	})
 	if err != nil {
 		t.Fatalf("ListTopLevelCommentsByPage() error = %v", err)
@@ -69,7 +69,7 @@ func TestListTopLevelCommentsUsesRequestedSortAndReturnsPageTotals(t *testing.T)
 }
 
 func TestListTopLevelCommentsSupportsHotAndTimeSorts(t *testing.T) {
-	for _, sort := range []domain.CommentSort{domain.CommentSortHot, domain.CommentSortTime} {
+	for _, sort := range []CommentSort{CommentSortHot, CommentSortTime} {
 		t.Run(string(sort), func(t *testing.T) {
 			store := newFakeCommentStore()
 			store.postStats["post_pub_6"] = domain.CommentPostStats{PostID: "post_pub_6"}
@@ -93,8 +93,8 @@ func TestListTopLevelCommentsSupportsHotAndTimeSorts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListTopLevelCommentsByPage() error = %v", err)
 			}
-			if store.lastListQuery.Sort != sort {
-				t.Fatalf("sort = %q, want %q", store.lastListQuery.Sort, sort)
+			if store.lastListQuery.Sort != domainCommentSort(sort) {
+				t.Fatalf("sort = %q, want %q", store.lastListQuery.Sort, domainCommentSort(sort))
 			}
 		})
 	}
@@ -127,7 +127,7 @@ func TestListTopLevelCommentsDefaultsAndValidatesPagination(t *testing.T) {
 	}
 
 	for _, query := range []ListTopLevelCommentsQuery{
-		{PostID: "post_pub_7", Page: 1, Size: 101, Sort: domain.CommentSortRecommended},
+		{PostID: "post_pub_7", Page: 1, Size: 101, Sort: CommentSortRecommended},
 		{PostID: "post_pub_7", Page: 1, Size: 20, Sort: "BAD"},
 	} {
 		_, err := service.ListTopLevelCommentsByPage(context.Background(), query)
