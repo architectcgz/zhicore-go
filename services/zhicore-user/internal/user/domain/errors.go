@@ -12,4 +12,8 @@ var (
 	ErrAccountAlreadyExists    = errors.New("account profile already exists")
 	ErrPublicIDInvalid         = errors.New("public id is invalid")
 	ErrInvalidStatusTransition = errors.New("invalid user status transition")
+	ErrCannotFollowSelf        = errors.New("cannot follow self")
+	ErrCannotBlockSelf         = errors.New("cannot block self")
+	ErrInteractionBlocked      = errors.New("interaction is blocked")
+	ErrCursorInvalid           = errors.New("cursor is invalid")
 )

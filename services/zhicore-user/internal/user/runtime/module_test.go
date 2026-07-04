@@ -68,6 +68,34 @@ func (s stubService) UpdateProfile(context.Context, application.UpdateProfileCom
 	return application.Profile{}, errors.New("not implemented")
 }
 
+func (s stubService) BlockUser(context.Context, application.BlockUserCommand) error {
+	return errors.New("not implemented")
+}
+
+func (s stubService) UnblockUser(context.Context, application.UnblockUserCommand) error {
+	return errors.New("not implemented")
+}
+
+func (s stubService) ListBlockedUsers(context.Context, application.ListBlockedUsersQuery) (application.RelationshipProfilePage, error) {
+	return application.RelationshipProfilePage{}, errors.New("not implemented")
+}
+
+func (s stubService) FollowUser(context.Context, application.FollowUserCommand) error {
+	return errors.New("not implemented")
+}
+
+func (s stubService) UnfollowUser(context.Context, application.UnfollowUserCommand) error {
+	return errors.New("not implemented")
+}
+
+func (s stubService) ListFollowers(context.Context, application.ListFollowersQuery) (application.RelationshipProfilePage, error) {
+	return application.RelationshipProfilePage{}, errors.New("not implemented")
+}
+
+func (s stubService) ListFollowing(context.Context, application.ListFollowingQuery) (application.RelationshipProfilePage, error) {
+	return application.RelationshipProfilePage{}, errors.New("not implemented")
+}
+
 func testProfile() application.Profile {
 	profile, err := application.NewProfile(application.ProfileSeed{
 		UserID:                 42,

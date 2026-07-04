@@ -16,6 +16,7 @@ import (
 type Dependencies struct {
 	Profiles      ports.ProfileRepository
 	Queries       ports.ProfileQueryRepository
+	Relationships ports.RelationshipRepository
 	Files         ports.FileReferenceClient
 	IDs           ports.PublicIDGenerator
 	Outbox        ports.OutboxPublisher
@@ -28,6 +29,7 @@ type Dependencies struct {
 type Service struct {
 	profiles      ports.ProfileRepository
 	queries       ports.ProfileQueryRepository
+	relationships ports.RelationshipRepository
 	files         ports.FileReferenceClient
 	ids           ports.PublicIDGenerator
 	outbox        ports.OutboxPublisher
@@ -66,6 +68,58 @@ type RestoreDeletedUserProfileCommand struct {
 	Reason     string
 }
 
+type FollowUserCommand struct {
+	ActorUserID    domain.UserID
+	TargetPublicID domain.PublicID
+}
+
+type UnfollowUserCommand struct {
+	ActorUserID    domain.UserID
+	TargetPublicID domain.PublicID
+}
+
+type BlockUserCommand struct {
+	ActorUserID    domain.UserID
+	TargetPublicID domain.PublicID
+	Reason         string
+}
+
+type UnblockUserCommand struct {
+	ActorUserID    domain.UserID
+	TargetPublicID domain.PublicID
+}
+
+type ListBlockedUsersQuery struct {
+	ActorUserID domain.UserID
+	Cursor      string
+	Limit       int
+}
+
+type ListFollowersQuery struct {
+	TargetPublicID domain.PublicID
+	Cursor         string
+	Limit          int
+}
+
+type ListFollowingQuery struct {
+	TargetPublicID domain.PublicID
+	Cursor         string
+	Limit          int
+}
+
+type RelationshipProfilePage struct {
+	Items      []domain.Profile
+	NextCursor string
+	HasMore    bool
+}
+
+const (
+	relationshipEventUserFollowed   = "user.followed"
+	relationshipEventUserUnfollowed = "user.unfollowed"
+	relationshipEventUserBlocked    = "user.blocked"
+	relationshipEventUserUnblocked  = "user.unblocked"
+)
+
 func NewService(deps Dependencies) (*Service, error) {
 	if deps.Profiles == nil {
 		return nil, fmt.Errorf("Profiles is required")
@@ -97,6 +151,7 @@ func NewService(deps Dependencies) (*Service, error) {
 	return &Service{
 		profiles:      deps.Profiles,
 		queries:       deps.Queries,
+		relationships: deps.Relationships,
 		files:         deps.Files,
 		ids:           deps.IDs,
 		outbox:        deps.Outbox,
@@ -105,6 +160,178 @@ func NewService(deps Dependencies) (*Service, error) {
 		cache:         deps.Cache,
 		cacheFailures: deps.CacheFailures,
 	}, nil
+}
+
+func (s *Service) FollowUser(ctx context.Context, cmd FollowUserCommand) error {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return err
+	}
+	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	if err != nil {
+		return err
+	}
+	blocked, err := s.anyDirectionBlocked(ctx, actor.UserID, target.UserID)
+	if err != nil {
+		return err
+	}
+	plan, err := domain.PlanFollow(actor, target, blocked)
+	if err != nil {
+		return err
+	}
+
+	now := s.clock.Now()
+	return s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		created, err := s.relationships.InsertFollow(txCtx, plan.FollowerID, plan.FollowingID, now)
+		if err != nil || !created {
+			return err
+		}
+		return s.publishRelationshipEvent(txCtx, plan.Event(), now)
+	})
+}
+
+func (s *Service) UnfollowUser(ctx context.Context, cmd UnfollowUserCommand) error {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return err
+	}
+	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	if err != nil {
+		return err
+	}
+	plan, err := domain.PlanUnfollow(actor, target)
+	if err != nil {
+		return err
+	}
+
+	now := s.clock.Now()
+	return s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		deleted, err := s.relationships.DeleteFollow(txCtx, plan.FollowerID, plan.FollowingID)
+		if err != nil || !deleted {
+			return err
+		}
+		return s.publishRelationshipEvent(txCtx, plan.Event(), now)
+	})
+}
+
+func (s *Service) BlockUser(ctx context.Context, cmd BlockUserCommand) error {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return err
+	}
+	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	if err != nil {
+		return err
+	}
+	plan, err := domain.PlanBlock(actor, target, cmd.Reason)
+	if err != nil {
+		return err
+	}
+
+	now := s.clock.Now()
+	return s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		created, err := s.relationships.InsertBlock(txCtx, plan.BlockerID, plan.BlockedID, plan.Reason, now)
+		if err != nil || !created {
+			return err
+		}
+		if err := s.publishRelationshipEvent(txCtx, plan.Event(), now); err != nil {
+			return err
+		}
+		for _, pair := range plan.RemovedFollows {
+			if err := s.deleteFollowForBlock(txCtx, pair, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *Service) UnblockUser(ctx context.Context, cmd UnblockUserCommand) error {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return err
+	}
+	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	if err != nil {
+		return err
+	}
+	plan, err := domain.PlanUnblock(actor, target)
+	if err != nil {
+		return err
+	}
+
+	now := s.clock.Now()
+	return s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		deleted, err := s.relationships.DeleteBlock(txCtx, plan.BlockerID, plan.BlockedID)
+		if err != nil || !deleted {
+			return err
+		}
+		return s.publishRelationshipEvent(txCtx, plan.Event(), now)
+	})
+}
+
+func (s *Service) ListBlockedUsers(ctx context.Context, query ListBlockedUsersQuery) (RelationshipProfilePage, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	actor, err := s.queries.GetByUserID(ctx, query.ActorUserID)
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	if actor.Status != domain.UserStatusActive {
+		return RelationshipProfilePage{}, domain.ErrUserNotActive
+	}
+	page, err := s.relationships.ListBlocked(ctx, actor.UserID, query.Cursor, domain.NormalizeRelationshipLimit(query.Limit))
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	return s.relationshipProfiles(ctx, page, func(record ports.RelationshipRecord) domain.UserID {
+		return record.TargetID
+	})
+}
+
+func (s *Service) ListFollowers(ctx context.Context, query ListFollowersQuery) (RelationshipProfilePage, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	target, err := s.loadVisiblePublicProfile(ctx, query.TargetPublicID)
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	page, err := s.relationships.ListFollowers(ctx, target.UserID, query.Cursor, domain.NormalizeRelationshipLimit(query.Limit))
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	return s.relationshipProfiles(ctx, page, func(record ports.RelationshipRecord) domain.UserID {
+		return record.ActorID
+	})
+}
+
+func (s *Service) ListFollowing(ctx context.Context, query ListFollowingQuery) (RelationshipProfilePage, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	target, err := s.loadVisiblePublicProfile(ctx, query.TargetPublicID)
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	page, err := s.relationships.ListFollowing(ctx, target.UserID, query.Cursor, domain.NormalizeRelationshipLimit(query.Limit))
+	if err != nil {
+		return RelationshipProfilePage{}, err
+	}
+	return s.relationshipProfiles(ctx, page, func(record ports.RelationshipRecord) domain.UserID {
+		return record.TargetID
+	})
+}
+
+func (s *Service) BatchCheckBlocked(ctx context.Context, pairs []domain.UserPair) (map[domain.UserPair]bool, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return nil, err
+	}
+	return s.relationships.BatchCheckBlocked(ctx, pairs)
+}
+
+func (s *Service) CheckFollowing(ctx context.Context, followerID, followingID domain.UserID) (bool, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return false, err
+	}
+	return s.relationships.CheckFollowing(ctx, followerID, followingID)
 }
 
 func (s *Service) CreateProfileForAccount(ctx context.Context, cmd CreateProfileForAccountCommand) (domain.Profile, error) {
@@ -351,6 +578,111 @@ func (s *Service) publish(ctx context.Context, eventType string, userID domain.U
 		OccurredAt:    occurredAt,
 		Payload:       body,
 	})
+}
+
+func (s *Service) requireRelationshipRepository() error {
+	if s.relationships == nil {
+		return ports.ErrDependencyUnavailable
+	}
+	return nil
+}
+
+func (s *Service) loadActorAndTarget(ctx context.Context, actorID domain.UserID, targetPublicID domain.PublicID) (domain.Profile, domain.Profile, error) {
+	actor, err := s.queries.GetByUserID(ctx, actorID)
+	if err != nil {
+		return domain.Profile{}, domain.Profile{}, err
+	}
+	target, err := s.queries.GetByPublicID(ctx, targetPublicID)
+	if err != nil {
+		return domain.Profile{}, domain.Profile{}, err
+	}
+	return actor, target, nil
+}
+
+func (s *Service) loadVisiblePublicProfile(ctx context.Context, publicID domain.PublicID) (domain.Profile, error) {
+	profile, err := s.queries.GetByPublicID(ctx, publicID)
+	if err != nil {
+		return domain.Profile{}, err
+	}
+	if profile.Status == domain.UserStatusDeleted {
+		return domain.Profile{}, domain.ErrProfileNotFound
+	}
+	return profile, nil
+}
+
+func (s *Service) anyDirectionBlocked(ctx context.Context, actorID, targetID domain.UserID) (bool, error) {
+	pairs := []domain.UserPair{
+		{ActorID: actorID, TargetID: targetID},
+		{ActorID: targetID, TargetID: actorID},
+	}
+	checked, err := s.relationships.BatchCheckBlocked(ctx, pairs)
+	if err != nil {
+		return false, err
+	}
+	return checked[pairs[0]] || checked[pairs[1]], nil
+}
+
+func (s *Service) deleteFollowForBlock(ctx context.Context, pair domain.UserPair, now time.Time) error {
+	deleted, err := s.relationships.DeleteFollow(ctx, pair.ActorID, pair.TargetID)
+	if err != nil || !deleted {
+		return err
+	}
+	return s.publishRelationshipEvent(ctx, pair.UnfollowedEvent(domain.UnfollowReasonBlocked), now)
+}
+
+func (s *Service) publishRelationshipEvent(ctx context.Context, event domain.RelationshipEvent, occurredAt time.Time) error {
+	// Domain events only state the relationship fact. The application layer owns
+	// the outward integration event name and JSON payload that enter outbox.
+	switch e := event.(type) {
+	case domain.UserFollowed:
+		return s.publish(ctx, relationshipEventUserFollowed, e.FollowerID, occurredAt, map[string]any{
+			"followerId":  e.FollowerID,
+			"followingId": e.FollowingID,
+			"occurredAt":  occurredAt,
+		})
+	case domain.UserUnfollowed:
+		return s.publish(ctx, relationshipEventUserUnfollowed, e.FollowerID, occurredAt, map[string]any{
+			"followerId":  e.FollowerID,
+			"followingId": e.FollowingID,
+			"reason":      string(e.Reason),
+			"occurredAt":  occurredAt,
+		})
+	case domain.UserBlocked:
+		return s.publish(ctx, relationshipEventUserBlocked, e.BlockerID, occurredAt, map[string]any{
+			"blockerId":  e.BlockerID,
+			"blockedId":  e.BlockedID,
+			"reason":     e.Reason,
+			"occurredAt": occurredAt,
+		})
+	case domain.UserUnblocked:
+		return s.publish(ctx, relationshipEventUserUnblocked, e.BlockerID, occurredAt, map[string]any{
+			"blockerId":  e.BlockerID,
+			"blockedId":  e.BlockedID,
+			"occurredAt": occurredAt,
+		})
+	default:
+		return fmt.Errorf("unknown relationship event %T", event)
+	}
+}
+
+func (s *Service) relationshipProfiles(ctx context.Context, page ports.RelationshipPage, userIDForRecord func(ports.RelationshipRecord) domain.UserID) (RelationshipProfilePage, error) {
+	items := make([]domain.Profile, 0, len(page.Records))
+	for _, record := range page.Records {
+		profile, err := s.queries.GetByUserID(ctx, userIDForRecord(record))
+		if err != nil {
+			return RelationshipProfilePage{}, err
+		}
+		items = append(items, profile)
+	}
+	nextCursor := ""
+	if page.HasMore && len(page.Records) > 0 {
+		nextCursor = domain.EncodeRelationshipCursor(page.Records[len(page.Records)-1].ID)
+	}
+	return RelationshipProfilePage{
+		Items:      items,
+		NextCursor: nextCursor,
+		HasMore:    page.HasMore,
+	}, nil
 }
 
 func (s *Service) invalidateProfileCache(ctx context.Context, profile domain.Profile) {

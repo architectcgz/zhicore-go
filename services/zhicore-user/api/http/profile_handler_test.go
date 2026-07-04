@@ -292,14 +292,36 @@ type fakeProfileService struct {
 	getPublicErr     error
 	updateProfile    application.Profile
 	updateErr        error
+	relationshipPage application.RelationshipProfilePage
+	blockErr         error
+	unblockErr       error
+	followErr        error
+	unfollowErr      error
+	listBlockedErr   error
+	listFollowersErr error
+	listFollowingErr error
 
-	getMyCalls     int
-	getPublicCalls int
-	updateCalls    int
+	getMyCalls         int
+	getPublicCalls     int
+	updateCalls        int
+	blockCalls         int
+	unblockCalls       int
+	followCalls        int
+	unfollowCalls      int
+	listBlockedCalls   int
+	listFollowersCalls int
+	listFollowingCalls int
 
-	getMyUserID application.UserID
-	getPublicID application.PublicID
-	updateCmd   application.UpdateProfileCommand
+	getMyUserID        application.UserID
+	getPublicID        application.PublicID
+	updateCmd          application.UpdateProfileCommand
+	blockCmd           application.BlockUserCommand
+	unblockCmd         application.UnblockUserCommand
+	followCmd          application.FollowUserCommand
+	unfollowCmd        application.UnfollowUserCommand
+	listBlockedQuery   application.ListBlockedUsersQuery
+	listFollowersQuery application.ListFollowersQuery
+	listFollowingQuery application.ListFollowingQuery
 }
 
 func (f *fakeProfileService) GetMyProfile(_ context.Context, userID application.UserID) (application.Profile, error) {
@@ -327,6 +349,57 @@ func (f *fakeProfileService) UpdateProfile(_ context.Context, cmd application.Up
 		return application.Profile{}, f.updateErr
 	}
 	return f.updateProfile, nil
+}
+
+func (f *fakeProfileService) BlockUser(_ context.Context, cmd application.BlockUserCommand) error {
+	f.blockCalls++
+	f.blockCmd = cmd
+	return f.blockErr
+}
+
+func (f *fakeProfileService) UnblockUser(_ context.Context, cmd application.UnblockUserCommand) error {
+	f.unblockCalls++
+	f.unblockCmd = cmd
+	return f.unblockErr
+}
+
+func (f *fakeProfileService) FollowUser(_ context.Context, cmd application.FollowUserCommand) error {
+	f.followCalls++
+	f.followCmd = cmd
+	return f.followErr
+}
+
+func (f *fakeProfileService) UnfollowUser(_ context.Context, cmd application.UnfollowUserCommand) error {
+	f.unfollowCalls++
+	f.unfollowCmd = cmd
+	return f.unfollowErr
+}
+
+func (f *fakeProfileService) ListBlockedUsers(_ context.Context, query application.ListBlockedUsersQuery) (application.RelationshipProfilePage, error) {
+	f.listBlockedCalls++
+	f.listBlockedQuery = query
+	if f.listBlockedErr != nil {
+		return application.RelationshipProfilePage{}, f.listBlockedErr
+	}
+	return f.relationshipPage, nil
+}
+
+func (f *fakeProfileService) ListFollowers(_ context.Context, query application.ListFollowersQuery) (application.RelationshipProfilePage, error) {
+	f.listFollowersCalls++
+	f.listFollowersQuery = query
+	if f.listFollowersErr != nil {
+		return application.RelationshipProfilePage{}, f.listFollowersErr
+	}
+	return f.relationshipPage, nil
+}
+
+func (f *fakeProfileService) ListFollowing(_ context.Context, query application.ListFollowingQuery) (application.RelationshipProfilePage, error) {
+	f.listFollowingCalls++
+	f.listFollowingQuery = query
+	if f.listFollowingErr != nil {
+		return application.RelationshipProfilePage{}, f.listFollowingErr
+	}
+	return f.relationshipPage, nil
 }
 
 type fakeAvatarURLResolver struct {

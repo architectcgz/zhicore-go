@@ -8,7 +8,7 @@
 - 模块 API 设计：`docs/architecture/module/user/api.md`
 - 模块 service 设计：`docs/architecture/module/user/service.md`
 - Go handler：`services/zhicore-user/api/http/handler.go`
-- Go contract test：`services/zhicore-user/api/http/profile_handler_test.go`
+- Go contract test：`services/zhicore-user/api/http/profile_handler_test.go`、`services/zhicore-user/api/http/relationship_handler_test.go`
 
 ## 定位
 
@@ -42,6 +42,13 @@ User 拥有用户资料、公开用户 ID、昵称、头像文件引用、简介
 | `GET` | `/api/v1/users/me` | `endpoints/get-me.md` | 已验证 |
 | `GET` | `/api/v1/users/{publicId}` | `endpoints/get-profile.md` | 已验证 |
 | `PATCH` | `/api/v1/users/me/profile` | `endpoints/update-profile.md` | 已验证 |
+| `POST` | `/api/v1/users/{publicId}/block` | `endpoints/block-user.md` | 已验证 |
+| `DELETE` | `/api/v1/users/{publicId}/block` | `endpoints/unblock-user.md` | 已验证 |
+| `GET` | `/api/v1/users/me/blocked` | `endpoints/list-blocked-users.md` | 已验证 |
+| `POST` | `/api/v1/users/{publicId}/follow` | `endpoints/follow-user.md` | 已验证 |
+| `DELETE` | `/api/v1/users/{publicId}/follow` | `endpoints/unfollow-user.md` | 已验证 |
+| `GET` | `/api/v1/users/{publicId}/followers` | `endpoints/list-followers.md` | 已验证 |
+| `GET` | `/api/v1/users/{publicId}/following` | `endpoints/list-following.md` | 已验证 |
 
 ## 服务级公开错误码
 
@@ -56,6 +63,9 @@ User 拥有用户资料、公开用户 ID、昵称、头像文件引用、简介
 | `3013` | `400` | 昵称不合法 | 昵称为空、过长或含危险字符。 |
 | `3014` | `400` | 简介不合法 | 简介过长或含危险字符。 |
 | `3015` | `400` | 头像文件不可引用 | File 校验失败或文件不是图片。 |
+| `3007` | `400` | 不能关注自己 | 当前用户和目标用户相同。 |
+| `3010` | `403` | 互动被拉黑阻止 | 任一方向存在拉黑关系。 |
+| `3011` | `400` | 不能拉黑自己 | 当前用户和目标用户相同。 |
 
 ## 测试要求
 

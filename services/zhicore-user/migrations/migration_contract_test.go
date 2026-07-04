@@ -27,6 +27,19 @@ func TestUserProfileMigrationDefinesProfileAndOutboxSchema(t *testing.T) {
 		"claim_started_at TIMESTAMPTZ",
 		"CHECK (status IN ('PENDING', 'CLAIMING', 'PUBLISHED', 'FAILED', 'DEAD'))",
 		"CHECK (user_status IN ('ACTIVE', 'DEACTIVATED', 'DELETED'))",
+		"CREATE TABLE user_follows",
+		"UNIQUE (follower_id, following_id)",
+		"CHECK (follower_id <> following_id)",
+		"CREATE INDEX ix_user_follows_follower_id_desc",
+		"CREATE INDEX ix_user_follows_following_id_desc",
+		"CREATE TABLE user_follow_stats",
+		"CHECK (followers_count >= 0)",
+		"CHECK (following_count >= 0)",
+		"CREATE TABLE user_blocks",
+		"UNIQUE (blocker_id, blocked_id)",
+		"CHECK (blocker_id <> blocked_id)",
+		"CREATE INDEX ix_user_blocks_blocker_id_desc",
+		"CREATE INDEX ix_user_blocks_pair",
 	}
 	for _, fragment := range requiredUpFragments {
 		if !strings.Contains(up, fragment) {
@@ -36,6 +49,9 @@ func TestUserProfileMigrationDefinesProfileAndOutboxSchema(t *testing.T) {
 
 	requiredDownFragments := []string{
 		"DROP TABLE IF EXISTS outbox_events",
+		"DROP TABLE IF EXISTS user_blocks",
+		"DROP TABLE IF EXISTS user_follow_stats",
+		"DROP TABLE IF EXISTS user_follows",
 		"DROP TABLE IF EXISTS users",
 	}
 	for _, fragment := range requiredDownFragments {

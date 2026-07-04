@@ -22,6 +22,13 @@ type Service interface {
 	GetMyProfile(ctx context.Context, userID application.UserID) (application.Profile, error)
 	GetUserProfileByPublicID(ctx context.Context, publicID application.PublicID) (application.Profile, error)
 	UpdateProfile(ctx context.Context, cmd application.UpdateProfileCommand) (application.Profile, error)
+	BlockUser(ctx context.Context, cmd application.BlockUserCommand) error
+	UnblockUser(ctx context.Context, cmd application.UnblockUserCommand) error
+	ListBlockedUsers(ctx context.Context, query application.ListBlockedUsersQuery) (application.RelationshipProfilePage, error)
+	FollowUser(ctx context.Context, cmd application.FollowUserCommand) error
+	UnfollowUser(ctx context.Context, cmd application.UnfollowUserCommand) error
+	ListFollowers(ctx context.Context, query application.ListFollowersQuery) (application.RelationshipProfilePage, error)
+	ListFollowing(ctx context.Context, query application.ListFollowingQuery) (application.RelationshipProfilePage, error)
 }
 
 type AvatarURLResolver interface {
@@ -50,8 +57,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) routes() {
 	h.mux.HandleFunc("GET /api/v1/users/me", h.getMe)
+	h.mux.HandleFunc("GET /api/v1/users/me/blocked", h.listBlockedUsers)
 	h.mux.HandleFunc("GET /api/v1/users/{publicId}", h.getProfile)
 	h.mux.HandleFunc("PATCH /api/v1/users/me/profile", h.updateProfile)
+	h.mux.HandleFunc("POST /api/v1/users/{publicId}/block", h.blockUser)
+	h.mux.HandleFunc("DELETE /api/v1/users/{publicId}/block", h.unblockUser)
+	h.mux.HandleFunc("POST /api/v1/users/{publicId}/follow", h.followUser)
+	h.mux.HandleFunc("DELETE /api/v1/users/{publicId}/follow", h.unfollowUser)
+	h.mux.HandleFunc("GET /api/v1/users/{publicId}/followers", h.listFollowers)
+	h.mux.HandleFunc("GET /api/v1/users/{publicId}/following", h.listFollowing)
 }
 
 func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +125,126 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, h.profileResponse(r.Context(), updated))
 }
 
+func (h *Handler) blockUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := trustedUserIDFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := h.service.BlockUser(r.Context(), application.BlockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, map[string]bool{"blocked": true})
+}
+
+func (h *Handler) unblockUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := trustedUserIDFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := h.service.UnblockUser(r.Context(), application.UnblockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, map[string]bool{"blocked": false})
+}
+
+func (h *Handler) followUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := trustedUserIDFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := h.service.FollowUser(r.Context(), application.FollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, map[string]bool{"following": true})
+}
+
+func (h *Handler) unfollowUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := trustedUserIDFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := h.service.UnfollowUser(r.Context(), application.UnfollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, map[string]bool{"following": false})
+}
+
+func (h *Handler) listBlockedUsers(w http.ResponseWriter, r *http.Request) {
+	userID, ok := trustedUserIDFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.service.ListBlockedUsers(r.Context(), application.ListBlockedUsersQuery{ActorUserID: userID, Cursor: cursor, Limit: limit})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+}
+
+func (h *Handler) listFollowers(w http.ResponseWriter, r *http.Request) {
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.service.ListFollowers(r.Context(), application.ListFollowersQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+}
+
+func (h *Handler) listFollowing(w http.ResponseWriter, r *http.Request) {
+	publicID, ok := publicIDFromPath(w, r)
+	if !ok {
+		return
+	}
+	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	if !ok {
+		return
+	}
+	page, err := h.service.ListFollowing(r.Context(), application.ListFollowingQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+}
+
 type userProfileResp struct {
 	PublicID               string `json:"publicId"`
 	Nickname               string `json:"nickname"`
@@ -119,6 +253,12 @@ type userProfileResp struct {
 	Bio                    string `json:"bio,omitempty"`
 	StrangerMessageAllowed bool   `json:"strangerMessageAllowed"`
 	ProfileVersion         int64  `json:"profileVersion"`
+}
+
+type relationshipPageResp struct {
+	Items      []userProfileResp `json:"items"`
+	NextCursor string            `json:"nextCursor,omitempty"`
+	HasMore    bool              `json:"hasMore"`
 }
 
 func (h *Handler) profileResponse(ctx context.Context, profile application.Profile) userProfileResp {
@@ -141,6 +281,27 @@ func (h *Handler) profileResponse(ctx context.Context, profile application.Profi
 		resp.AvatarURL = url
 	}
 	return resp
+}
+
+func (h *Handler) relationshipPageResponse(ctx context.Context, page application.RelationshipProfilePage) relationshipPageResp {
+	items := make([]userProfileResp, 0, len(page.Items))
+	for _, item := range page.Items {
+		items = append(items, h.profileResponse(ctx, item))
+	}
+	return relationshipPageResp{
+		Items:      items,
+		NextCursor: page.NextCursor,
+		HasMore:    page.HasMore,
+	}
+}
+
+func publicIDFromPath(w http.ResponseWriter, r *http.Request) (application.PublicID, bool) {
+	publicID := strings.TrimSpace(r.PathValue("publicId"))
+	if !isValidPublicID(publicID) {
+		writeValidationError(w)
+		return "", false
+	}
+	return application.PublicID(publicID), true
 }
 
 func trustedUserIDFromRequest(r *http.Request) (application.UserID, bool) {
@@ -166,6 +327,20 @@ func isValidPublicID(value string) bool {
 		}
 	}
 	return true
+}
+
+func decodeRelationshipPageQuery(w http.ResponseWriter, r *http.Request) (string, int, bool) {
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	limit := 0
+	if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+		parsed, err := strconv.Atoi(rawLimit)
+		if err != nil || parsed <= 0 {
+			writeValidationError(w)
+			return "", 0, false
+		}
+		limit = parsed
+	}
+	return cursor, limit, true
 }
 
 func decodeUpdateProfileBody(w http.ResponseWriter, r *http.Request, cmd *application.UpdateProfileCommand) bool {
@@ -261,6 +436,14 @@ func errorMapping(err error) (int, int, string) {
 		return http.StatusBadRequest, 3014, "简介不合法"
 	case errors.Is(err, application.ErrAvatarInvalid):
 		return http.StatusBadRequest, 3015, "头像文件不可引用"
+	case errors.Is(err, application.ErrCannotFollowSelf):
+		return http.StatusBadRequest, 3007, "不能关注自己"
+	case errors.Is(err, application.ErrInteractionBlocked):
+		return http.StatusForbidden, 3010, "互动被拉黑阻止"
+	case errors.Is(err, application.ErrCannotBlockSelf):
+		return http.StatusBadRequest, 3011, "不能拉黑自己"
+	case errors.Is(err, application.ErrCursorInvalid):
+		return http.StatusBadRequest, 1001, "参数校验失败"
 	case errors.Is(err, application.ErrDependencyUnavailable):
 		return http.StatusServiceUnavailable, 1004, "服务暂时不可用"
 	default:

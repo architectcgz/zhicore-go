@@ -18,13 +18,17 @@ var (
 
 	ErrDependencyUnavailable = ports.ErrDependencyUnavailable
 
-	ErrProfileNotFound = domain.ErrProfileNotFound
-	ErrNicknameInvalid = domain.ErrNicknameInvalid
-	ErrNicknameTaken   = domain.ErrNicknameTaken
-	ErrBioInvalid      = domain.ErrBioInvalid
-	ErrAvatarInvalid   = domain.ErrAvatarInvalid
-	ErrUserNotActive   = domain.ErrUserNotActive
-	ErrPublicIDInvalid = domain.ErrPublicIDInvalid
+	ErrProfileNotFound    = domain.ErrProfileNotFound
+	ErrNicknameInvalid    = domain.ErrNicknameInvalid
+	ErrNicknameTaken      = domain.ErrNicknameTaken
+	ErrBioInvalid         = domain.ErrBioInvalid
+	ErrAvatarInvalid      = domain.ErrAvatarInvalid
+	ErrUserNotActive      = domain.ErrUserNotActive
+	ErrPublicIDInvalid    = domain.ErrPublicIDInvalid
+	ErrCannotFollowSelf   = domain.ErrCannotFollowSelf
+	ErrCannotBlockSelf    = domain.ErrCannotBlockSelf
+	ErrInteractionBlocked = domain.ErrInteractionBlocked
+	ErrCursorInvalid      = domain.ErrCursorInvalid
 )
 
 func NewProfile(seed ProfileSeed) (Profile, error) {
