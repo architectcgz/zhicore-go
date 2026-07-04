@@ -261,6 +261,8 @@ application 不直接解析 blocks，只依赖 parser 输出的 `NormalizedBody`
 - `canonicalJSON`
 - block 统计
 
+V1 parser 在 Go 端以 `ports.PostBodyWriteInput` 的 typed DTO 解码和遍历，`map[string]any` 不进入 parser 热路径；未知 block 类型只保留 discriminator，并由 parser 统一返回字段级校验错误。
+
 `content_hash = SHA-256(canonical blocks)`。它只作为一致性指纹和幂等辅助，不作为安全证明。
 
 ## 正文校验阈值与测试方案

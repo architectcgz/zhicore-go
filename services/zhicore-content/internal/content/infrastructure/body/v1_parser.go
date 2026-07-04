@@ -6,8 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
@@ -72,18 +72,27 @@ func (p *V1BodyParser) Parse(ctx context.Context, input ports.PostBodyWriteInput
 		return ports.NormalizedBody{}, err
 	}
 
+	blocksPath := rootPath("blocks")
 	state := parserState{
-		policy: p.policy,
+		policy:          p.policy,
+		plainTextBlocks: make([]string, 0, min(len(input.Blocks), p.policy.MaxBlocks)),
+		mediaRefs:       make([]ports.MediaRef, 0, 4),
+		externalLinks:   make([]string, 0, 4),
 	}
 
 	if input.SchemaVersion != 1 {
-		state.addError("schemaVersion", "BODY_SCHEMA_UNSUPPORTED")
+		state.addError(rootPath("schemaVersion"), "BODY_SCHEMA_UNSUPPORTED")
+	}
+	if input.Blocks == nil {
+		// SaveDraftBody 的 contract 要求 blocks 必填；显式空正文必须传 []，
+		// 避免缺失或 null 被 canonicalize 成合法空正文。
+		state.addError(blocksPath, "BODY_SCHEMA_INVALID")
 	}
 
-	state.validateBlocks(input.Blocks, "blocks", 0)
+	state.validateBlocks(input.Blocks, blocksPath, 0)
 	plainText := strings.Join(state.plainTextBlocks, "\n")
 	if len([]rune(plainText)) > p.policy.MaxPlainTextChars {
-		state.addError("blocks", "BODY_TEXT_TOO_LONG")
+		state.addError(blocksPath, "BODY_TEXT_TOO_LONG")
 	}
 
 	if len(state.details) > 0 {
@@ -119,7 +128,118 @@ func (p *V1BodyParser) Parse(ctx context.Context, input ports.PostBodyWriteInput
 
 type canonicalBody struct {
 	SchemaVersion int              `json:"schemaVersion"`
-	Blocks        []map[string]any `json:"blocks"`
+	Blocks        []canonicalBlock `json:"blocks"`
+}
+
+type canonicalBlock interface {
+	canonicalBlock()
+}
+
+type canonicalParagraphBlock struct {
+	Type     ports.BlockType       `json:"type"`
+	Children []canonicalInlineNode `json:"children,omitempty"`
+}
+
+func (canonicalParagraphBlock) canonicalBlock() {}
+
+type canonicalHeadingBlock struct {
+	Type     ports.BlockType       `json:"type"`
+	Level    int                   `json:"level,omitempty"`
+	Children []canonicalInlineNode `json:"children,omitempty"`
+}
+
+func (canonicalHeadingBlock) canonicalBlock() {}
+
+type canonicalQuoteBlock struct {
+	Type   ports.BlockType  `json:"type"`
+	Blocks []canonicalBlock `json:"blocks,omitempty"`
+}
+
+func (canonicalQuoteBlock) canonicalBlock() {}
+
+type canonicalListBlock struct {
+	Type  ports.BlockType     `json:"type"`
+	Items []canonicalListItem `json:"items,omitempty"`
+}
+
+func (canonicalListBlock) canonicalBlock() {}
+
+type canonicalListItem struct {
+	Blocks []canonicalBlock `json:"blocks,omitempty"`
+}
+
+type canonicalCodeBlock struct {
+	Type     ports.BlockType `json:"type"`
+	Code     string          `json:"code"`
+	Language string          `json:"language,omitempty"`
+}
+
+func (canonicalCodeBlock) canonicalBlock() {}
+
+type canonicalTableBlock struct {
+	Type    ports.BlockType        `json:"type"`
+	Headers []canonicalTableCell   `json:"headers,omitempty"`
+	Rows    [][]canonicalTableCell `json:"rows,omitempty"`
+}
+
+func (canonicalTableBlock) canonicalBlock() {}
+
+type canonicalTableCell struct {
+	Children []canonicalInlineNode `json:"children"`
+}
+
+type canonicalCollapsibleBlock struct {
+	Type   ports.BlockType       `json:"type"`
+	Title  []canonicalInlineNode `json:"title,omitempty"`
+	Blocks []canonicalBlock      `json:"blocks,omitempty"`
+}
+
+func (canonicalCollapsibleBlock) canonicalBlock() {}
+
+type canonicalMathBlock struct {
+	Type  ports.BlockType `json:"type"`
+	Latex string          `json:"latex"`
+}
+
+func (canonicalMathBlock) canonicalBlock() {}
+
+type canonicalImageBlock struct {
+	Type   ports.BlockType `json:"type"`
+	FileID string          `json:"fileId"`
+	Alt    string          `json:"alt,omitempty"`
+}
+
+func (canonicalImageBlock) canonicalBlock() {}
+
+type canonicalExternalEmbedBlock struct {
+	Type     ports.BlockType `json:"type"`
+	Provider string          `json:"provider"`
+	URL      string          `json:"url,omitempty"`
+	Title    string          `json:"title,omitempty"`
+}
+
+func (canonicalExternalEmbedBlock) canonicalBlock() {}
+
+type canonicalAttachmentGalleryBlock struct {
+	Type  ports.BlockType           `json:"type"`
+	Items []canonicalAttachmentItem `json:"items,omitempty"`
+}
+
+func (canonicalAttachmentGalleryBlock) canonicalBlock() {}
+
+type canonicalAttachmentItem struct {
+	FileID string `json:"fileId"`
+}
+
+type canonicalInlineNode struct {
+	Type  string                `json:"type"`
+	Text  string                `json:"text,omitempty"`
+	Marks []canonicalInlineMark `json:"marks,omitempty"`
+}
+
+type canonicalInlineMark struct {
+	Type string `json:"type"`
+	Href string `json:"href,omitempty"`
 }
 
 func canonicalizeBody(input ports.PostBodyWriteInput) canonicalBody {
@@ -129,86 +249,71 @@ func canonicalizeBody(input ports.PostBodyWriteInput) canonicalBody {
 	}
 }
 
-func canonicalizeBlocks(blocks []ports.BodyBlock) []map[string]any {
-	canonicalBlocks := make([]map[string]any, 0, len(blocks))
+func canonicalizeBlocks(blocks ports.Blocks) []canonicalBlock {
+	canonicalBlocks := make([]canonicalBlock, 0, len(blocks))
 	for _, block := range blocks {
 		canonicalBlocks = append(canonicalBlocks, canonicalizeBlock(block))
 	}
 	return canonicalBlocks
 }
 
-func canonicalizeBlock(block ports.BodyBlock) map[string]any {
-	blockType, _ := stringField(block, "type")
-	canonical := map[string]any{"type": blockType}
-	switch blockType {
-	case "paragraph", "heading":
-		canonical["children"] = canonicalizeInlineNodes(inlineNodesField(block, "children"))
-		if level, ok := block["level"].(float64); ok {
-			canonical["level"] = level
-		}
-	case "quote":
-		canonical["blocks"] = canonicalizeBlocks(blocksField(block, "blocks"))
-	case "list":
-		canonical["items"] = canonicalizeListItems(block["items"])
-	case "collapsible":
-		canonical["title"] = canonicalizeInlineNodes(inlineNodesField(block, "title"))
-		canonical["blocks"] = canonicalizeBlocks(blocksField(block, "blocks"))
-	case "code_block":
-		code, _ := stringField(block, "code")
-		canonical["code"] = code
-		if language, ok := stringField(block, "language"); ok {
-			canonical["language"] = language
-		}
-	case "math":
-		latex, _ := stringField(block, "latex")
-		canonical["latex"] = latex
-	case "table":
-		canonical["headers"] = canonicalizeTableCells(tableCellsField(block, "headers"))
-		canonical["rows"] = canonicalizeTableRows(tableRowsField(block, "rows"))
-	case "image":
-		fileID, _ := stringField(block, "fileId")
-		canonical["fileId"] = strings.TrimSpace(fileID)
-		if alt, ok := stringField(block, "alt"); ok {
-			canonical["alt"] = alt
-		}
-	case "external_embed":
-		provider, _ := stringField(block, "provider")
-		canonical["provider"] = provider
-		rawURL, _ := stringField(block, "url")
-		if safeURL, ok := sanitizeHTTPURL(rawURL); ok {
-			canonical["url"] = safeURL
-		}
-		if title, ok := stringField(block, "title"); ok {
-			canonical["title"] = title
-		}
-	case "attachment_gallery":
-		canonical["items"] = canonicalizeAttachmentItems(block["items"])
+func canonicalizeBlock(block ports.Block) canonicalBlock {
+	switch typed := block.(type) {
+	case *ports.ParagraphBlock:
+		return canonicalParagraphBlock{Type: ports.BlockParagraph, Children: canonicalizeInlineNodes(typed.Children)}
+	case *ports.HeadingBlock:
+		return canonicalHeadingBlock{Type: ports.BlockHeading, Level: typed.Level, Children: canonicalizeInlineNodes(typed.Children)}
+	case *ports.QuoteBlock:
+		return canonicalQuoteBlock{Type: ports.BlockQuote, Blocks: canonicalizeBlocks(typed.Blocks)}
+	case *ports.ListBlock:
+		return canonicalListBlock{Type: ports.BlockList, Items: canonicalizeListItems(typed.Items)}
+	case *ports.CodeBlock:
+		return canonicalCodeBlock{Type: ports.BlockCode, Code: typed.Code, Language: typed.Language}
+	case *ports.TableBlock:
+		return canonicalTableBlock{Type: ports.BlockTable, Headers: canonicalizeTableCells(typed.Headers), Rows: canonicalizeTableRows(typed.Rows)}
+	case *ports.CollapsibleBlock:
+		return canonicalCollapsibleBlock{Type: ports.BlockCollapsible, Title: canonicalizeInlineNodes(typed.Title), Blocks: canonicalizeBlocks(typed.Blocks)}
+	case *ports.MathBlock:
+		return canonicalMathBlock{Type: ports.BlockMath, Latex: typed.Latex}
+	case *ports.ImageBlock:
+		return canonicalImageBlock{Type: ports.BlockImage, FileID: strings.TrimSpace(typed.FileID), Alt: typed.Alt}
+	case *ports.ExternalEmbedBlock:
+		safeURL, _ := sanitizeHTTPURL(typed.URL)
+		return canonicalExternalEmbedBlock{Type: ports.BlockExternalEmbed, Provider: typed.Provider, URL: safeURL, Title: typed.Title}
+	case *ports.AttachmentGalleryBlock:
+		return canonicalAttachmentGalleryBlock{Type: ports.BlockAttachmentGallery, Items: canonicalizeAttachmentItems(typed.Items)}
+	default:
+		return canonicalParagraphBlock{Type: ""}
 	}
-	return canonical
 }
 
-func canonicalizeInlineNodes(nodes []ports.InlineNode) []map[string]any {
-	canonicalNodes := make([]map[string]any, 0, len(nodes))
+func canonicalizeListItems(items []ports.ListItem) []canonicalListItem {
+	canonicalItems := make([]canonicalListItem, 0, len(items))
+	for _, item := range items {
+		canonicalItems = append(canonicalItems, canonicalListItem{Blocks: canonicalizeBlocks(item.Blocks)})
+	}
+	return canonicalItems
+}
+
+func canonicalizeInlineNodes(nodes []ports.InlineNode) []canonicalInlineNode {
+	canonicalNodes := make([]canonicalInlineNode, 0, len(nodes))
 	for _, node := range nodes {
-		text, _ := stringField(node, "text")
-		canonicalNodes = append(canonicalNodes, map[string]any{
-			"type":  "text",
-			"text":  text,
-			"marks": canonicalizeMarks(marksField(node, "marks")),
+		canonicalNodes = append(canonicalNodes, canonicalInlineNode{
+			Type:  "text",
+			Text:  node.Text,
+			Marks: canonicalizeMarks(node.Marks),
 		})
 	}
 	return canonicalNodes
 }
 
-func canonicalizeMarks(marks []ports.InlineMark) []map[string]any {
-	canonicalMarks := make([]map[string]any, 0, len(marks))
+func canonicalizeMarks(marks []ports.InlineMark) []canonicalInlineMark {
+	canonicalMarks := make([]canonicalInlineMark, 0, len(marks))
 	for _, mark := range marks {
-		markType, _ := stringField(mark, "type")
-		canonical := map[string]any{"type": markType}
-		if markType == "link" {
-			href, _ := stringField(mark, "href")
-			if safeURL, ok := sanitizeHTTPURL(href); ok {
-				canonical["href"] = safeURL
+		canonical := canonicalInlineMark{Type: mark.Type}
+		if mark.Type == "link" {
+			if safeURL, ok := sanitizeHTTPURL(mark.Href); ok {
+				canonical.Href = safeURL
 			}
 		}
 		canonicalMarks = append(canonicalMarks, canonical)
@@ -216,48 +321,29 @@ func canonicalizeMarks(marks []ports.InlineMark) []map[string]any {
 	return canonicalMarks
 }
 
-func canonicalizeListItems(value any) []map[string]any {
-	items, ok := mapItems(value)
-	if !ok {
-		return nil
-	}
-	canonicalItems := make([]map[string]any, 0, len(items))
-	for _, item := range items {
-		canonicalItems = append(canonicalItems, map[string]any{
-			"blocks": canonicalizeBlocks(blocksField(item, "blocks")),
-		})
-	}
-	return canonicalItems
-}
-
-func canonicalizeTableCells(cells []ports.TableCell) []map[string]any {
-	canonicalCells := make([]map[string]any, 0, len(cells))
+func canonicalizeTableCells(cells []ports.TableCell) []canonicalTableCell {
+	canonicalCells := make([]canonicalTableCell, 0, len(cells))
 	for _, cell := range cells {
-		canonicalCells = append(canonicalCells, map[string]any{
-			"children": canonicalizeInlineNodes(cell.Children),
+		canonicalCells = append(canonicalCells, canonicalTableCell{
+			Children: canonicalizeInlineNodes(cell.Children),
 		})
 	}
 	return canonicalCells
 }
 
-func canonicalizeTableRows(rows [][]ports.TableCell) [][]map[string]any {
-	canonicalRows := make([][]map[string]any, 0, len(rows))
+func canonicalizeTableRows(rows [][]ports.TableCell) [][]canonicalTableCell {
+	canonicalRows := make([][]canonicalTableCell, 0, len(rows))
 	for _, row := range rows {
 		canonicalRows = append(canonicalRows, canonicalizeTableCells(row))
 	}
 	return canonicalRows
 }
 
-func canonicalizeAttachmentItems(value any) []map[string]any {
-	items, ok := mapItems(value)
-	if !ok {
-		return nil
-	}
-	canonicalItems := make([]map[string]any, 0, len(items))
+func canonicalizeAttachmentItems(items []ports.AttachmentItem) []canonicalAttachmentItem {
+	canonicalItems := make([]canonicalAttachmentItem, 0, len(items))
 	for _, item := range items {
-		fileID, _ := stringField(item, "fileId")
-		canonicalItems = append(canonicalItems, map[string]any{
-			"fileId": strings.TrimSpace(fileID),
+		canonicalItems = append(canonicalItems, canonicalAttachmentItem{
+			FileID: strings.TrimSpace(item.FileID),
 		})
 	}
 	return canonicalItems
@@ -267,6 +353,7 @@ type parserState struct {
 	policy          ports.BodyValidationPolicy
 	details         []ports.ValidationDetail
 	truncated       bool
+	stopValidation  bool
 	blockCount      int
 	inlineNodeCount int
 	tableCellCount  int
@@ -275,194 +362,279 @@ type parserState struct {
 	externalLinks   []string
 }
 
-func (s *parserState) addError(path string, code string) {
+func (s *parserState) addError(path []pathPart, code string) {
 	if len(s.details) >= s.policy.MaxValidationErrors {
 		s.truncated = true
+		s.stopValidation = true
 		return
 	}
-	s.details = append(s.details, ports.ValidationDetail{Path: path, Code: code})
+	s.details = append(s.details, ports.ValidationDetail{Path: formatPath(path), Code: code})
+	if len(s.details) >= s.policy.MaxValidationErrors {
+		s.truncated = true
+		s.stopValidation = true
+	}
 }
 
-func (s *parserState) validateBlocks(blocks []ports.BodyBlock, path string, containerDepth int) {
+func (s *parserState) stopAfterHardLimit() {
+	s.stopValidation = true
+}
+
+func (s *parserState) validateBlocks(blocks ports.Blocks, path []pathPart, containerDepth int) {
 	for index, block := range blocks {
-		blockPath := fmt.Sprintf("%s[%d]", path, index)
-		s.validateBlock(block, blockPath, containerDepth)
-	}
-}
-
-func (s *parserState) validateBlock(block ports.BodyBlock, path string, containerDepth int) {
-	s.blockCount++
-	if s.blockCount > s.policy.MaxBlocks {
-		s.addError("blocks", "BODY_BLOCK_COUNT_EXCEEDED")
-		return
-	}
-
-	blockType, ok := stringField(block, "type")
-	if !ok {
-		s.addError(path+".type", "BLOCK_TYPE_REQUIRED")
-		return
-	}
-
-	switch blockType {
-	case "paragraph":
-		text := s.validateInlineNodes(inlineNodesField(block, "children"), path+".children")
-		s.appendPlainText(text)
-	case "heading":
-		text := s.validateInlineNodes(inlineNodesField(block, "children"), path+".children")
-		s.appendPlainText(text)
-	case "quote":
-		s.validateContainerDepth(path, containerDepth)
-		s.validateBlocks(blocksField(block, "blocks"), path+".blocks", containerDepth+1)
-	case "list":
-		s.validateContainerDepth(path, containerDepth)
-		s.validateListItems(block["items"], path+".items", containerDepth+1)
-	case "collapsible":
-		s.validateContainerDepth(path, containerDepth)
-		s.validateInlineNodes(inlineNodesField(block, "title"), path+".title")
-		s.validateBlocks(blocksField(block, "blocks"), path+".blocks", containerDepth+1)
-	case "code_block":
-		code, _ := stringField(block, "code")
-		if len([]rune(code)) > s.policy.MaxCodeBlockChars {
-			s.addError(path+".code", "CODE_BLOCK_TOO_LONG")
-		}
-		s.appendPlainText(code)
-	case "math":
-		latex, _ := stringField(block, "latex")
-		if len([]rune(latex)) > s.policy.MaxLatexChars {
-			s.addError(path+".latex", "MATH_LATEX_TOO_LONG")
-		}
-		s.appendPlainText(latex)
-	case "table":
-		s.validateTable(block, path)
-	case "image":
-		fileID, ok := stringField(block, "fileId")
-		if !ok || strings.TrimSpace(fileID) == "" {
-			s.addError(path+".fileId", "MEDIA_REF_INVALID")
+		if s.stopValidation {
 			return
 		}
-		s.mediaRefs = append(s.mediaRefs, ports.MediaRef{FileID: strings.TrimSpace(fileID)})
-	case "external_embed":
-		s.validateExternalEmbed(block, path)
-	case "attachment_gallery":
-		s.validateAttachmentGallery(block["items"], path+".items")
-	default:
-		s.addError(path+".type", "BLOCK_TYPE_NOT_ENABLED")
+		s.validateBlock(block, indexedPath(path, index), containerDepth)
 	}
 }
 
-func (s *parserState) validateContainerDepth(path string, parentDepth int) {
+func (s *parserState) validateBlock(block ports.Block, path []pathPart, containerDepth int) {
+	s.blockCount++
+	if s.blockCount > s.policy.MaxBlocks {
+		s.addError(rootPath("blocks"), "BODY_BLOCK_COUNT_EXCEEDED")
+		s.stopAfterHardLimit()
+		return
+	}
+
+	switch typed := block.(type) {
+	case nil:
+		s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+	case *ports.UnsupportedBlock:
+		// Unknown JSON block types are decoded into UnsupportedBlock so parser,
+		// not JSON decoding, remains the owner of field-level validation errors.
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		if typed.Type == "" {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.addError(fieldPath(path, "type"), "BLOCK_TYPE_NOT_ENABLED")
+	case *ports.ParagraphBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		text := s.validateInlineNodes(typed.Children, fieldPath(path, "children"))
+		s.appendPlainText(text)
+	case *ports.HeadingBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		text := s.validateInlineNodes(typed.Children, fieldPath(path, "children"))
+		s.appendPlainText(text)
+	case *ports.QuoteBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateContainerDepth(path, containerDepth)
+		if s.stopValidation {
+			return
+		}
+		s.validateBlocks(typed.Blocks, fieldPath(path, "blocks"), containerDepth+1)
+	case *ports.ListBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateContainerDepth(path, containerDepth)
+		if s.stopValidation {
+			return
+		}
+		s.validateListItems(typed.Items, fieldPath(path, "items"), containerDepth+1)
+	case *ports.CollapsibleBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateContainerDepth(path, containerDepth)
+		if s.stopValidation {
+			return
+		}
+		s.validateInlineNodes(typed.Title, fieldPath(path, "title"))
+		if s.stopValidation {
+			return
+		}
+		s.validateBlocks(typed.Blocks, fieldPath(path, "blocks"), containerDepth+1)
+	case *ports.CodeBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		if len([]rune(typed.Code)) > s.policy.MaxCodeBlockChars {
+			s.addError(fieldPath(path, "code"), "CODE_BLOCK_TOO_LONG")
+		}
+		s.appendPlainText(typed.Code)
+	case *ports.MathBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		if len([]rune(typed.Latex)) > s.policy.MaxLatexChars {
+			s.addError(fieldPath(path, "latex"), "MATH_LATEX_TOO_LONG")
+		}
+		s.appendPlainText(typed.Latex)
+	case *ports.TableBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateTable(typed, path)
+	case *ports.ImageBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		fileID := strings.TrimSpace(typed.FileID)
+		if fileID == "" {
+			s.addError(fieldPath(path, "fileId"), "MEDIA_REF_INVALID")
+			return
+		}
+		s.mediaRefs = append(s.mediaRefs, ports.MediaRef{FileID: fileID})
+	case *ports.ExternalEmbedBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateExternalEmbed(typed, path)
+	case *ports.AttachmentGalleryBlock:
+		if typed == nil {
+			s.addError(fieldPath(path, "type"), "BLOCK_TYPE_REQUIRED")
+			return
+		}
+		s.validateAttachmentGallery(typed.Items, fieldPath(path, "items"))
+	default:
+		s.addError(fieldPath(path, "type"), "BLOCK_TYPE_NOT_ENABLED")
+	}
+}
+
+func (s *parserState) validateContainerDepth(path []pathPart, parentDepth int) {
 	if parentDepth+1 > s.policy.MaxContainerDepth {
 		s.addError(path, "BODY_CONTAINER_TOO_DEEP")
+		s.stopAfterHardLimit()
 	}
 }
 
-func (s *parserState) validateInlineNodes(nodes []ports.InlineNode, path string) string {
+func (s *parserState) validateInlineNodes(nodes []ports.InlineNode, path []pathPart) string {
 	var textBuilder strings.Builder
 	for index, node := range nodes {
-		nodePath := fmt.Sprintf("%s[%d]", path, index)
+		if s.stopValidation {
+			return textBuilder.String()
+		}
+		nodePath := indexedPath(path, index)
 		s.inlineNodeCount++
 		if s.inlineNodeCount > s.policy.MaxInlineNodes {
-			s.addError("blocks", "BODY_INLINE_NODE_COUNT_EXCEEDED")
+			s.addError(rootPath("blocks"), "BODY_INLINE_NODE_COUNT_EXCEEDED")
+			s.stopAfterHardLimit()
 			return textBuilder.String()
 		}
 
-		nodeType, ok := stringField(node, "type")
-		if !ok || nodeType != "text" {
-			s.addError(nodePath+".type", "INLINE_NODE_UNSUPPORTED")
+		if node.Type != "text" {
+			s.addError(fieldPath(nodePath, "type"), "INLINE_NODE_UNSUPPORTED")
 			continue
 		}
 
-		text, _ := stringField(node, "text")
-		textBuilder.WriteString(text)
-		s.validateMarks(marksField(node, "marks"), nodePath+".marks")
+		textBuilder.WriteString(node.Text)
+		s.validateMarks(node.Marks, fieldPath(nodePath, "marks"))
 	}
 	return textBuilder.String()
 }
 
-func (s *parserState) validateMarks(marks []ports.InlineMark, path string) {
+func (s *parserState) validateMarks(marks []ports.InlineMark, path []pathPart) {
 	for index, mark := range marks {
-		markPath := fmt.Sprintf("%s[%d]", path, index)
-		markType, ok := stringField(mark, "type")
-		if !ok {
-			s.addError(markPath+".type", "INLINE_MARK_TYPE_REQUIRED")
+		if s.stopValidation {
+			return
+		}
+		markPath := indexedPath(path, index)
+		if mark.Type == "" {
+			s.addError(fieldPath(markPath, "type"), "INLINE_MARK_TYPE_REQUIRED")
 			continue
 		}
-		switch markType {
+		switch mark.Type {
 		case "bold", "italic", "underline", "strike", "inline_code":
 		case "link":
-			href, _ := stringField(mark, "href")
-			safeURL, ok := sanitizeHTTPURL(href)
+			safeURL, ok := sanitizeHTTPURL(mark.Href)
 			if !ok {
-				s.addError(markPath+".href", "LINK_HREF_UNSAFE")
+				s.addError(fieldPath(markPath, "href"), "LINK_HREF_UNSAFE")
 				continue
 			}
-			s.addExternalLink(markPath+".href", safeURL)
+			s.addExternalLink(fieldPath(markPath, "href"), safeURL)
 		default:
-			s.addError(markPath+".type", "INLINE_MARK_UNSUPPORTED")
+			s.addError(fieldPath(markPath, "type"), "INLINE_MARK_UNSUPPORTED")
 		}
 	}
 }
 
-func (s *parserState) validateListItems(value any, path string, containerDepth int) {
-	items, ok := mapItems(value)
-	if !ok {
+func (s *parserState) validateListItems(items []ports.ListItem, path []pathPart, containerDepth int) {
+	if items == nil {
 		s.addError(path, "LIST_ITEMS_INVALID")
 		return
 	}
 	for index, item := range items {
-		s.validateBlocks(blocksField(item, "blocks"), fmt.Sprintf("%s[%d].blocks", path, index), containerDepth)
+		if s.stopValidation {
+			return
+		}
+		s.validateBlocks(item.Blocks, fieldPath(indexedPath(path, index), "blocks"), containerDepth)
 	}
 }
 
-func (s *parserState) validateTable(block ports.BodyBlock, path string) {
-	headers := tableCellsField(block, "headers")
-	rows := tableRowsField(block, "rows")
-	cellCount := len(headers)
-	for _, row := range rows {
+func (s *parserState) validateTable(block *ports.TableBlock, path []pathPart) {
+	cellCount := len(block.Headers)
+	for _, row := range block.Rows {
 		cellCount += len(row)
 	}
 	s.tableCellCount += cellCount
 	if s.tableCellCount > s.policy.MaxTableCells {
 		s.addError(path, "TABLE_TOO_LARGE")
+		s.stopAfterHardLimit()
 		return
 	}
-	for index, cell := range headers {
-		s.validateInlineNodes(cell.Children, fmt.Sprintf("%s.headers[%d].children", path, index))
+	for index, cell := range block.Headers {
+		if s.stopValidation {
+			return
+		}
+		s.validateInlineNodes(cell.Children, fieldPath(indexedFieldPath(path, "headers", index), "children"))
 	}
-	for rowIndex, row := range rows {
+	for rowIndex, row := range block.Rows {
+		if s.stopValidation {
+			return
+		}
 		for cellIndex, cell := range row {
-			s.validateInlineNodes(cell.Children, fmt.Sprintf("%s.rows[%d][%d].children", path, rowIndex, cellIndex))
+			if s.stopValidation {
+				return
+			}
+			s.validateInlineNodes(cell.Children, fieldPath(indexedFieldPath2(path, "rows", rowIndex, cellIndex), "children"))
 		}
 	}
 }
 
-func (s *parserState) validateExternalEmbed(block ports.BodyBlock, path string) {
-	provider, _ := stringField(block, "provider")
-	if provider != "image" {
-		s.addError(path+".provider", "EXTERNAL_EMBED_PROVIDER_NOT_ALLOWED")
+func (s *parserState) validateExternalEmbed(block *ports.ExternalEmbedBlock, path []pathPart) {
+	if block.Provider != "image" {
+		s.addError(fieldPath(path, "provider"), "EXTERNAL_EMBED_PROVIDER_NOT_ALLOWED")
 	}
-	rawURL, _ := stringField(block, "url")
-	safeURL, ok := sanitizeHTTPURL(rawURL)
+	safeURL, ok := sanitizeHTTPURL(block.URL)
 	if !ok {
-		s.addError(path+".url", "EXTERNAL_EMBED_URL_UNSAFE")
+		s.addError(fieldPath(path, "url"), "EXTERNAL_EMBED_URL_UNSAFE")
 		return
 	}
-	s.addExternalLink(path+".url", safeURL)
+	s.addExternalLink(fieldPath(path, "url"), safeURL)
 }
 
-func (s *parserState) validateAttachmentGallery(value any, path string) {
-	items, ok := mapItems(value)
-	if !ok {
+func (s *parserState) validateAttachmentGallery(items []ports.AttachmentItem, path []pathPart) {
+	if items == nil {
 		s.addError(path, "ATTACHMENT_GALLERY_ITEMS_INVALID")
 		return
 	}
 	for index, item := range items {
-		fileID, ok := stringField(item, "fileId")
-		if !ok || strings.TrimSpace(fileID) == "" {
-			s.addError(fmt.Sprintf("%s[%d].fileId", path, index), "MEDIA_REF_INVALID")
+		fileID := strings.TrimSpace(item.FileID)
+		if fileID == "" {
+			s.addError(fieldPath(indexedPath(path, index), "fileId"), "MEDIA_REF_INVALID")
 			continue
 		}
-		s.mediaRefs = append(s.mediaRefs, ports.MediaRef{FileID: strings.TrimSpace(fileID)})
+		s.mediaRefs = append(s.mediaRefs, ports.MediaRef{FileID: fileID})
 	}
 }
 
@@ -472,9 +644,10 @@ func (s *parserState) appendPlainText(text string) {
 	}
 }
 
-func (s *parserState) addExternalLink(path string, link string) {
+func (s *parserState) addExternalLink(path []pathPart, link string) {
 	if len(s.externalLinks) >= s.policy.MaxExternalLinks {
 		s.addError(path, "BODY_EXTERNAL_LINK_COUNT_EXCEEDED")
+		s.stopAfterHardLimit()
 		return
 	}
 	s.externalLinks = append(s.externalLinks, link)
@@ -491,182 +664,54 @@ func sanitizeHTTPURL(rawURL string) (string, bool) {
 	return parsedURL.String(), true
 }
 
-func stringField(values map[string]any, key string) (string, bool) {
-	value, ok := values[key]
-	if !ok {
-		return "", false
-	}
-	text, ok := value.(string)
-	return text, ok
+type pathPart struct {
+	field      string
+	index0     int
+	index1     int
+	indexCount int
 }
 
-func mapItems(value any) ([]map[string]any, bool) {
-	switch typed := value.(type) {
-	case []map[string]any:
-		return typed, true
-	case []ports.BodyBlock:
-		items := make([]map[string]any, 0, len(typed))
-		for _, item := range typed {
-			items = append(items, item)
-		}
-		return items, true
-	case []any:
-		items := make([]map[string]any, 0, len(typed))
-		for _, item := range typed {
-			mapped, ok := mapValue(item)
-			if !ok {
-				return nil, false
+func rootPath(field string) []pathPart {
+	parts := make([]pathPart, 1, 16)
+	parts[0] = pathPart{field: field}
+	return parts
+}
+
+func fieldPath(path []pathPart, field string) []pathPart {
+	return append(path, pathPart{field: field})
+}
+
+func indexedPath(path []pathPart, index int) []pathPart {
+	return append(path, pathPart{index0: index, indexCount: 1})
+}
+
+func indexedFieldPath(path []pathPart, field string, index int) []pathPart {
+	return append(path, pathPart{field: field, index0: index, indexCount: 1})
+}
+
+func indexedFieldPath2(path []pathPart, field string, index0 int, index1 int) []pathPart {
+	return append(path, pathPart{field: field, index0: index0, index1: index1, indexCount: 2})
+}
+
+func formatPath(path []pathPart) string {
+	var builder strings.Builder
+	for index, part := range path {
+		if part.field != "" {
+			if index > 0 {
+				builder.WriteByte('.')
 			}
-			items = append(items, mapped)
+			builder.WriteString(part.field)
 		}
-		return items, true
-	default:
-		return nil, false
-	}
-}
-
-func mapValue(value any) (map[string]any, bool) {
-	switch typed := value.(type) {
-	case map[string]any:
-		return typed, true
-	case ports.BodyBlock:
-		return typed, true
-	case ports.InlineNode:
-		return typed, true
-	case ports.InlineMark:
-		return typed, true
-	default:
-		return nil, false
-	}
-}
-
-func inlineNodesField(values map[string]any, key string) []ports.InlineNode {
-	value, ok := values[key]
-	if !ok {
-		return nil
-	}
-	if nodes, ok := value.([]ports.InlineNode); ok {
-		return nodes
-	}
-	if rawNodes, ok := value.([]any); ok {
-		nodes := make([]ports.InlineNode, 0, len(rawNodes))
-		for _, rawNode := range rawNodes {
-			mapped, ok := mapValue(rawNode)
-			if !ok {
-				return nil
-			}
-			nodes = append(nodes, ports.InlineNode(mapped))
+		if part.indexCount >= 1 {
+			builder.WriteByte('[')
+			builder.WriteString(strconv.Itoa(part.index0))
+			builder.WriteByte(']')
 		}
-		return nodes
-	}
-	return nil
-}
-
-func marksField(values map[string]any, key string) []ports.InlineMark {
-	value, ok := values[key]
-	if !ok {
-		return nil
-	}
-	if marks, ok := value.([]ports.InlineMark); ok {
-		return marks
-	}
-	if rawMarks, ok := value.([]any); ok {
-		marks := make([]ports.InlineMark, 0, len(rawMarks))
-		for _, rawMark := range rawMarks {
-			mapped, ok := mapValue(rawMark)
-			if !ok {
-				return nil
-			}
-			marks = append(marks, ports.InlineMark(mapped))
+		if part.indexCount >= 2 {
+			builder.WriteByte('[')
+			builder.WriteString(strconv.Itoa(part.index1))
+			builder.WriteByte(']')
 		}
-		return marks
 	}
-	return nil
-}
-
-func blocksField(values map[string]any, key string) []ports.BodyBlock {
-	value, ok := values[key]
-	if !ok {
-		return nil
-	}
-	if blocks, ok := value.([]ports.BodyBlock); ok {
-		return blocks
-	}
-	if rawBlocks, ok := value.([]any); ok {
-		blocks := make([]ports.BodyBlock, 0, len(rawBlocks))
-		for _, rawBlock := range rawBlocks {
-			mapped, ok := mapValue(rawBlock)
-			if !ok {
-				return nil
-			}
-			blocks = append(blocks, ports.BodyBlock(mapped))
-		}
-		return blocks
-	}
-	return nil
-}
-
-func tableCellsField(values map[string]any, key string) []ports.TableCell {
-	value, ok := values[key]
-	if !ok {
-		return nil
-	}
-	if cells, ok := value.([]ports.TableCell); ok {
-		return cells
-	}
-	if rawCells, ok := value.([]any); ok {
-		cells := make([]ports.TableCell, 0, len(rawCells))
-		for _, rawCell := range rawCells {
-			cell, ok := tableCellValue(rawCell)
-			if !ok {
-				return nil
-			}
-			cells = append(cells, cell)
-		}
-		return cells
-	}
-	return nil
-}
-
-func tableRowsField(values map[string]any, key string) [][]ports.TableCell {
-	value, ok := values[key]
-	if !ok {
-		return nil
-	}
-	if rows, ok := value.([][]ports.TableCell); ok {
-		return rows
-	}
-	if rawRows, ok := value.([]any); ok {
-		rows := make([][]ports.TableCell, 0, len(rawRows))
-		for _, rawRow := range rawRows {
-			rawCells, ok := rawRow.([]any)
-			if !ok {
-				return nil
-			}
-			row := make([]ports.TableCell, 0, len(rawCells))
-			for _, rawCell := range rawCells {
-				cell, ok := tableCellValue(rawCell)
-				if !ok {
-					return nil
-				}
-				row = append(row, cell)
-			}
-			rows = append(rows, row)
-		}
-		return rows
-	}
-	return nil
-}
-
-func tableCellValue(value any) (ports.TableCell, bool) {
-	if cell, ok := value.(ports.TableCell); ok {
-		return cell, true
-	}
-	mapped, ok := mapValue(value)
-	if !ok {
-		return ports.TableCell{}, false
-	}
-	return ports.TableCell{
-		Children: inlineNodesField(mapped, "children"),
-	}, true
+	return builder.String()
 }

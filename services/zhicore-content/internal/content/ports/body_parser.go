@@ -12,16 +12,8 @@ type BodyParserRegistry interface {
 }
 
 type PostBodyWriteInput struct {
-	SchemaVersion int         `json:"schemaVersion"`
-	Blocks        []BodyBlock `json:"blocks"`
-}
-
-type BodyBlock map[string]any
-type InlineNode map[string]any
-type InlineMark map[string]any
-
-type TableCell struct {
-	Children []InlineNode `json:"children"`
+	SchemaVersion int    `json:"schemaVersion"`
+	Blocks        Blocks `json:"blocks"`
 }
 
 // BodyValidationPolicy is injected from runtime configuration so request

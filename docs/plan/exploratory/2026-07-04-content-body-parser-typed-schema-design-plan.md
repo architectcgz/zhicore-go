@@ -241,39 +241,53 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
 
 **测试立场：** TDD / characterization - parser 是安全敏感输入校验器，属于 R3。
 
-- [ ] **步骤 1：运行当前行为测试**
+- [x] **步骤 1：运行当前行为测试**
 
   运行：`cd services/zhicore-content && go test ./internal/content/infrastructure/body`
 
   预期：通过，证明重构前行为基线可用。
 
-- [ ] **步骤 2：运行当前 benchmark 并保存输出**
+- [x] **步骤 2：运行当前 benchmark 并保存输出**
 
   运行：`cd services/zhicore-content && go test -run Test -bench=BenchmarkV1BodyParser -benchmem ./internal/content/infrastructure/body`
 
   预期：输出包含 `ns/op`、`B/op`、`allocs/op`；把结果临时记录在任务说明或 review 证据中。
 
-- [ ] **步骤 3：确认测试文件规模**
+- [x] **步骤 3：确认测试文件规模**
 
   运行：`python3 scripts/check-test-size.py --files services/zhicore-content/internal/content/infrastructure/body/v1_parser_test.go`
 
   预期：通过；如果接近 400 行，后续任务优先拆 benchmark helper 到独立测试文件。
 
+**Baseline 记录（2026-07-04，本 worktree）：**
+
+```text
+BenchmarkV1BodyParser/small-6                 50759 ns/op    34129 B/op     573 allocs/op
+BenchmarkV1BodyParser/medium-6               318370 ns/op   220414 B/op    2817 allocs/op
+BenchmarkV1BodyParser/near_limit-6          1389782 ns/op   802419 B/op   11369 allocs/op
+BenchmarkV1BodyParser/many_blocks-6         2444226 ns/op  1505692 B/op   28775 allocs/op
+BenchmarkV1BodyParser/large_table-6         1764432 ns/op  1334518 B/op   24775 allocs/op
+BenchmarkV1BodyParser/many_links-6           551722 ns/op   368616 B/op    6241 allocs/op
+BenchmarkV1BodyParser/large_code-6            57459 ns/op    21692 B/op      18 allocs/op
+BenchmarkV1BodyParser/reject_oversize-6       10911 ns/op     7655 B/op     121 allocs/op
+BenchmarkV1BodyParser/reject_many_errors-6    18342 ns/op     6980 B/op     307 allocs/op
+```
+
 ## 任务 2：把端口 DTO 改为 block subtype schema
 
 **测试立场：** TDD - 这是 application-facing contract 的类型重构，先让现有测试暴露编译失败，再按目标类型修复。
 
-- [ ] **步骤 1：修改 `ports` 中的类型定义**
+- [x] **步骤 1：修改 `ports` 中的类型定义**
 
   把动态 alias 替换为 `Blocks []Block`、`Block` 接口、`BlockType` 常量和每个 block subtype struct，保留 `PostBodyWriteInput`、`BodyValidationPolicy`、`NormalizedBody`、`BodyValidationError` 的公开语义。
 
-- [ ] **步骤 2：运行 parser 包测试，确认进入预期红灯**
+- [x] **步骤 2：运行 parser 包测试，确认进入预期红灯**
 
   运行：`cd services/zhicore-content && go test ./internal/content/infrastructure/body`
 
   预期：编译失败，失败点来自测试 fixture 和 parser 实现仍在按 map 访问字段。
 
-- [ ] **步骤 3：先修测试 fixture 到 subtype 构造**
+- [x] **步骤 3：先修测试 fixture 到 subtype 构造**
 
   示例：
 
@@ -293,7 +307,7 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
   }
   ```
 
-- [ ] **步骤 4：保留 JSON decode 测试**
+- [x] **步骤 4：保留 JSON decode 测试**
 
   `TestV1BodyParserNormalizesDecodedJSONBody` 必须继续从 raw JSON 直接 `json.Unmarshal` 到 `PostBodyWriteInput`，证明 handler 层不需要先解成 `map[string]any`。
 
@@ -301,11 +315,11 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
 
 **测试立场：** TDD - 现有测试已经红灯，按现有行为逐步变绿。
 
-- [ ] **步骤 1：删除 map helper 的生产调用**
+- [x] **步骤 1：删除 map helper 的生产调用**
 
   删除或停止使用 `stringField`、`mapItems`、`mapValue`、`inlineNodesField`、`marksField`、`blocksField`、`tableCellsField`、`tableRowsField`、`tableCellValue`。
 
-- [ ] **步骤 2：把 block 校验改为 subtype type switch**
+- [x] **步骤 2：把 block 校验改为 subtype type switch**
 
   `validateBlock` 接收 `ports.Block`，按 `block.(type)` 分支：
 
@@ -318,11 +332,11 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
   - `*ports.AttachmentGalleryBlock` 读取 `Items`。
   - `*ports.UnsupportedBlock` 返回 `BLOCK_TYPE_NOT_ENABLED`。
 
-- [ ] **步骤 3：把 inline 和 mark 校验改为 typed field 访问**
+- [x] **步骤 3：把 inline 和 mark 校验改为 typed field 访问**
 
   `validateInlineNodes` 读取 `node.Type`、`node.Text`、`node.Marks`；`validateMarks` 读取 `mark.Type`、`mark.Href`。
 
-- [ ] **步骤 4：运行 parser 包测试**
+- [x] **步骤 4：运行 parser 包测试**
 
   运行：`cd services/zhicore-content && go test ./internal/content/infrastructure/body`
 
@@ -332,7 +346,7 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
 
 **测试立场：** TDD - `contentHash`、`CanonicalJSON` 和 unknown field 丢弃属于正文一致性 contract。
 
-- [ ] **步骤 1：引入每种 block 的 canonical struct**
+- [x] **步骤 1：引入每种 block 的 canonical struct**
 
   使用内部非导出类型表达 canonical 输出，不再用 `map[string]any`，也不使用中心化宽 `canonicalBlock`：
 
@@ -362,11 +376,11 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
 
   每个 subtype 只拥有自己的 canonical 字段。新增 block 时新增一个 `canonicalXBlock` 和一个 canonicalizer 分支，不修改既有 canonical struct。
 
-- [ ] **步骤 2：保留 URL 规范化和文件 ID trim**
+- [x] **步骤 2：保留 URL 规范化和文件 ID trim**
 
   `link.href`、`external_embed.url` 继续用 `sanitizeHTTPURL` 输出规范化 URL；`image.fileId`、`attachment_gallery.items[].fileId` 继续 `strings.TrimSpace`。
 
-- [ ] **步骤 3：运行 canonical 行为测试**
+- [x] **步骤 3：运行 canonical 行为测试**
 
   运行：`cd services/zhicore-content && go test ./internal/content/infrastructure/body -run 'TestV1BodyParserCanonicalJSON|TestV1BodyParserNormalizes'`
 
@@ -376,7 +390,7 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
 
 **测试立场：** R3 性能重构 - 不新增脆弱的硬阈值单元测试，用 benchmark 对比和 review 证据证明。
 
-- [ ] **步骤 1：预分配输出切片**
+- [x] **步骤 1：预分配输出切片**
 
   在 `parserState` 初始化时按输入规模保守预分配：
 
@@ -384,15 +398,15 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
   - `mediaRefs` 和 `externalLinks` 使用小容量初值，例如 0 或 4；不要按最大阈值一次性分配。
   - canonical block slice 按当前层 `len(blocks)` 分配。
 
-- [ ] **步骤 2：只在错误路径构造详细 path**
+- [x] **步骤 2：只在错误路径构造详细 path**
 
   正常遍历用数字 index 传递上下文；只有需要 `addError` 时再构造 path。短期可先保留少量 `fmt.Sprintf`，但 `many_blocks` 和 `large_table` 的内层循环不应无条件格式化 path。
 
-- [ ] **步骤 3：删除正常路径 map 分配**
+- [x] **步骤 3：删除正常路径 map 分配**
 
   canonicalization 和 traversal 不应再出现 `map[string]any{}`。允许 `UnmarshalJSON` 使用轻量 discriminator struct 和 `json.RawMessage`；测试 helper 也应迁移到 typed builder，避免 benchmark 输入本身污染分配观察。
 
-- [ ] **步骤 4：运行 benchmark 对比**
+- [x] **步骤 4：运行 benchmark 对比**
 
   运行：`cd services/zhicore-content && go test -run Test -bench=BenchmarkV1BodyParser -benchmem ./internal/content/infrastructure/body`
 
@@ -402,35 +416,49 @@ func (bs Blocks) MarshalJSON() ([]byte, error) {
   - `many_blocks` 和 `large_table` 的 `allocs/op` 相比 baseline 明显下降。
   - 如果 `ns/op` 降低但 `allocs/op` 不降，继续检查 canonicalization 是否仍在构造 map 或 path 字符串。
 
+**重构后 benchmark 记录（2026-07-04，本 worktree）：**
+
+```text
+BenchmarkV1BodyParser/small-6                 15447 ns/op    10314 B/op      70 allocs/op
+BenchmarkV1BodyParser/medium-6               129203 ns/op    99254 B/op     310 allocs/op
+BenchmarkV1BodyParser/near_limit-6           376528 ns/op   284443 B/op    1211 allocs/op
+BenchmarkV1BodyParser/many_blocks-6          417215 ns/op   252391 B/op    3011 allocs/op
+BenchmarkV1BodyParser/large_table-6          229048 ns/op   150558 B/op    2011 allocs/op
+BenchmarkV1BodyParser/many_links-6           154584 ns/op   121557 B/op    1025 allocs/op
+BenchmarkV1BodyParser/large_code-6            52282 ns/op    21132 B/op      10 allocs/op
+BenchmarkV1BodyParser/reject_oversize-6        3452 ns/op     3170 B/op      21 allocs/op
+BenchmarkV1BodyParser/reject_many_errors-6     3783 ns/op     4576 B/op      50 allocs/op
+```
+
 ## 任务 6：收口验证和文档同步
 
 **测试立场：** 文档 + 重构验证，R1/R3 混合。
 
-- [ ] **步骤 1：运行 parser 包测试**
+- [x] **步骤 1：运行 parser 包测试**
 
   运行：`cd services/zhicore-content && go test ./internal/content/infrastructure/body`
 
   预期：通过。
 
-- [ ] **步骤 2：运行 content 服务全量测试**
+- [x] **步骤 2：运行 content 服务全量测试**
 
   运行：`cd services/zhicore-content && go test ./...`
 
   预期：通过。
 
-- [ ] **步骤 3：运行测试规模检查**
+- [x] **步骤 3：运行测试规模检查**
 
   运行：`python3 scripts/check-test-size.py --files services/zhicore-content/internal/content/infrastructure/body/v1_parser_test.go`
 
   预期：通过；如果失败，按行为拆分 `v1_parser_test.go` 和 `v1_parser_benchmark_test.go`。
 
-- [ ] **步骤 4：运行结构检查**
+- [x] **步骤 4：运行结构检查**
 
   运行：`bash scripts/check-structure.sh`
 
   预期：`structure ok`。
 
-- [ ] **步骤 5：更新长期事实源**
+- [x] **步骤 5：更新长期事实源**
 
   如果实现后确认强类型 schema 成为正式事实，在 `docs/architecture/services/content/body-storage-and-publishing.md` 的 `BodyParserRegistry` 或 blocks schema 段落补一句：V1 parser 在 Go 端以 typed DTO 解码，`map[string]any` 不进入 parser 热路径。
 
