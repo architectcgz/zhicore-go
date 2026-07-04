@@ -77,7 +77,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `OutboxPublisher` | 跨服务事件发布 | 业务事务内追加 outbox 记录 |
 | `InternalEventPublisher` | 内部投影任务发布 | 业务事务内追加内部事件任务 |
 | `ConsumedEventStore` | 消费幂等 | 记录消费过的事件 ID |
-| `BodyCleanupTaskStore` | 正文清理任务 | 创建和查询未引用 MongoDB body 的清理任务 |
+| `BodyCleanupTaskStore` | 正文清理任务 | 创建和查询未引用 MongoDB body 的清理任务；发布事务失败后可用独立短事务记录 orphan snapshot cleanup |
 | `BodyRepairTaskStore` | 正文修复任务 | 记录正文缺失、hash 不一致等数据一致性事故 |
 | `RateLimiter` | Content 业务限流 | 按 actor、post、session、service caller、operation 和高成本资源维度返回 typed decision；必须能表达 allow、`1003` reject、Redis 降级放行、`1004` fail-closed 和 presence no-op，策略见 `rate-limiting.md`。 |
 
@@ -227,3 +227,5 @@ api/http -> application -> domain <- ports <- infrastructure
    - 从 Gateway 注入的身份上下文构造 `Actor`，缺失时返回认证失败；不做服务内 JWT 解析。
 
 该切片完成后再扩展点赞、收藏、标签、投影、管理端和 reader presence。
+
+首个切片的 application 测试必须覆盖发布失败方向：MongoDB snapshot 写入成功但 PostgreSQL transaction 失败时，线上 published 指针不变，并且新 snapshot 通过 immediate delete、独立 cleanup task 或 orphan scanner 可被回收。

@@ -4,7 +4,7 @@
 
 ## DDD 战术模式
 
-- **聚合（Aggregate）**：`Post`、`Tag`、`Category`、`PostStats`、`PostEngagement`
+- **聚合（Aggregate）**：`Post`、`Tag`、`Category`、`PostStats`
 - **值对象（Value Object）**：封装业务概念，避免到处传裸 `string` / `int64`
 - **领域服务（Domain Service）**：承载不自然归属单个实体的纯业务规则
 - **领域事件（Domain Event）**：聚合内发生的业务事实，由 application 转换为集成事件
@@ -101,14 +101,16 @@
 
 该事务不修改 `Post` 聚合，`Post` 的乐观锁版本号不会因点赞递增。
 
-### `PostEngagement`
+### `PostLike` / `PostFavorite`
 
 点赞和收藏不是聚合根，而是以 `(PostID, UserID)` 为自然唯一键的互动关系实体：
 
 - `PostLike`
 - `PostFavorite`
 
-这些关系总是和 `PostStats` 聚合一起修改。Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best-effort 更新，失败不回滚业务事务。
+这些关系总是由 application 在同一个 PostgreSQL 事务里和 `PostStats` 聚合一起修改。`PostStats` 只维护计数不能为负等统计不变量，不拥有 `likedBy` / `favoritedBy` 这类操作者事实；带操作者的集成事件由 application 在关系表插入或删除确认成功后映射并写入 outbox。这样可以避免重复点赞只改统计、却仍误发 `content.post.liked`。
+
+Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best-effort 更新，失败不回滚业务事务。
 
 当前用户视角的 `liked` / `favorited` 查询状态可以因为 Redis 或受控 DB fallback 故障而返回 unknown；unknown 只是查询降级状态，不是领域事实。领域模型只表达关系存在或不存在，不能把 unknown 写入 `post_likes`、`post_favorites`、`post_stats`、outbox 或 Redis 事实缓存。完整互动产品语义见 [engagement-design.md](engagement-design.md)。
 
@@ -138,18 +140,18 @@
 | `PostMetaUpdated` | `Post.UpdateMeta()` | 标题、摘要、封面等元数据更新 |
 | `PostTagsUpdated` | `Post.UpdateTags()` | 文章标签关系变更 |
 | `OwnerSnapshotRefreshed` | `Post.UpdateOwnerSnapshot()` | 作者快照版本更新 |
-| `PostLiked` | `PostStats.IncrementLikes()` | 用户点赞 |
-| `PostUnliked` | `PostStats.DecrementLikes()` | 用户取消点赞 |
-| `PostFavorited` | `PostStats.IncrementFavorites()` | 用户收藏 |
-| `PostUnfavorited` | `PostStats.DecrementFavorites()` | 用户取消收藏 |
+| `PostLiked` | application 确认 `PostLike` 新关系插入成功，并调用 `PostStats.IncrementLikes()` | 用户点赞 |
+| `PostUnliked` | application 确认 `PostLike` 关系删除成功，并调用 `PostStats.DecrementLikes()` | 用户取消点赞 |
+| `PostFavorited` | application 确认 `PostFavorite` 新关系插入成功，并调用 `PostStats.IncrementFavorites()` | 用户收藏 |
+| `PostUnfavorited` | application 确认 `PostFavorite` 关系删除成功，并调用 `PostStats.DecrementFavorites()` | 用户取消收藏 |
 | `TagCreated` | `Tag.Create()` | 标签创建 |
 | `PostTagAssociated` | `Post.UpdateTags()` | 文章关联标签 |
 
 生命周期：
 
 ```text
-聚合根行为产生领域事件
--> application 保存聚合后收集事件
+聚合根行为或 application 事务确认的业务事实产生领域事件
+-> application 保存聚合 / 关系实体后收集事件
 -> application 转换为集成事件并写入 outbox
 -> infrastructure dispatcher 投递到 RabbitMQ
 -> Search / Ranking / Notification 等服务消费

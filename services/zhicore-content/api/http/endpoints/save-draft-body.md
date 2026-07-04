@@ -61,14 +61,16 @@
 | `4001` | `404` | 文章不存在 | post 不存在、已删除或不可编辑。 |
 | `4004` | `409` | 文章已删除 | 已删除文章不允许保存草稿。 |
 | `4013` | `400` | 正文 schema 非法 | blocks schema 不合法。 |
-| `4014` | `400` | 正文过大 | canonical JSON 超过限制。 |
-| `4015` | `400` | 正文类型不允许 | block 类型不允许发布或保存。 |
-| `4017` | `409` | 文章版本冲突 | `basePostVersion` 落后。 |
-| `4019` | `409` | 正文 hash 冲突 | `baseDraftBodyHash` 与服务端当前草稿不一致。 |
-| `4020` | `400` | 客户端保存时间非法 | `clientSavedAt` 格式非法。 |
+| `4014` | `400` | 正文类型不允许 | block 类型不允许发布或保存。 |
+| `4015` | `400` | 正文过大 | canonical JSON 超过限制。 |
+| `4017` | `409` | 草稿冲突 | `basePostVersion`、`baseDraftBodyId` 或 `baseDraftBodyHash` 与服务端当前草稿不一致。 |
+| `4019` | `409` | 正文 hash 冲突 | 服务端读取到的 body hash 与 PostgreSQL 指针记录不一致。 |
+| `1001` | `400` | 参数校验失败 | `clientSavedAt` 格式非法或普通字段校验失败。 |
 | `4021` | `400` | 媒体引用非法 | File 引用缺失、不可访问或类型不允许。 |
-| `4022` | `400` | 外部链接非法 | external embed URL 或 provider 不允许。 |
-| `4024` | `500` | 正文存储不可用 | MongoDB body 写入或读取失败。 |
+| `4020` | `400` | external embed provider 不允许 | `external_embed.provider` 不在白名单内。 |
+| `4022` | `400` | 校验错误过多 | 字段级或 block 级错误超过返回上限。 |
+| `4024` | `400` | 正文 schema 版本不支持 | 请求的 `schemaVersion` 当前服务不可写。 |
+| `1004` | `503` | 服务暂时不可用 | MongoDB body 写入、File 校验或限流依赖不可用。 |
 
 ## 权限和可见性
 

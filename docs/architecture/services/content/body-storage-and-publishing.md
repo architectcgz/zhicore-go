@@ -98,9 +98,28 @@ MongoDB 正文写入失败
 失败语义：
 
 - MongoDB 写 snapshot 失败：PostgreSQL 不变，发布失败，草稿保留。
-- MongoDB 写 snapshot 成功但 PostgreSQL transaction 失败：线上 `published_*` 不变，新 snapshot 没被 PG 引用，作为 orphan 清理。
+- MongoDB 写 snapshot 成功但 PostgreSQL transaction 失败：线上 `published_*` 不变，新 snapshot 没被 PG 引用，application 必须进入事务外 orphan cleanup 路径，不能假设原 PostgreSQL transaction 里已经写入 cleanup task。
 - PostgreSQL commit 成功：发布成功，详情页只按 `published_body_id` 读取 MongoDB body。
 - published body 读取 MongoDB miss：返回 `CONTENT_BODY_UNAVAILABLE`，创建 repair task 并告警；普通个人文章没有旧正文或 draft 降级可读。
+
+### 发布事务失败后的 orphan cleanup
+
+发布路径先写 MongoDB snapshot，再用 PostgreSQL transaction 切换 `published_body_id`。因此一旦 snapshot 已写入而 PostgreSQL transaction 失败，原 transaction 会整体回滚，事务内的 `content_body_cleanup_tasks` 也不会存在。这个失败方向必须由 application 显式收敛：
+
+```text
+MongoDB write snapshot success
+-> PostgreSQL transaction fail / rollback
+-> application 立即 best-effort 删除 new_snapshot_body_id
+-> 删除失败且 PostgreSQL 可用时，用独立短事务写 content_body_cleanup_tasks(orphan_snapshot)
+-> PostgreSQL 也不可用时，记录结构化错误、metric 和 orphan body 元数据，由周期 orphan scanner 兜底
+```
+
+规则：
+
+- 事务外 cleanup 只能按 `body_id` 精确删除，删除前仍要确认 `posts.published_body_id` / `posts.draft_body_id` 没有引用该 body。
+- 独立写入 cleanup task 不能改变发布结果；发布仍然返回失败，线上正文保持旧指针。
+- orphan scanner 只处理超过安全年龄阈值的 MongoDB body，例如 `created_at < now - cleanupSafetyWindow`，避免误删刚写入但事务仍在推进的候选 body。
+- 这个路径必须有 application 测试：模拟 MongoDB snapshot 写入成功、PG transaction 失败、MongoDB 删除失败时，能登记 orphan cleanup task；PG 也不可用时至少产生可观测告警并由 scanner 后续发现。
 
 ## published / draft 元数据分离
 
@@ -130,6 +149,7 @@ draft_body_id / draft_body_hash / draft_size_bytes / draft_plain_text_length
 - 删除 old draft。
 - 删除 old snapshot。
 - 删除 orphan draft / snapshot。
+- 记录发布事务失败后未被 PG 指针引用的 new snapshot。
 
 清理必须按 `body_id` 精确删除，不能按 `post_id + role=draft` 删除。删除前必须确认：
 
