@@ -61,3 +61,7 @@ type Clock interface {
 type CacheStore interface {
 	Delete(ctx context.Context, keys ...string) error
 }
+
+type CacheFailureRecorder interface {
+	RecordCacheDeleteFailure(ctx context.Context, operation string, keys []string, err error)
+}

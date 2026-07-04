@@ -14,25 +14,27 @@ import (
 )
 
 type Dependencies struct {
-	Profiles ports.ProfileRepository
-	Queries  ports.ProfileQueryRepository
-	Files    ports.FileReferenceClient
-	IDs      ports.PublicIDGenerator
-	Outbox   ports.OutboxPublisher
-	TxRunner ports.TransactionRunner
-	Clock    ports.Clock
-	Cache    ports.CacheStore
+	Profiles      ports.ProfileRepository
+	Queries       ports.ProfileQueryRepository
+	Files         ports.FileReferenceClient
+	IDs           ports.PublicIDGenerator
+	Outbox        ports.OutboxPublisher
+	TxRunner      ports.TransactionRunner
+	Clock         ports.Clock
+	Cache         ports.CacheStore
+	CacheFailures ports.CacheFailureRecorder
 }
 
 type Service struct {
-	profiles ports.ProfileRepository
-	queries  ports.ProfileQueryRepository
-	files    ports.FileReferenceClient
-	ids      ports.PublicIDGenerator
-	outbox   ports.OutboxPublisher
-	txRunner ports.TransactionRunner
-	clock    ports.Clock
-	cache    ports.CacheStore
+	profiles      ports.ProfileRepository
+	queries       ports.ProfileQueryRepository
+	files         ports.FileReferenceClient
+	ids           ports.PublicIDGenerator
+	outbox        ports.OutboxPublisher
+	txRunner      ports.TransactionRunner
+	clock         ports.Clock
+	cache         ports.CacheStore
+	cacheFailures ports.CacheFailureRecorder
 }
 
 type CreateProfileForAccountCommand struct {
@@ -89,15 +91,19 @@ func NewService(deps Dependencies) (*Service, error) {
 	if deps.Cache == nil {
 		return nil, fmt.Errorf("Cache is required")
 	}
+	if deps.CacheFailures == nil {
+		return nil, fmt.Errorf("CacheFailures is required")
+	}
 	return &Service{
-		profiles: deps.Profiles,
-		queries:  deps.Queries,
-		files:    deps.Files,
-		ids:      deps.IDs,
-		outbox:   deps.Outbox,
-		txRunner: deps.TxRunner,
-		clock:    deps.Clock,
-		cache:    deps.Cache,
+		profiles:      deps.Profiles,
+		queries:       deps.Queries,
+		files:         deps.Files,
+		ids:           deps.IDs,
+		outbox:        deps.Outbox,
+		txRunner:      deps.TxRunner,
+		clock:         deps.Clock,
+		cache:         deps.Cache,
+		cacheFailures: deps.CacheFailures,
 	}, nil
 }
 
@@ -149,6 +155,11 @@ func (s *Service) GetMyProfile(ctx context.Context, userID domain.UserID) (domai
 	if err != nil {
 		return domain.Profile{}, fmt.Errorf("get my profile: %w", err)
 	}
+	// DELETED profiles are hidden from owner-facing HTTP just like public profile reads;
+	// historical rendering should use dedicated summary APIs, not this editable profile view.
+	if profile.Status == domain.UserStatusDeleted {
+		return domain.Profile{}, domain.ErrProfileNotFound
+	}
 	return profile, nil
 }
 
@@ -178,6 +189,11 @@ func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (
 		current, err := s.queries.GetByUserID(txCtx, cmd.UserID)
 		if err != nil {
 			return fmt.Errorf("load profile for update: %w", err)
+		}
+		// A DELETED profile is intentionally indistinguishable from missing for edit flows.
+		// DEACTIVATED remains a separate non-active state and maps to USER_NOT_ACTIVE.
+		if current.Status == domain.UserStatusDeleted {
+			return domain.ErrProfileNotFound
 		}
 
 		patch := domain.ProfileUpdate{
@@ -338,10 +354,13 @@ func (s *Service) publish(ctx context.Context, eventType string, userID domain.U
 }
 
 func (s *Service) invalidateProfileCache(ctx context.Context, profile domain.Profile) {
-	_ = s.cache.Delete(ctx,
+	keys := []string{
 		fmt.Sprintf("user:%d:simple", profile.UserID),
 		fmt.Sprintf("user:%d:profile", profile.UserID),
 		fmt.Sprintf("user:%d:availability", profile.UserID),
 		fmt.Sprintf("user:public:%s:id", profile.PublicID),
-	)
+	}
+	if err := s.cache.Delete(ctx, keys...); err != nil {
+		s.cacheFailures.RecordCacheDeleteFailure(ctx, "user.profile.invalidate", keys, err)
+	}
 }

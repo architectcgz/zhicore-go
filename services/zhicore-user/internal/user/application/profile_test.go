@@ -219,12 +219,9 @@ func TestCreateProfileSupportsIdempotentCreationAndQueries(t *testing.T) {
 			Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{},
 			Outbox: &fakeOutboxPublisher{}, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
-		me, err := service.GetMyProfile(context.Background(), profile.UserID)
-		if err != nil {
-			t.Fatalf("GetMyProfile() error = %v", err)
-		}
-		if me.Status != domain.UserStatusDeleted {
-			t.Fatalf("GetMyProfile() status = %q, want %q", me.Status, domain.UserStatusDeleted)
+		_, err := service.GetMyProfile(context.Background(), profile.UserID)
+		if !errors.Is(err, domain.ErrProfileNotFound) {
+			t.Fatalf("GetMyProfile() error = %v, want %v", err, domain.ErrProfileNotFound)
 		}
 		_, err = service.GetUserProfileByPublicID(context.Background(), profile.PublicID)
 		if !errors.Is(err, domain.ErrProfileNotFound) {
@@ -329,6 +326,32 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 		}
 		if got := payload["nickname"]; got != "Alice2" {
 			t.Fatalf("payload nickname = %v, want Alice2", got)
+		}
+	})
+
+	t.Run("deleted profile is treated as not found", func(t *testing.T) {
+		store := newFakeProfileStore()
+		profile := store.seedProfile(t, domain.ProfileSeed{
+			UserID:                 509,
+			PublicID:               "user_pub_deleted_patch",
+			AccountID:              1509,
+			Nickname:               "DeletedPatch",
+			StrangerMessageAllowed: true,
+			Status:                 domain.UserStatusDeleted,
+			CreatedAt:              now.Add(-time.Hour),
+			UpdatedAt:              now.Add(-time.Hour),
+		})
+		service := mustNewService(t, Dependencies{
+			Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{},
+			Outbox: &fakeOutboxPublisher{}, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
+		})
+
+		_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
+			UserID:   profile.UserID,
+			Nickname: optionalString("NewName"),
+		})
+		if !errors.Is(err, domain.ErrProfileNotFound) {
+			t.Fatalf("UpdateProfile() error = %v, want %v", err, domain.ErrProfileNotFound)
 		}
 	})
 
@@ -470,6 +493,46 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestProfileCacheInvalidationRecordsDeleteFailures(t *testing.T) {
+	now := time.Date(2026, 7, 4, 13, 0, 0, 0, time.UTC)
+	store := newFakeProfileStore()
+	profile := store.seedProfile(t, domain.ProfileSeed{
+		UserID:                 701,
+		PublicID:               "user_pub_701",
+		AccountID:              1701,
+		Nickname:               "CacheUser",
+		StrangerMessageAllowed: true,
+		Status:                 domain.UserStatusActive,
+		CreatedAt:              now.Add(-time.Hour),
+		UpdatedAt:              now.Add(-time.Hour),
+	})
+	cacheErr := errors.New("redis unavailable")
+	recorder := &fakeCacheFailureRecorder{}
+	service := mustNewService(t, Dependencies{
+		Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{},
+		Outbox: &fakeOutboxPublisher{}, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now},
+		Cache: &fakeCacheStore{err: cacheErr}, CacheFailures: recorder,
+	})
+
+	_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
+		UserID:                 profile.UserID,
+		StrangerMessageAllowed: optionalBool(false),
+	})
+	if err != nil {
+		t.Fatalf("UpdateProfile() error = %v", err)
+	}
+	if len(recorder.failures) != 1 {
+		t.Fatalf("cache failure count = %d, want 1", len(recorder.failures))
+	}
+	failure := recorder.failures[0]
+	if failure.operation != "user.profile.invalidate" || !errors.Is(failure.err, cacheErr) {
+		t.Fatalf("cache failure = %#v, want operation user.profile.invalidate and cache error", failure)
+	}
+	if len(failure.keys) != 4 {
+		t.Fatalf("cache failure keys = %#v, want 4 keys", failure.keys)
+	}
 }
 
 func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {

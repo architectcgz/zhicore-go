@@ -12,6 +12,9 @@ import (
 
 func mustNewService(t *testing.T, deps Dependencies) *Service {
 	t.Helper()
+	if deps.CacheFailures == nil {
+		deps.CacheFailures = &fakeCacheFailureRecorder{}
+	}
 	service, err := NewService(deps)
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -44,7 +47,19 @@ type fakeProfileStore struct {
 	lastPublicUpdateInput                                         domain.Profile
 }
 
-type fakeCacheStore struct{}
+type fakeCacheStore struct {
+	err error
+}
+
+type fakeCacheFailure struct {
+	operation string
+	keys      []string
+	err       error
+}
+
+type fakeCacheFailureRecorder struct {
+	failures []fakeCacheFailure
+}
 
 type fakeFileReferenceClient struct {
 	trace *callTrace
@@ -256,7 +271,12 @@ func (s *fakeProfileStore) RestoreDeleted(ctx context.Context, userID, operatorI
 	return updated, true, nil
 }
 
-func (c *fakeCacheStore) Delete(ctx context.Context, keys ...string) error { return nil }
+func (c *fakeCacheStore) Delete(ctx context.Context, keys ...string) error { return c.err }
+
+func (r *fakeCacheFailureRecorder) RecordCacheDeleteFailure(ctx context.Context, operation string, keys []string, err error) {
+	copiedKeys := append([]string(nil), keys...)
+	r.failures = append(r.failures, fakeCacheFailure{operation: operation, keys: copiedKeys, err: err})
+}
 
 func (c *fakeFileReferenceClient) EnsureAvatarReferenced(ctx context.Context, fileID string) error {
 	if c.trace != nil {
