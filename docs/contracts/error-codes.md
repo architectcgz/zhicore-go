@@ -100,6 +100,9 @@
 | `3010` | `USER_BLOCKED` | 用户已被拉黑 | 目标用户处于拉黑关系。 |
 | `3011` | `BLOCK_SELF_NOT_ALLOWED` | 不能拉黑自己 | 拉黑自己。 |
 | `3012` | `ALREADY_CHECKED_IN` | 今日已签到 | 重复签到。 |
+| `3013` | `USER_NICKNAME_INVALID` | 昵称不合法 | 昵称为空、过长或含危险字符。 |
+| `3014` | `USER_BIO_INVALID` | 简介不合法 | 简介过长或含危险字符。 |
+| `3015` | `USER_AVATAR_INVALID` | 头像文件不可引用 | 头像文件不存在、不是图片或当前状态不可引用。 |
 
 ## Content 错误
 

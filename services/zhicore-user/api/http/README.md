@@ -7,8 +7,8 @@
 - 模块设计：`docs/architecture/module/user/README.md`
 - 模块 API 设计：`docs/architecture/module/user/api.md`
 - 模块 service 设计：`docs/architecture/module/user/service.md`
-- Go handler：待实现
-- Go contract test：待补
+- Go handler：`services/zhicore-user/api/http/handler.go`
+- Go contract test：`services/zhicore-user/api/http/profile_handler_test.go`
 
 ## 定位
 
@@ -39,9 +39,9 @@ User 拥有用户资料、公开用户 ID、昵称、头像文件引用、简介
 
 | 方法 | 路径 | 文档 | 状态 |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/users/me` | `endpoints/get-me.md` | 草案 |
-| `GET` | `/api/v1/users/{publicId}` | `endpoints/get-profile.md` | 草案 |
-| `PATCH` | `/api/v1/users/me/profile` | `endpoints/update-profile.md` | 草案 |
+| `GET` | `/api/v1/users/me` | `endpoints/get-me.md` | 已验证 |
+| `GET` | `/api/v1/users/{publicId}` | `endpoints/get-profile.md` | 已验证 |
+| `PATCH` | `/api/v1/users/me/profile` | `endpoints/update-profile.md` | 已验证 |
 
 ## 服务级公开错误码
 
@@ -50,15 +50,16 @@ User 拥有用户资料、公开用户 ID、昵称、头像文件引用、简介
 | `1001` | `400` | 参数校验失败 | path、body 字段非法。 |
 | `1004` | `503` | 服务暂时不可用 | PostgreSQL、File service 或下游依赖不可用。 |
 | `2006` | `401` | 请先登录 | 登录态 endpoint 缺少 Gateway 注入身份。 |
-| `6001` | `404` | 用户不存在 | 目标用户不存在、已删除或不可见。 |
-| `6002` | `403` | 用户不可用 | 目标用户非 `ACTIVE`，且当前场景不允许展示。 |
-| `6003` | `400` | nickname 非法 | 昵称为空、过长或含危险字符。 |
-| `6004` | `409` | nickname 已占用 | 昵称唯一约束冲突。 |
-| `6005` | `400` | bio 非法 | 简介过长或含危险字符。 |
-| `6006` | `400` | 头像文件不可引用 | File 校验失败或文件不是图片。 |
+| `3001` | `404` | 用户不存在 | 目标用户不存在、已删除或不可见。 |
+| `3005` | `409` | 昵称已被使用 | 昵称唯一约束冲突。 |
+| `3006` | `403` | 用户不可用 | 当前用户或目标用户非 `ACTIVE`。 |
+| `3013` | `400` | 昵称不合法 | 昵称为空、过长或含危险字符。 |
+| `3014` | `400` | 简介不合法 | 简介过长或含危险字符。 |
+| `3015` | `400` | 头像文件不可引用 | File 校验失败或文件不是图片。 |
 
 ## 测试要求
 
 - 每个 endpoint 实现前必须补 handler contract test，覆盖 path、method、鉴权 header、envelope 和错误码。
 - 资料更新必须覆盖 nickname、avatarFileId、bio、strangerMessageAllowed、头像 File 校验和 profileVersion 递增。
+- 当前 contract test：`services/zhicore-user/api/http/profile_handler_test.go`
 - 仅更新本文档和 endpoint schema 时运行 `bash scripts/check-structure.sh` 与 `git diff --check`。
