@@ -18,7 +18,7 @@ func TestBlockUserRemovesMutualFollowsAndPublishesEvents(t *testing.T) {
 	relationships.seedFollow(target.UserID, actor.UserID, now.Add(-time.Minute))
 	service := mustNewRelationshipService(t, store, relationships, outbox, now)
 
-	if err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID, Reason: "spam"}); err != nil {
+	if err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID), Reason: "spam"}); err != nil {
 		t.Fatalf("BlockUser() error = %v", err)
 	}
 
@@ -33,7 +33,7 @@ func TestBlockUserRemovesMutualFollowsAndPublishesEvents(t *testing.T) {
 	assertEventTypes(t, outbox.messages, []string{"user.blocked", "user.unfollowed", "user.unfollowed"})
 	assertEventPayloadField(t, outbox.messages[1], "reason", string(domain.UnfollowReasonBlocked))
 
-	if err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("duplicate BlockUser() error = %v", err)
 	}
 	if len(outbox.messages) != 3 {
@@ -48,7 +48,7 @@ func TestBlockUserValidatesSelfAndActiveProfiles(t *testing.T) {
 		store, relationships, outbox := newFakeProfileStore(), newFakeRelationshipStore(), &fakeOutboxPublisher{}
 		actor := seedRelationshipProfile(t, store, 101, "user_pub_actor", domain.UserStatusActive)
 		service := mustNewRelationshipService(t, store, relationships, outbox, now)
-		err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: actor.UserID, TargetPublicID: actor.PublicID})
+		err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(actor.PublicID)})
 		if !errors.Is(err, domain.ErrCannotBlockSelf) {
 			t.Fatalf("BlockUser() error = %v, want %v", err, domain.ErrCannotBlockSelf)
 		}
@@ -71,7 +71,7 @@ func TestBlockUserValidatesSelfAndActiveProfiles(t *testing.T) {
 				actor := seedRelationshipProfile(t, store, 101, "user_pub_actor", tc.actorStatus)
 				target := seedRelationshipProfile(t, store, 202, "user_pub_target", tc.targetStatus)
 				service := mustNewRelationshipService(t, store, relationships, outbox, now)
-				err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID})
+				err := service.BlockUser(context.Background(), BlockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)})
 				if !errors.Is(err, domain.ErrUserNotActive) {
 					t.Fatalf("BlockUser() error = %v, want %v", err, domain.ErrUserNotActive)
 				}
@@ -91,7 +91,7 @@ func TestUnblockUserIsIdempotentAndDoesNotRestoreFollows(t *testing.T) {
 	relationships.seedBlock(actor.UserID, target.UserID, now.Add(-time.Hour))
 	service := mustNewRelationshipService(t, store, relationships, outbox, now)
 
-	if err := service.UnblockUser(context.Background(), UnblockUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.UnblockUser(context.Background(), UnblockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("UnblockUser() error = %v", err)
 	}
 	if relationships.hasBlock(actor.UserID, target.UserID) {
@@ -99,7 +99,7 @@ func TestUnblockUserIsIdempotentAndDoesNotRestoreFollows(t *testing.T) {
 	}
 	assertEventTypes(t, outbox.messages, []string{"user.unblocked"})
 
-	if err := service.UnblockUser(context.Background(), UnblockUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.UnblockUser(context.Background(), UnblockUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("duplicate UnblockUser() error = %v", err)
 	}
 	if len(outbox.messages) != 1 || relationships.hasFollow(actor.UserID, target.UserID) {
@@ -114,7 +114,7 @@ func TestFollowUserHonorsIdempotencyStatsAndBlockGuards(t *testing.T) {
 	target := seedRelationshipProfile(t, store, 202, "user_pub_target", domain.UserStatusActive)
 	service := mustNewRelationshipService(t, store, relationships, outbox, now)
 
-	if err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("FollowUser() error = %v", err)
 	}
 	if !relationships.hasFollow(actor.UserID, target.UserID) {
@@ -124,7 +124,7 @@ func TestFollowUserHonorsIdempotencyStatsAndBlockGuards(t *testing.T) {
 	assertFollowStats(t, relationships, target.UserID, 1, 0)
 	assertEventTypes(t, outbox.messages, []string{"user.followed"})
 
-	if err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("duplicate FollowUser() error = %v", err)
 	}
 	if len(outbox.messages) != 1 {
@@ -132,12 +132,12 @@ func TestFollowUserHonorsIdempotencyStatsAndBlockGuards(t *testing.T) {
 	}
 
 	relationships.seedBlock(target.UserID, actor.UserID, now)
-	err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: target.UserID, TargetPublicID: actor.PublicID})
+	err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: UserID(target.UserID), TargetPublicID: PublicID(actor.PublicID)})
 	if !errors.Is(err, domain.ErrInteractionBlocked) {
 		t.Fatalf("FollowUser() blocked error = %v, want %v", err, domain.ErrInteractionBlocked)
 	}
 
-	err = service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: actor.UserID, TargetPublicID: actor.PublicID})
+	err = service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(actor.PublicID)})
 	if !errors.Is(err, domain.ErrCannotFollowSelf) {
 		t.Fatalf("FollowUser() self error = %v, want %v", err, domain.ErrCannotFollowSelf)
 	}
@@ -151,7 +151,7 @@ func TestUnfollowUserIsIdempotentAndPublishesUserRequestReason(t *testing.T) {
 	relationships.seedFollow(actor.UserID, target.UserID, now.Add(-time.Hour))
 	service := mustNewRelationshipService(t, store, relationships, outbox, now)
 
-	if err := service.UnfollowUser(context.Background(), UnfollowUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.UnfollowUser(context.Background(), UnfollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("UnfollowUser() error = %v", err)
 	}
 	if relationships.hasFollow(actor.UserID, target.UserID) {
@@ -162,7 +162,7 @@ func TestUnfollowUserIsIdempotentAndPublishesUserRequestReason(t *testing.T) {
 	assertEventTypes(t, outbox.messages, []string{"user.unfollowed"})
 	assertEventPayloadField(t, outbox.messages[0], "reason", string(domain.UnfollowReasonUserRequest))
 
-	if err := service.UnfollowUser(context.Background(), UnfollowUserCommand{ActorUserID: actor.UserID, TargetPublicID: target.PublicID}); err != nil {
+	if err := service.UnfollowUser(context.Background(), UnfollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("duplicate UnfollowUser() error = %v", err)
 	}
 	if len(outbox.messages) != 1 {
@@ -182,27 +182,27 @@ func TestRelationshipQueriesUseInternalIDsAndCursorPages(t *testing.T) {
 	relationships.seedFollow(actor.UserID, targetB.UserID, now.Add(-time.Minute))
 	service := mustNewRelationshipService(t, store, relationships, outbox, now)
 
-	blocked, err := service.ListBlockedUsers(context.Background(), ListBlockedUsersQuery{ActorUserID: actor.UserID, Limit: 1})
+	blocked, err := service.ListBlockedUsers(context.Background(), ListBlockedUsersQuery{ActorUserID: UserID(actor.UserID), Limit: 1})
 	if err != nil {
 		t.Fatalf("ListBlockedUsers() error = %v", err)
 	}
-	if len(blocked.Items) != 1 || blocked.Items[0].UserID != targetB.UserID || !blocked.HasMore || blocked.NextCursor == "" {
+	if len(blocked.Items) != 1 || blocked.Items[0].UserID != UserID(targetB.UserID) || !blocked.HasMore || blocked.NextCursor == "" {
 		t.Fatalf("blocked page = %#v, want targetB with next cursor", blocked)
 	}
 
-	followers, err := service.ListFollowers(context.Background(), ListFollowersQuery{TargetPublicID: actor.PublicID, Limit: 10})
+	followers, err := service.ListFollowers(context.Background(), ListFollowersQuery{TargetPublicID: PublicID(actor.PublicID), Limit: 10})
 	if err != nil {
 		t.Fatalf("ListFollowers() error = %v", err)
 	}
-	if len(followers.Items) != 1 || followers.Items[0].UserID != targetA.UserID {
+	if len(followers.Items) != 1 || followers.Items[0].UserID != UserID(targetA.UserID) {
 		t.Fatalf("followers page = %#v, want targetA", followers)
 	}
 
-	following, err := service.ListFollowing(context.Background(), ListFollowingQuery{TargetPublicID: actor.PublicID, Limit: 10})
+	following, err := service.ListFollowing(context.Background(), ListFollowingQuery{TargetPublicID: PublicID(actor.PublicID), Limit: 10})
 	if err != nil {
 		t.Fatalf("ListFollowing() error = %v", err)
 	}
-	if len(following.Items) != 1 || following.Items[0].UserID != targetB.UserID {
+	if len(following.Items) != 1 || following.Items[0].UserID != UserID(targetB.UserID) {
 		t.Fatalf("following page = %#v, want targetB", following)
 	}
 
@@ -222,7 +222,7 @@ func TestRelationshipQueriesUseInternalIDsAndCursorPages(t *testing.T) {
 		t.Fatal("CheckFollowing() = false, want true")
 	}
 
-	_, err = service.ListBlockedUsers(context.Background(), ListBlockedUsersQuery{ActorUserID: actor.UserID, Cursor: "not-a-cursor", Limit: 10})
+	_, err = service.ListBlockedUsers(context.Background(), ListBlockedUsersQuery{ActorUserID: UserID(actor.UserID), Cursor: "not-a-cursor", Limit: 10})
 	if !errors.Is(err, domain.ErrCursorInvalid) {
 		t.Fatalf("ListBlockedUsers() cursor error = %v, want %v", err, domain.ErrCursorInvalid)
 	}

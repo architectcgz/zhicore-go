@@ -240,6 +240,60 @@ import "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/con
             "libs/contracts/events/content/post.go",
         )
 
+    def test_detects_application_exporting_domain_type_aliases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_go_file(
+                root / "services/zhicore-user/internal/user/application/http_types.go",
+                '''
+package application
+
+import "github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/domain"
+
+type (
+    UserID = domain.UserID
+    profileID = domain.UserID
+)
+''',
+            )
+            write_go_file(
+                root / "services/zhicore-user/internal/user/application/aliased_domain.go",
+                '''
+package application
+
+import d "github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/domain"
+
+type PublicID = d.PublicID
+''',
+            )
+            write_go_file(
+                root / "services/zhicore-user/internal/user/application/service.go",
+                '''
+package application
+
+import "github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/domain"
+
+type UserID int64
+
+func toDomainUserID(id UserID) domain.UserID {
+    return domain.UserID(id)
+}
+''',
+            )
+
+            violations = check_boundaries.check_root(root)
+
+        self.assertViolation(
+            violations,
+            "application-domain-exported-alias-not-allowed",
+            "services/zhicore-user/internal/user/application/http_types.go",
+        )
+        self.assertViolation(
+            violations,
+            "application-domain-exported-alias-not-allowed",
+            "services/zhicore-user/internal/user/application/aliased_domain.go",
+        )
+
     def assertViolation(self, violations, rule, path):
         if not any(v.rule == rule and v.path.as_posix().endswith(path) for v in violations):
             formatted = "\n".join(str(v) for v in violations)

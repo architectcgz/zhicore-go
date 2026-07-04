@@ -36,6 +36,13 @@ ALLOWED_SERVICE_LAYER_IMPORTS = {
 class GoFile:
     path: Path
     imports: list[str]
+    source: str
+
+
+@dataclasses.dataclass(frozen=True)
+class GoImport:
+    path: str
+    alias: str | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -50,7 +57,11 @@ class Violation:
 
 
 def parse_go_imports(source: str) -> list[str]:
-    imports: list[str] = []
+    return [item.path for item in parse_go_import_specs(source)]
+
+
+def parse_go_import_specs(source: str) -> list[GoImport]:
+    imports: list[GoImport] = []
     lines = source.splitlines()
     index = 0
     while index < len(lines):
@@ -63,25 +74,32 @@ def parse_go_imports(source: str) -> list[str]:
                     group_line = lines[index].strip()
                     if group_line == ")":
                         break
-                    import_path = extract_import_path(group_line)
-                    if import_path:
-                        imports.append(import_path)
+                    import_spec = extract_import_spec(group_line)
+                    if import_spec:
+                        imports.append(import_spec)
                     index += 1
             else:
-                import_path = extract_import_path(rest)
-                if import_path:
-                    imports.append(import_path)
+                import_spec = extract_import_spec(rest)
+                if import_spec:
+                    imports.append(import_spec)
         index += 1
     return imports
 
 
 def extract_import_path(line: str) -> str | None:
+    import_spec = extract_import_spec(line)
+    if import_spec:
+        return import_spec.path
+    return None
+
+
+def extract_import_spec(line: str) -> GoImport | None:
     line = line.split("//", 1)[0].strip()
     if not line:
         return None
-    match = re.search(r'"([^"]+)"', line)
+    match = re.match(r'(?:(?P<alias>[A-Za-z_][A-Za-z0-9_]*|\.|_)\s+)?(?P<quote>"[^"]+")', line)
     if match:
-        return match.group(1)
+        return GoImport(path=match.group("quote").strip('"'), alias=match.group("alias"))
     return None
 
 
@@ -95,7 +113,8 @@ def discover_go_files(root: Path) -> list[GoFile]:
         if should_skip(path):
             continue
         rel_path = path.relative_to(root)
-        files.append(GoFile(rel_path, parse_go_imports(path.read_text(encoding="utf-8"))))
+        source = path.read_text(encoding="utf-8")
+        files.append(GoFile(rel_path, parse_go_imports(source), source))
     return files
 
 
@@ -111,7 +130,70 @@ def check_files(files: list[GoFile]) -> list[Violation]:
     for go_file in files:
         for imported in go_file.imports:
             violations.extend(check_import(go_file.path, imported))
+        violations.extend(check_source(go_file.path, go_file.source))
     return violations
+
+
+def check_source(path: Path, source: str) -> list[Violation]:
+    violations: list[Violation] = []
+    importer = service_ref_from_path(path)
+    if importer and importer.layer == "application":
+        violations.extend(check_application_domain_exported_aliases(path, source))
+    return violations
+
+
+def check_application_domain_exported_aliases(path: Path, source: str) -> list[Violation]:
+    violations: list[Violation] = []
+    domain_selectors = application_domain_import_selectors(path, source)
+    for line in iter_type_alias_lines(source):
+        match = re.match(r"type\s+([A-Z][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z0-9_]+(?:\s|$)", line)
+        if match and match.group(2) in domain_selectors:
+            violations.append(
+                violation(
+                    "application-domain-exported-alias-not-allowed",
+                    path,
+                    line,
+                    f"application must not re-export domain type alias {match.group(1)}",
+                )
+            )
+    return violations
+
+
+def application_domain_import_selectors(path: Path, source: str) -> set[str]:
+    importer = service_ref_from_path(path)
+    if importer is None:
+        return set()
+
+    selectors: set[str] = set()
+    for item in parse_go_import_specs(source):
+        imported_ref = service_ref_from_import(item.path)
+        if imported_ref is None or imported_ref.service != importer.service or imported_ref.layer != "domain":
+            continue
+        if item.alias in {".", "_"}:
+            continue
+        selectors.add(item.alias or item.path.rsplit("/", 1)[-1])
+    return selectors
+
+
+def iter_type_alias_lines(source: str) -> list[str]:
+    lines: list[str] = []
+    in_type_group = False
+    for raw_line in source.splitlines():
+        line = raw_line.split("//", 1)[0].strip()
+        if not line:
+            continue
+        if in_type_group:
+            if line == ")":
+                in_type_group = False
+                continue
+            lines.append("type " + line)
+            continue
+        if line == "type (":
+            in_type_group = True
+            continue
+        if line.startswith("type "):
+            lines.append(line)
+    return lines
 
 
 def check_import(path: Path, imported: str) -> list[Violation]:

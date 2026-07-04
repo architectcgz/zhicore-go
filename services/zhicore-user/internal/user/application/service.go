@@ -40,12 +40,12 @@ type Service struct {
 }
 
 type CreateProfileForAccountCommand struct {
-	AccountID domain.AccountID
+	AccountID AccountID
 	Username  string
 }
 
 type UpdateProfileCommand struct {
-	UserID                 domain.UserID
+	UserID                 UserID
 	Nickname               *string
 	AvatarFileID           *string
 	Bio                    *string
@@ -53,62 +53,62 @@ type UpdateProfileCommand struct {
 }
 
 type DeactivateUserProfileCommand struct {
-	AccountID domain.AccountID
+	AccountID AccountID
 }
 
 type MarkUserDeletedCommand struct {
-	UserID     domain.UserID
-	OperatorID domain.UserID
+	UserID     UserID
+	OperatorID UserID
 	Reason     string
 }
 
 type RestoreDeletedUserProfileCommand struct {
-	UserID     domain.UserID
-	OperatorID domain.UserID
+	UserID     UserID
+	OperatorID UserID
 	Reason     string
 }
 
 type FollowUserCommand struct {
-	ActorUserID    domain.UserID
-	TargetPublicID domain.PublicID
+	ActorUserID    UserID
+	TargetPublicID PublicID
 }
 
 type UnfollowUserCommand struct {
-	ActorUserID    domain.UserID
-	TargetPublicID domain.PublicID
+	ActorUserID    UserID
+	TargetPublicID PublicID
 }
 
 type BlockUserCommand struct {
-	ActorUserID    domain.UserID
-	TargetPublicID domain.PublicID
+	ActorUserID    UserID
+	TargetPublicID PublicID
 	Reason         string
 }
 
 type UnblockUserCommand struct {
-	ActorUserID    domain.UserID
-	TargetPublicID domain.PublicID
+	ActorUserID    UserID
+	TargetPublicID PublicID
 }
 
 type ListBlockedUsersQuery struct {
-	ActorUserID domain.UserID
+	ActorUserID UserID
 	Cursor      string
 	Limit       int
 }
 
 type ListFollowersQuery struct {
-	TargetPublicID domain.PublicID
+	TargetPublicID PublicID
 	Cursor         string
 	Limit          int
 }
 
 type ListFollowingQuery struct {
-	TargetPublicID domain.PublicID
+	TargetPublicID PublicID
 	Cursor         string
 	Limit          int
 }
 
 type RelationshipProfilePage struct {
-	Items      []domain.Profile
+	Items      []Profile
 	NextCursor string
 	HasMore    bool
 }
@@ -166,7 +166,7 @@ func (s *Service) FollowUser(ctx context.Context, cmd FollowUserCommand) error {
 	if err := s.requireRelationshipRepository(); err != nil {
 		return err
 	}
-	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	actor, target, err := s.loadActorAndTarget(ctx, domainUserID(cmd.ActorUserID), domainPublicID(cmd.TargetPublicID))
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (s *Service) UnfollowUser(ctx context.Context, cmd UnfollowUserCommand) err
 	if err := s.requireRelationshipRepository(); err != nil {
 		return err
 	}
-	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	actor, target, err := s.loadActorAndTarget(ctx, domainUserID(cmd.ActorUserID), domainPublicID(cmd.TargetPublicID))
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (s *Service) BlockUser(ctx context.Context, cmd BlockUserCommand) error {
 	if err := s.requireRelationshipRepository(); err != nil {
 		return err
 	}
-	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	actor, target, err := s.loadActorAndTarget(ctx, domainUserID(cmd.ActorUserID), domainPublicID(cmd.TargetPublicID))
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (s *Service) UnblockUser(ctx context.Context, cmd UnblockUserCommand) error
 	if err := s.requireRelationshipRepository(); err != nil {
 		return err
 	}
-	actor, target, err := s.loadActorAndTarget(ctx, cmd.ActorUserID, cmd.TargetPublicID)
+	actor, target, err := s.loadActorAndTarget(ctx, domainUserID(cmd.ActorUserID), domainPublicID(cmd.TargetPublicID))
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func (s *Service) ListBlockedUsers(ctx context.Context, query ListBlockedUsersQu
 	if err := s.requireRelationshipRepository(); err != nil {
 		return RelationshipProfilePage{}, err
 	}
-	actor, err := s.queries.GetByUserID(ctx, query.ActorUserID)
+	actor, err := s.queries.GetByUserID(ctx, domainUserID(query.ActorUserID))
 	if err != nil {
 		return RelationshipProfilePage{}, err
 	}
@@ -290,7 +290,7 @@ func (s *Service) ListFollowers(ctx context.Context, query ListFollowersQuery) (
 	if err := s.requireRelationshipRepository(); err != nil {
 		return RelationshipProfilePage{}, err
 	}
-	target, err := s.loadVisiblePublicProfile(ctx, query.TargetPublicID)
+	target, err := s.loadVisiblePublicProfile(ctx, domainPublicID(query.TargetPublicID))
 	if err != nil {
 		return RelationshipProfilePage{}, err
 	}
@@ -307,7 +307,7 @@ func (s *Service) ListFollowing(ctx context.Context, query ListFollowingQuery) (
 	if err := s.requireRelationshipRepository(); err != nil {
 		return RelationshipProfilePage{}, err
 	}
-	target, err := s.loadVisiblePublicProfile(ctx, query.TargetPublicID)
+	target, err := s.loadVisiblePublicProfile(ctx, domainPublicID(query.TargetPublicID))
 	if err != nil {
 		return RelationshipProfilePage{}, err
 	}
@@ -334,24 +334,24 @@ func (s *Service) CheckFollowing(ctx context.Context, followerID, followingID do
 	return s.relationships.CheckFollowing(ctx, followerID, followingID)
 }
 
-func (s *Service) CreateProfileForAccount(ctx context.Context, cmd CreateProfileForAccountCommand) (domain.Profile, error) {
+func (s *Service) CreateProfileForAccount(ctx context.Context, cmd CreateProfileForAccountCommand) (Profile, error) {
 	// Auth 注册同步调用这里时，重复 accountId 必须回放同一个 profile，不能再生成新 user。
-	existing, err := s.profiles.FindByAccountID(ctx, cmd.AccountID)
+	existing, err := s.profiles.FindByAccountID(ctx, domain.AccountID(cmd.AccountID))
 	if err == nil {
-		return existing, nil
+		return profileFromDomain(existing), nil
 	}
 	if !errors.Is(err, domain.ErrProfileNotFound) {
-		return domain.Profile{}, fmt.Errorf("find profile by account id: %w", err)
+		return Profile{}, fmt.Errorf("find profile by account id: %w", err)
 	}
 
 	publicID, err := s.ids.Generate(ctx)
 	if err != nil {
-		return domain.Profile{}, fmt.Errorf("generate public id: %w", err)
+		return Profile{}, fmt.Errorf("generate public id: %w", err)
 	}
 	now := s.clock.Now()
-	profile, err := domain.NewProfileForAccount(cmd.AccountID, publicID, cmd.Username, now)
+	profile, err := domain.NewProfileForAccount(domain.AccountID(cmd.AccountID), publicID, cmd.Username, now)
 	if err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
 
 	created := false
@@ -372,40 +372,40 @@ func (s *Service) CreateProfileForAccount(ctx context.Context, cmd CreateProfile
 			"occurredAt":     now,
 		})
 	}); err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
-	return profile, nil
+	return profileFromDomain(profile), nil
 }
 
-func (s *Service) GetMyProfile(ctx context.Context, userID domain.UserID) (domain.Profile, error) {
-	profile, err := s.queries.GetByUserID(ctx, userID)
+func (s *Service) GetMyProfile(ctx context.Context, userID UserID) (Profile, error) {
+	profile, err := s.queries.GetByUserID(ctx, domainUserID(userID))
 	if err != nil {
-		return domain.Profile{}, fmt.Errorf("get my profile: %w", err)
+		return Profile{}, fmt.Errorf("get my profile: %w", err)
 	}
 	// DELETED profiles are hidden from owner-facing HTTP just like public profile reads;
 	// historical rendering should use dedicated summary APIs, not this editable profile view.
 	if profile.Status == domain.UserStatusDeleted {
-		return domain.Profile{}, domain.ErrProfileNotFound
+		return Profile{}, domain.ErrProfileNotFound
 	}
-	return profile, nil
+	return profileFromDomain(profile), nil
 }
 
-func (s *Service) GetUserProfileByPublicID(ctx context.Context, publicID domain.PublicID) (domain.Profile, error) {
-	profile, err := s.queries.GetByPublicID(ctx, publicID)
+func (s *Service) GetUserProfileByPublicID(ctx context.Context, publicID PublicID) (Profile, error) {
+	profile, err := s.queries.GetByPublicID(ctx, domainPublicID(publicID))
 	if err != nil {
-		return domain.Profile{}, fmt.Errorf("get user profile by public id: %w", err)
+		return Profile{}, fmt.Errorf("get user profile by public id: %w", err)
 	}
 	if profile.Status == domain.UserStatusDeleted {
-		return domain.Profile{}, domain.ErrProfileNotFound
+		return Profile{}, domain.ErrProfileNotFound
 	}
-	return profile, nil
+	return profileFromDomain(profile), nil
 }
 
-func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (domain.Profile, error) {
+func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (Profile, error) {
 	if cmd.AvatarFileID != nil && strings.TrimSpace(*cmd.AvatarFileID) != "" {
 		avatarFileID := strings.TrimSpace(*cmd.AvatarFileID)
 		if err := s.files.EnsureAvatarReferenced(ctx, avatarFileID); err != nil {
-			return domain.Profile{}, err
+			return Profile{}, err
 		}
 	}
 
@@ -413,7 +413,7 @@ func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (
 	publicChanged := false
 	now := s.clock.Now()
 	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
-		current, err := s.queries.GetByUserID(txCtx, cmd.UserID)
+		current, err := s.queries.GetByUserID(txCtx, domainUserID(cmd.UserID))
 		if err != nil {
 			return fmt.Errorf("load profile for update: %w", err)
 		}
@@ -471,13 +471,13 @@ func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (
 		}
 		return nil
 	}); err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
 	s.invalidateProfileCache(ctx, updated)
-	return updated, nil
+	return profileFromDomain(updated), nil
 }
 
-func (s *Service) DeactivateUserProfile(ctx context.Context, cmd DeactivateUserProfileCommand) (domain.Profile, error) {
+func (s *Service) DeactivateUserProfile(ctx context.Context, cmd DeactivateUserProfileCommand) (Profile, error) {
 	var (
 		updated domain.Profile
 		changed bool
@@ -485,7 +485,7 @@ func (s *Service) DeactivateUserProfile(ctx context.Context, cmd DeactivateUserP
 	)
 	now := s.clock.Now()
 	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
-		updated, changed, err = s.profiles.DeactivateByAccountID(txCtx, cmd.AccountID, now)
+		updated, changed, err = s.profiles.DeactivateByAccountID(txCtx, domain.AccountID(cmd.AccountID), now)
 		if err != nil {
 			return err
 		}
@@ -498,15 +498,15 @@ func (s *Service) DeactivateUserProfile(ctx context.Context, cmd DeactivateUserP
 			"occurredAt": updated.UpdatedAt,
 		})
 	}); err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
 	if changed {
 		s.invalidateProfileCache(ctx, updated)
 	}
-	return updated, nil
+	return profileFromDomain(updated), nil
 }
 
-func (s *Service) MarkUserDeleted(ctx context.Context, cmd MarkUserDeletedCommand) (domain.Profile, error) {
+func (s *Service) MarkUserDeleted(ctx context.Context, cmd MarkUserDeletedCommand) (Profile, error) {
 	var (
 		updated domain.Profile
 		changed bool
@@ -514,7 +514,7 @@ func (s *Service) MarkUserDeleted(ctx context.Context, cmd MarkUserDeletedComman
 	)
 	now := s.clock.Now()
 	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
-		updated, changed, err = s.profiles.MarkDeleted(txCtx, cmd.UserID, cmd.OperatorID, cmd.Reason, now)
+		updated, changed, err = s.profiles.MarkDeleted(txCtx, domainUserID(cmd.UserID), domainUserID(cmd.OperatorID), cmd.Reason, now)
 		if err != nil {
 			return err
 		}
@@ -528,15 +528,15 @@ func (s *Service) MarkUserDeleted(ctx context.Context, cmd MarkUserDeletedComman
 			"occurredAt": updated.UpdatedAt,
 		})
 	}); err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
 	if changed {
 		s.invalidateProfileCache(ctx, updated)
 	}
-	return updated, nil
+	return profileFromDomain(updated), nil
 }
 
-func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDeletedUserProfileCommand) (domain.Profile, error) {
+func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDeletedUserProfileCommand) (Profile, error) {
 	var (
 		updated domain.Profile
 		changed bool
@@ -544,7 +544,7 @@ func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDele
 	)
 	now := s.clock.Now()
 	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
-		updated, changed, err = s.profiles.RestoreDeleted(txCtx, cmd.UserID, cmd.OperatorID, cmd.Reason, now)
+		updated, changed, err = s.profiles.RestoreDeleted(txCtx, domainUserID(cmd.UserID), domainUserID(cmd.OperatorID), cmd.Reason, now)
 		if err != nil {
 			return err
 		}
@@ -558,12 +558,12 @@ func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDele
 			"occurredAt": updated.UpdatedAt,
 		})
 	}); err != nil {
-		return domain.Profile{}, err
+		return Profile{}, err
 	}
 	if changed {
 		s.invalidateProfileCache(ctx, updated)
 	}
-	return updated, nil
+	return profileFromDomain(updated), nil
 }
 
 func (s *Service) publish(ctx context.Context, eventType string, userID domain.UserID, occurredAt time.Time, payload map[string]any) error {
@@ -679,7 +679,7 @@ func (s *Service) relationshipProfiles(ctx context.Context, page ports.Relations
 		nextCursor = domain.EncodeRelationshipCursor(page.Records[len(page.Records)-1].ID)
 	}
 	return RelationshipProfilePage{
-		Items:      items,
+		Items:      profilesFromDomain(items),
 		NextCursor: nextCursor,
 		HasMore:    page.HasMore,
 	}, nil

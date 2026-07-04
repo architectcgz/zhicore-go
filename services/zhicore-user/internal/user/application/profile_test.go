@@ -38,8 +38,8 @@ func TestCreateProfileSupportsIdempotentCreationAndQueries(t *testing.T) {
 		if profile.Nickname != "Alice" {
 			t.Fatalf("profile nickname = %q, want Alice", profile.Nickname)
 		}
-		if profile.Status != domain.UserStatusActive {
-			t.Fatalf("profile status = %q, want %q", profile.Status, domain.UserStatusActive)
+		if profile.Status != UserStatusActive {
+			t.Fatalf("profile status = %q, want %q", profile.Status, UserStatusActive)
 		}
 		if profile.ProfileVersion != 0 {
 			t.Fatalf("profile version = %d, want 0", profile.ProfileVersion)
@@ -98,13 +98,13 @@ func TestCreateProfileSupportsIdempotentCreationAndQueries(t *testing.T) {
 		})
 
 		profile, err := service.CreateProfileForAccount(context.Background(), CreateProfileForAccountCommand{
-			AccountID: existing.AccountID,
+			AccountID: AccountID(existing.AccountID),
 			Username:  "Changed",
 		})
 		if err != nil {
 			t.Fatalf("CreateProfileForAccount() error = %v", err)
 		}
-		if profile.UserID != existing.UserID || profile.PublicID != existing.PublicID || profile.ProfileVersion != existing.ProfileVersion {
+		if profile.UserID != UserID(existing.UserID) || profile.PublicID != PublicID(existing.PublicID) || profile.ProfileVersion != existing.ProfileVersion {
 			t.Fatalf("CreateProfileForAccount() = %#v, want existing %#v", profile, existing)
 		}
 		if txRunner.calledCount != 0 {
@@ -141,13 +141,13 @@ func TestCreateProfileSupportsIdempotentCreationAndQueries(t *testing.T) {
 		})
 
 		profile, err := service.CreateProfileForAccount(context.Background(), CreateProfileForAccountCommand{
-			AccountID: existing.AccountID,
+			AccountID: AccountID(existing.AccountID),
 			Username:  "RaceWinner",
 		})
 		if err != nil {
 			t.Fatalf("CreateProfileForAccount() error = %v", err)
 		}
-		if profile != existing {
+		if profile != profileFromDomain(existing) {
 			t.Fatalf("CreateProfileForAccount() = %#v, want existing %#v", profile, existing)
 		}
 		if store.createOrGetCalls != 1 || len(outbox.messages) != 0 {
@@ -219,11 +219,11 @@ func TestCreateProfileSupportsIdempotentCreationAndQueries(t *testing.T) {
 			Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{},
 			Outbox: &fakeOutboxPublisher{}, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
-		_, err := service.GetMyProfile(context.Background(), profile.UserID)
+		_, err := service.GetMyProfile(context.Background(), UserID(profile.UserID))
 		if !errors.Is(err, domain.ErrProfileNotFound) {
 			t.Fatalf("GetMyProfile() error = %v, want %v", err, domain.ErrProfileNotFound)
 		}
-		_, err = service.GetUserProfileByPublicID(context.Background(), profile.PublicID)
+		_, err = service.GetUserProfileByPublicID(context.Background(), PublicID(profile.PublicID))
 		if !errors.Is(err, domain.ErrProfileNotFound) {
 			t.Fatalf("GetUserProfileByPublicID() error = %v, want %v", err, domain.ErrProfileNotFound)
 		}
@@ -253,7 +253,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 			Outbox: &fakeOutboxPublisher{}, TxRunner: txRunner, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 		_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-			UserID:                 profile.UserID,
+			UserID:                 UserID(profile.UserID),
 			Nickname:               optionalString("Alice"),
 			AvatarFileID:           optionalString("avatar-1"),
 			Bio:                    optionalString(""),
@@ -292,7 +292,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 			Outbox: outbox, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 		updated, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-			UserID:                 profile.UserID,
+			UserID:                 UserID(profile.UserID),
 			Nickname:               optionalString("Alice2"),
 			AvatarFileID:           optionalString("avatar-2"),
 			Bio:                    optionalString("new bio"),
@@ -347,7 +347,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 		})
 
 		_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-			UserID:   profile.UserID,
+			UserID:   UserID(profile.UserID),
 			Nickname: optionalString("NewName"),
 		})
 		if !errors.Is(err, domain.ErrProfileNotFound) {
@@ -376,7 +376,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 			Outbox: outbox, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 
-		cmd := UpdateProfileCommand{UserID: profile.UserID, Nickname: optionalString("Alice2")}
+		cmd := UpdateProfileCommand{UserID: UserID(profile.UserID), Nickname: optionalString("Alice2")}
 
 		updated, err := service.UpdateProfile(context.Background(), cmd)
 		if err != nil {
@@ -414,7 +414,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 		})
 
 		updated, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-			UserID:                 profile.UserID,
+			UserID:                 UserID(profile.UserID),
 			Nickname:               optionalString(profile.Nickname),
 			AvatarFileID:           optionalString(profile.AvatarFileID),
 			Bio:                    optionalString(profile.Bio),
@@ -451,7 +451,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 			Outbox: &fakeOutboxPublisher{}, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 		_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-			UserID:                 profile.UserID,
+			UserID:                 UserID(profile.UserID),
 			Nickname:               optionalString("Alice2"),
 			AvatarFileID:           optionalString(""),
 			Bio:                    optionalString(""),
@@ -474,7 +474,7 @@ func TestUpdateProfileValidatesAndPublishesOnlyForPublicChanges(t *testing.T) {
 				outbox := &fakeOutboxPublisher{}
 				service := mustNewService(t, Dependencies{Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{}, Outbox: outbox, TxRunner: &fakeTransactionRunner{}, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{}})
 				updated, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-					UserID:                 before.UserID,
+					UserID:                 UserID(before.UserID),
 					Nickname:               optionalString(tc.nickname),
 					AvatarFileID:           optionalString(before.AvatarFileID),
 					Bio:                    optionalString(tc.bio),
@@ -517,7 +517,7 @@ func TestProfileCacheInvalidationRecordsDeleteFailures(t *testing.T) {
 	})
 
 	_, err := service.UpdateProfile(context.Background(), UpdateProfileCommand{
-		UserID:                 profile.UserID,
+		UserID:                 UserID(profile.UserID),
 		StrangerMessageAllowed: optionalBool(false),
 	})
 	if err != nil {
@@ -558,23 +558,23 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 			Profiles: store, Queries: store, Files: &fakeFileReferenceClient{}, IDs: &fakePublicIDGenerator{},
 			Outbox: outbox, TxRunner: txRunner, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
-		updated, err := service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: profile.AccountID})
+		updated, err := service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: AccountID(profile.AccountID)})
 		if err != nil {
 			t.Fatalf("DeactivateUserProfile() error = %v", err)
 		}
-		if updated.Status != domain.UserStatusDeactivated {
-			t.Fatalf("deactivated status = %q, want %q", updated.Status, domain.UserStatusDeactivated)
+		if updated.Status != UserStatusDeactivated {
+			t.Fatalf("deactivated status = %q, want %q", updated.Status, UserStatusDeactivated)
 		}
 		if len(outbox.messages) != 1 || outbox.messages[0].EventType != "user.deactivated" {
 			t.Fatalf("outbox messages = %#v, want single user.deactivated", outbox.messages)
 		}
 
-		updated, err = service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: profile.AccountID})
+		updated, err = service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: AccountID(profile.AccountID)})
 		if err != nil {
 			t.Fatalf("DeactivateUserProfile() second call error = %v", err)
 		}
-		if updated.Status != domain.UserStatusDeactivated {
-			t.Fatalf("deactivated status second call = %q, want %q", updated.Status, domain.UserStatusDeactivated)
+		if updated.Status != UserStatusDeactivated {
+			t.Fatalf("deactivated status second call = %q, want %q", updated.Status, UserStatusDeactivated)
 		}
 		if len(outbox.messages) != 1 {
 			t.Fatalf("outbox message count after second call = %d, want 1", len(outbox.messages))
@@ -605,7 +605,7 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 			Outbox: outbox, TxRunner: txRunner, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 
-		_, err := service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: profile.AccountID})
+		_, err := service.DeactivateUserProfile(context.Background(), DeactivateUserProfileCommand{AccountID: AccountID(profile.AccountID)})
 		if !errors.Is(err, domain.ErrInvalidStatusTransition) {
 			t.Fatalf("DeactivateUserProfile() error = %v, want %v", err, domain.ErrInvalidStatusTransition)
 		}
@@ -639,15 +639,15 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 		})
 
 		deleted, err := service.MarkUserDeleted(context.Background(), MarkUserDeletedCommand{
-			UserID:     profile.UserID,
+			UserID:     UserID(profile.UserID),
 			OperatorID: 9001,
 			Reason:     "compliance",
 		})
 		if err != nil {
 			t.Fatalf("MarkUserDeleted() error = %v", err)
 		}
-		if deleted.Status != domain.UserStatusDeleted {
-			t.Fatalf("deleted status = %q, want %q", deleted.Status, domain.UserStatusDeleted)
+		if deleted.Status != UserStatusDeleted {
+			t.Fatalf("deleted status = %q, want %q", deleted.Status, UserStatusDeleted)
 		}
 		if deleted.DeletedBy != 9001 || deleted.DeletedReason != "compliance" {
 			t.Fatalf("deleted metadata = %#v", deleted)
@@ -657,7 +657,7 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 		}
 
 		deleted, err = service.MarkUserDeleted(context.Background(), MarkUserDeletedCommand{
-			UserID:     profile.UserID,
+			UserID:     UserID(profile.UserID),
 			OperatorID: 9002,
 			Reason:     "ignored",
 		})
@@ -669,15 +669,15 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 		}
 
 		restored, err := service.RestoreDeletedUserProfile(context.Background(), RestoreDeletedUserProfileCommand{
-			UserID:     profile.UserID,
+			UserID:     UserID(profile.UserID),
 			OperatorID: 9003,
 			Reason:     "appeal",
 		})
 		if err != nil {
 			t.Fatalf("RestoreDeletedUserProfile() error = %v", err)
 		}
-		if restored.Status != domain.UserStatusActive {
-			t.Fatalf("restored status = %q, want %q", restored.Status, domain.UserStatusActive)
+		if restored.Status != UserStatusActive {
+			t.Fatalf("restored status = %q, want %q", restored.Status, UserStatusActive)
 		}
 		if restored.RestoredBy != 9003 || restored.RestoredReason != "appeal" {
 			t.Fatalf("restored metadata = %#v", restored)
@@ -687,7 +687,7 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 		}
 
 		restored, err = service.RestoreDeletedUserProfile(context.Background(), RestoreDeletedUserProfileCommand{
-			UserID:     profile.UserID,
+			UserID:     UserID(profile.UserID),
 			OperatorID: 9004,
 			Reason:     "ignored",
 		})
@@ -724,7 +724,7 @@ func TestUserStatusTransitionsAreIdempotentAndPublishEvents(t *testing.T) {
 			Outbox: outbox, TxRunner: txRunner, Clock: fixedClock{now: now}, Cache: &fakeCacheStore{},
 		})
 
-		_, err := service.MarkUserDeleted(context.Background(), MarkUserDeletedCommand{UserID: profile.UserID, OperatorID: 9005, Reason: "late compliance"})
+		_, err := service.MarkUserDeleted(context.Background(), MarkUserDeletedCommand{UserID: UserID(profile.UserID), OperatorID: 9005, Reason: "late compliance"})
 		if !errors.Is(err, domain.ErrInvalidStatusTransition) || len(outbox.messages) != 0 || strings.Join(trace.calls, ",") != "tx.start,repo.mark_deleted" {
 			t.Fatalf("err=%v outbox=%d trace=%q", err, len(outbox.messages), strings.Join(trace.calls, ","))
 		}

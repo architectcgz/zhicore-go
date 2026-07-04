@@ -26,6 +26,8 @@
 
 `api/http` 放在服务根目录下，不放进 `internal/<domain>`。它仍然属于本服务边界，可以导入本服务的 application，但不能直接访问数据库、缓存、MQ 或外部 SDK。
 
+Application 对外暴露给 `api/http`、runtime 或其他入站 adapter 的类型必须是 application 自有 DTO / command / query；不得用导出的 type alias 重新暴露 domain 类型，例如 `type UserID = domain.UserID` 或给 domain import 起别名后的等价写法。需要跨层传递领域值时，在 application 内部用显式 mapper / 类型转换进入 domain，避免入站层绕过 application 边界直接拿到 domain contract。
+
 ## 依赖方向
 
 允许：
