@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: "Use this agent to review diffs, commits, branches, or PR-ready changes for correctness, regressions, architecture impact, security, performance, and missing validation."
-model: gpt-5.4
+model: gpt-5.5
 color: cyan
 ---
 
