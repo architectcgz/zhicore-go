@@ -1,6 +1,6 @@
 # 创建评论
 
-状态：草案。本文是 `zhicore-comment` Go-first HTTP API 的字段级 contract，尚未由 Go handler / contract test 验证。
+状态：已验证。本文是 `zhicore-comment` Go-first HTTP API 的字段级 contract，已由 Go handler contract test 覆盖核心路径。
 
 ## 来源
 
@@ -9,8 +9,8 @@
 - 模块 service 设计：`docs/architecture/module/comment/service.md`
 - 模块 domain 设计：`docs/architecture/module/comment/domain.md`
 - 当前 API schema：`services/zhicore-comment/api/http/README.md`
-- Go handler：待补。
-- Go contract test：待补。
+- Go handler：`services/zhicore-comment/api/http/handler.go`
+- Go contract test：`services/zhicore-comment/api/http/create_comment_handler_test.go`
 - Java 参考：`../zhicore-microservice/zhicore-comment/src/main/java/com/zhicore/comment/interfaces/controller/CommentCommandController.java`
 
 ## 请求
@@ -115,6 +115,6 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖登录态缺失、空内容、文本过长、图片文件引用数量、图片文件引用格式、语音文件引用格式、语音图片互斥、父评论不存在 / 已删除、Content 校验失败、File 校验失败、User 状态失败和成功响应。
-- Application test：待补，覆盖 `commentId` 生成 / 编码、根评论创建、回复创建、统计初始化、文章级统计、outbox 写入和缓存失效语义。
+- Handler contract test：已补，覆盖登录态缺失、成功响应、公开错误码和 envelope；媒体组合与外部 guard 失败由 application test 覆盖。
+- Application test：已补，覆盖 `commentId` 生成 / 编码、根评论创建、回复创建、统计初始化、文章级统计、outbox 写入和写路径 fail closed 语义。
 - System HTTP test：待补。

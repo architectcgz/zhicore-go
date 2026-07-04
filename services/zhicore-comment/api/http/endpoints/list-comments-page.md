@@ -1,6 +1,6 @@
 # 文章顶级评论传统分页
 
-状态：草案。本文是 `zhicore-comment` Go-first HTTP API 的字段级 contract，尚未由 Go handler / contract test 验证。
+状态：已验证。本文是 `zhicore-comment` Go-first HTTP API 的字段级 contract，已由 Go handler contract test 覆盖核心路径。
 
 ## 来源
 
@@ -8,8 +8,8 @@
 - 模块 API 设计：`docs/architecture/module/comment/api.md`
 - 模块 service 设计：`docs/architecture/module/comment/service.md`
 - 当前 API schema：`services/zhicore-comment/api/http/README.md`
-- Go handler：待补。
-- Go contract test：待补。
+- Go handler：`services/zhicore-comment/api/http/handler.go`
+- Go contract test：`services/zhicore-comment/api/http/list_comments_page_handler_test.go`
 - Java 参考：`../zhicore-microservice/zhicore-comment/src/main/java/com/zhicore/comment/interfaces/controller/CommentQueryController.java`
 
 ## 请求
@@ -124,6 +124,6 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖默认 `RECOMMENDED`、`size` 上限、非法 `sort`、空列表、匿名读取、登录用户默认 `viewer.liked`、`totalComments` / `totalTopLevelComments` 和 envelope。
-- Application test：待补，覆盖 `RECOMMENDED` 排序、`TIME` 排序稳定性、`HOT` 排序 tie-breaker、作者摘要批量查询、作者摘要降级和缓存 miss 回源。
+- Handler contract test：已补，覆盖默认 query、`size` 上限、非法 `sort`、匿名读取、登录用户 viewer 透传、分页 envelope。
+- Application test：已补，覆盖 `RECOMMENDED`、`TIME`、`HOT` 排序端口选择、作者摘要批量查询、作者摘要降级和登录用户 `viewer.liked`。
 - System HTTP test：待补。

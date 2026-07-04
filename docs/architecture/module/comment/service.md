@@ -159,7 +159,7 @@ comment_likes 插入/删除
 
 ### 切片 1：创建根评论 / 回复 + 文章评论传统分页查询
 
-- Domain：建 `Comment` 聚合、`CommentStats` 聚合、`CommentFactory`、`CommentContentPolicy` 和 `CommentCreated` 领域事件。
+- Domain：建 `Comment` 聚合、`CommentStats` 聚合、`CommentFactory`、`CommentContentPolicy`、`TopLevelCommentCreated` 和 `ReplyCreated` 领域事件；application 负责把创建类领域事件映射为 `comment.created` outbox。
 - Ports：定义 `TransactionRunner`、`CommentIDCodec`、`CommentCommandRepository`、`CommentQueryRepository`、`CommentStatsRepository`、`CommentPostStatsRepository`、`OutboxPublisher`、`ContentPostClient`、`UserProfileClient`、`UserRelationClient`、`FileReferenceClient`、`RateLimiter`、`Clock`。
 - Application：实现 `CreateComment` / `CreateReply` 和 `ListTopLevelCommentsByPage`，用内存 fake 验证 Content/User 校验、`parentCommentId` 解析、统计初始化、根评论 HOT rank 初始化、outbox 写入和传统分页查询。
 - Infrastructure：实现 PostgreSQL repository，以及 Content、User client adapter 的最小能力。
