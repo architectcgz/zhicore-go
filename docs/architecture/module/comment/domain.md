@@ -13,7 +13,7 @@ Comment 是独立限界上下文。统一语言以“评论、根评论、回复
 - 内容字段：文本、图片文件引用集合、语音文件引用、语音时长。
 - 状态字段：`Normal`、`Deleted`。
 - 行为：`Edit`、`Delete`、`MarkDeletedByAdmin`、`RecordDeletionMetadata`、`IsTopLevel`、`IsReply`、`AssertEditableBy`、`AssertDeletableBy`。
-- 领域事件：`CommentCreated`、`CommentDeleted`。更新评论只失效 Comment 本服务缓存，不发布跨服务 `comment.updated`。
+- 领域事件：`TopLevelCommentCreated`、`ReplyCreated`、`CommentDeleted`。创建类领域事件只表达 Comment 内部业务事实；application 再映射为对外 `comment.created` 集成事件。更新评论只失效 Comment 本服务缓存，不发布跨服务 `comment.updated`。
 
 `Comment` 聚合只放评论树和评论内容的强一致规则。点赞数、回复数属于独立 `CommentStats` 聚合，避免高频点赞或回复写入锁住评论本体。
 
