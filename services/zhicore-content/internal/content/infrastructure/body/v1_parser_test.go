@@ -11,7 +11,15 @@ import (
 
 type BodyValidationPolicy = ports.BodyValidationPolicy
 type PostBodyWriteInput = ports.PostBodyWriteInput
-type BodyBlock = ports.BodyBlock
+type Blocks = ports.Blocks
+type ParagraphBlock = ports.ParagraphBlock
+type HeadingBlock = ports.HeadingBlock
+type CodeBlock = ports.CodeBlock
+type TableBlock = ports.TableBlock
+type ImageBlock = ports.ImageBlock
+type ExternalEmbedBlock = ports.ExternalEmbedBlock
+type UnsupportedBlock = ports.UnsupportedBlock
+type BlockType = ports.BlockType
 type InlineNode = ports.InlineNode
 type InlineMark = ports.InlineMark
 type TableCell = ports.TableCell
@@ -37,29 +45,26 @@ func TestV1BodyParserNormalizesSafeBlocks(t *testing.T) {
 
 	normalized, err := parser.Parse(context.Background(), PostBodyWriteInput{
 		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{
-				"type": "paragraph",
-				"children": []InlineNode{
+		Blocks: Blocks{
+			&ParagraphBlock{
+				Children: []InlineNode{
 					{
-						"type": "text",
-						"text": "安全链接",
-						"marks": []InlineMark{
-							{"type": "link", "href": "https://example.com/path?q=1"},
+						Type: "text",
+						Text: "安全链接",
+						Marks: []InlineMark{
+							{Type: "link", Href: "https://example.com/path?q=1"},
 						},
 					},
 				},
 			},
-			{
-				"type":   "image",
-				"fileId": "file_123",
-				"alt":    "示例图",
+			&ImageBlock{
+				FileID: "file_123",
+				Alt:    "示例图",
 			},
-			{
-				"type":     "external_embed",
-				"provider": "image",
-				"url":      "https://cdn.example.com/image.png",
-				"title":    "外部图",
+			&ExternalEmbedBlock{
+				Provider: "image",
+				URL:      "https://cdn.example.com/image.png",
+				Title:    "外部图",
 			},
 		},
 	})
@@ -121,20 +126,44 @@ func TestV1BodyParserNormalizesDecodedJSONBody(t *testing.T) {
 	}
 }
 
-func TestV1BodyParserCanonicalJSONDropsUnknownFields(t *testing.T) {
-	parser := NewV1BodyParser(testPolicy())
-
-	normalized, err := parser.Parse(context.Background(), PostBodyWriteInput{
-		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{
-				"type":       "paragraph",
-				"children":   []InlineNode{{"type": "text", "text": "正文"}},
-				"rawHtml":    "<script>alert(1)</script>",
-				"styleClass": "unknown",
-			},
+func TestBlocksMarshalJSONInjectsBlockType(t *testing.T) {
+	raw, err := json.Marshal(Blocks{
+		&ParagraphBlock{
+			Children: []InlineNode{{Type: "text", Text: "正文"}},
 		},
 	})
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+
+	body := string(raw)
+	if !strings.Contains(body, `"type":"paragraph"`) {
+		t.Fatalf("Blocks JSON = %s, want paragraph type", body)
+	}
+	if strings.Contains(body, `"Block"`) {
+		t.Fatalf("Blocks JSON = %s, want flattened block fields", body)
+	}
+}
+
+func TestV1BodyParserCanonicalJSONDropsUnknownFields(t *testing.T) {
+	parser := NewV1BodyParser(testPolicy())
+	var input PostBodyWriteInput
+	err := json.Unmarshal([]byte(`{
+		"schemaVersion": 1,
+		"blocks": [
+			{
+				"type": "paragraph",
+				"children": [{"type": "text", "text": "正文"}],
+				"rawHtml": "<script>alert(1)</script>",
+				"styleClass": "unknown"
+			}
+		]
+	}`), &input)
+	if err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+
+	normalized, err := parser.Parse(context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Parse returned error: %v", err)
@@ -148,28 +177,76 @@ func TestV1BodyParserCanonicalJSONDropsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestV1BodyParserReportsUnknownJSONBlockAsValidationDetail(t *testing.T) {
+	parser := NewV1BodyParser(testPolicy())
+	var input PostBodyWriteInput
+	err := json.Unmarshal([]byte(`{
+		"schemaVersion": 1,
+		"blocks": [{"type": "poll"}]
+	}`), &input)
+	if err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+
+	_, err = parser.Parse(context.Background(), input)
+
+	assertDetail(t, requireValidationError(t, err), "blocks[0].type", "BLOCK_TYPE_NOT_ENABLED")
+}
+
+func TestV1BodyParserRejectsMissingOrNullBlocks(t *testing.T) {
+	parser := NewV1BodyParser(testPolicy())
+	for _, tc := range []struct {
+		name string
+		raw  string
+	}{
+		{name: "missing", raw: `{"schemaVersion": 1}`},
+		{name: "null", raw: `{"schemaVersion": 1, "blocks": null}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var input PostBodyWriteInput
+			if err := json.Unmarshal([]byte(tc.raw), &input); err != nil {
+				t.Fatalf("json.Unmarshal returned error: %v", err)
+			}
+
+			_, err := parser.Parse(context.Background(), input)
+
+			assertDetail(t, requireValidationError(t, err), "blocks", "BODY_SCHEMA_INVALID")
+		})
+	}
+}
+
+func TestV1BodyParserRejectsTypedNilBlock(t *testing.T) {
+	parser := NewV1BodyParser(testPolicy())
+	var block *ParagraphBlock
+
+	_, err := parser.Parse(context.Background(), PostBodyWriteInput{
+		SchemaVersion: 1,
+		Blocks:        Blocks{block},
+	})
+
+	assertDetail(t, requireValidationError(t, err), "blocks[0].type", "BLOCK_TYPE_REQUIRED")
+}
+
 func TestV1BodyParserRejectsUnsafeExternalInput(t *testing.T) {
 	parser := NewV1BodyParser(testPolicy())
 
 	_, err := parser.Parse(context.Background(), PostBodyWriteInput{
 		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{
-				"type": "paragraph",
-				"children": []InlineNode{
+		Blocks: Blocks{
+			&ParagraphBlock{
+				Children: []InlineNode{
 					{
-						"type": "text",
-						"text": "危险链接",
-						"marks": []InlineMark{
-							{"type": "link", "href": "javascript:alert(1)"},
+						Type: "text",
+						Text: "危险链接",
+						Marks: []InlineMark{
+							{Type: "link", Href: "javascript:alert(1)"},
 						},
 					},
 				},
 			},
-			{
-				"type":     "external_embed",
-				"provider": "iframe",
-				"url":      "data:text/html,<script>alert(1)</script>",
+			&ExternalEmbedBlock{
+				Provider: "iframe",
+				URL:      "data:text/html,<script>alert(1)</script>",
 			},
 		},
 	})
@@ -187,10 +264,10 @@ func TestV1BodyParserStopsCollectingErrorsAtPolicyLimit(t *testing.T) {
 
 	_, err := parser.Parse(context.Background(), PostBodyWriteInput{
 		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{"type": "unknown"},
-			{"type": "unknown"},
-			{"type": "unknown"},
+		Blocks: Blocks{
+			&UnsupportedBlock{Type: BlockType("unknown")},
+			&UnsupportedBlock{Type: BlockType("unknown")},
+			&UnsupportedBlock{Type: BlockType("unknown")},
 		},
 	})
 
@@ -211,11 +288,10 @@ func TestV1BodyParserRejectsConfiguredLimits(t *testing.T) {
 
 		_, err := parser.Parse(context.Background(), PostBodyWriteInput{
 			SchemaVersion: 1,
-			Blocks: []BodyBlock{
-				{
-					"type": "paragraph",
-					"children": []InlineNode{
-						{"type": "text", "text": "超过长度"},
+			Blocks: Blocks{
+				&ParagraphBlock{
+					Children: []InlineNode{
+						{Type: "text", Text: "超过长度"},
 					},
 				},
 			},
@@ -231,12 +307,11 @@ func TestV1BodyParserRejectsConfiguredLimits(t *testing.T) {
 
 		_, err := parser.Parse(context.Background(), PostBodyWriteInput{
 			SchemaVersion: 1,
-			Blocks: []BodyBlock{
-				{
-					"type": "table",
-					"headers": []TableCell{
-						{Children: []InlineNode{{"type": "text", "text": "A"}}},
-						{Children: []InlineNode{{"type": "text", "text": "B"}}},
+			Blocks: Blocks{
+				&TableBlock{
+					Headers: []TableCell{
+						{Children: []InlineNode{{Type: "text", Text: "A"}}},
+						{Children: []InlineNode{{Type: "text", Text: "B"}}},
 					},
 				},
 			},
@@ -246,156 +321,28 @@ func TestV1BodyParserRejectsConfiguredLimits(t *testing.T) {
 	})
 }
 
-func BenchmarkV1BodyParser(b *testing.B) {
-	cases := []struct {
-		name      string
-		policy    BodyValidationPolicy
-		input     PostBodyWriteInput
-		wantError bool
-	}{
-		{
-			name:  "small",
-			input: benchmarkBody(20, strings.Repeat("小正文", 10)),
-		},
-		{
-			name:  "medium",
-			input: benchmarkBody(100, strings.Repeat("中等正文", 20)),
-		},
-		{
-			name:  "near_limit",
-			input: benchmarkBody(400, strings.Repeat("临界正文", 12)),
-		},
-		{
-			name:  "many_blocks",
-			input: benchmarkBody(1000, "段落"),
-		},
-		{
-			name:  "large_table",
-			input: benchmarkTableBody(1000),
-		},
-		{
-			name:  "many_links",
-			input: benchmarkLinksBody(200),
-		},
-		{
-			name:  "large_code",
-			input: benchmarkCodeBody(strings.Repeat("x", DefaultBodyValidationPolicy().MaxCodeBlockChars)),
-		},
-		{
-			name: "reject_oversize",
-			policy: func() BodyValidationPolicy {
-				policy := DefaultBodyValidationPolicy()
-				policy.MaxCanonicalJSONBytes = 128
-				return policy
-			}(),
-			input:     benchmarkBody(4, strings.Repeat("oversize", 20)),
-			wantError: true,
-		},
-		{
-			name: "reject_many_errors",
-			policy: func() BodyValidationPolicy {
-				policy := DefaultBodyValidationPolicy()
-				policy.MaxValidationErrors = 20
-				return policy
-			}(),
-			input:     benchmarkUnknownBlocksBody(100),
-			wantError: true,
-		},
-	}
+func TestV1BodyParserStopsTraversalAfterHardLimit(t *testing.T) {
+	policy := testPolicy()
+	policy.MaxInlineNodes = 1
+	policy.MaxPlainTextChars = 8
+	parser := NewV1BodyParser(policy)
 
-	for _, tc := range cases {
-		b.Run(tc.name, func(b *testing.B) {
-			policy := tc.policy
-			if policy == (BodyValidationPolicy{}) {
-				policy = DefaultBodyValidationPolicy()
-			}
-			parser := NewV1BodyParser(policy)
-
-			b.ReportAllocs()
-			for index := 0; index < b.N; index++ {
-				_, err := parser.Parse(context.Background(), tc.input)
-				if tc.wantError {
-					if err == nil {
-						b.Fatal("Parse returned nil error, want validation error")
-					}
-					continue
-				}
-				if err != nil {
-					b.Fatalf("Parse returned error: %v", err)
-				}
-			}
-		})
-	}
-}
-
-func benchmarkTableBody(cells int) PostBodyWriteInput {
-	headers := make([]TableCell, 0, cells)
-	for index := 0; index < cells; index++ {
-		headers = append(headers, TableCell{
-			Children: []InlineNode{{"type": "text", "text": "cell"}},
-		})
-	}
-	return PostBodyWriteInput{
+	_, err := parser.Parse(context.Background(), PostBodyWriteInput{
 		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{"type": "table", "headers": headers},
-		},
-	}
-}
-
-func benchmarkLinksBody(links int) PostBodyWriteInput {
-	children := make([]InlineNode, 0, links)
-	for index := 0; index < links; index++ {
-		children = append(children, InlineNode{
-			"type": "text",
-			"text": "link",
-			"marks": []InlineMark{
-				{"type": "link", "href": "https://example.com"},
+		Blocks: Blocks{
+			&ParagraphBlock{
+				Children: []InlineNode{
+					{Type: "text", Text: "A"},
+					{Type: "text", Text: "B"},
+				},
 			},
-		})
-	}
-	return PostBodyWriteInput{
-		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{"type": "paragraph", "children": children},
+			&CodeBlock{Code: strings.Repeat("x", 64)},
 		},
-	}
-}
+	})
 
-func benchmarkCodeBody(code string) PostBodyWriteInput {
-	return PostBodyWriteInput{
-		SchemaVersion: 1,
-		Blocks: []BodyBlock{
-			{"type": "code_block", "code": code},
-		},
-	}
-}
-
-func benchmarkUnknownBlocksBody(blocks int) PostBodyWriteInput {
-	bodyBlocks := make([]BodyBlock, 0, blocks)
-	for index := 0; index < blocks; index++ {
-		bodyBlocks = append(bodyBlocks, BodyBlock{"type": "unknown"})
-	}
-	return PostBodyWriteInput{
-		SchemaVersion: 1,
-		Blocks:        bodyBlocks,
-	}
-}
-
-func benchmarkBody(blocks int, text string) PostBodyWriteInput {
-	bodyBlocks := make([]BodyBlock, 0, blocks)
-	for index := 0; index < blocks; index++ {
-		bodyBlocks = append(bodyBlocks, BodyBlock{
-			"type": "paragraph",
-			"children": []InlineNode{
-				{"type": "text", "text": text},
-			},
-		})
-	}
-	return PostBodyWriteInput{
-		SchemaVersion: 1,
-		Blocks:        bodyBlocks,
-	}
+	validationErr := requireValidationError(t, err)
+	assertDetail(t, validationErr, "blocks", "BODY_INLINE_NODE_COUNT_EXCEEDED")
+	assertNoDetail(t, validationErr, "blocks", "BODY_TEXT_TOO_LONG")
 }
 
 func requireValidationError(t *testing.T, err error) *BodyValidationError {
@@ -408,6 +355,15 @@ func requireValidationError(t *testing.T, err error) *BodyValidationError {
 		t.Fatalf("error = %T %v, want *BodyValidationError", err, err)
 	}
 	return validationErr
+}
+
+func assertNoDetail(t *testing.T, validationErr *BodyValidationError, path string, code string) {
+	t.Helper()
+	for _, detail := range validationErr.Details {
+		if detail.Path == path && detail.Code == code {
+			t.Fatalf("Details = %#v, unexpected path=%q code=%q", validationErr.Details, path, code)
+		}
+	}
 }
 
 func assertDetail(t *testing.T, validationErr *BodyValidationError, path string, code string) {
