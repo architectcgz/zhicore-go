@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docker"
+  short_description: "Docker 镜像版本与 Compose 规则"
+  default_prompt: "Use $docker to review Docker image tags and Compose dependency choices."
