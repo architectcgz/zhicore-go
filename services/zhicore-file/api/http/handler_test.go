@@ -138,6 +138,45 @@ func TestUploadImageRejectsOversizedMultipartBeforeService(t *testing.T) {
 	}
 }
 
+func TestUploadAudioUsesPublicAccessAndReturnsUploadFileResp(t *testing.T) {
+	fileService := &fakeFileService{
+		uploadResult: ports.UploadResult{
+			FileID:        "audio_123",
+			URL:           "https://cdn.example.com/audio_123.mp3",
+			FileSize:      int64(len(mp3HeaderBytes())),
+			AccessLevel:   ports.AccessLevelPublic,
+			OriginalName:  "intro.mp3",
+			ContentType:   "audio/mpeg",
+			UploadTime:    time.Date(2026, 6, 22, 11, 0, 0, 0, time.UTC),
+			InstantUpload: false,
+		},
+	}
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := multipartRequest(t, http.MethodPost, "/api/v1/files/audio", "file", "intro.mp3", "audio/mpeg", mp3HeaderBytes(), nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	var body uploadEnvelope[filehttp.UploadFileResp]
+	decodeJSON(t, rr.Body.Bytes(), &body)
+	if body.Code != 200 || body.Message != "操作成功" {
+		t.Fatalf("envelope = (%d, %q), want (200, 操作成功)", body.Code, body.Message)
+	}
+	if body.Data.FileID != "audio_123" || body.Data.OriginalName != "intro.mp3" || body.Data.AccessLevel != "PUBLIC" {
+		t.Fatalf("unexpected data: %+v", body.Data)
+	}
+	if fileService.lastAccessLevel != ports.AccessLevelPublic {
+		t.Fatalf("access level = %q, want PUBLIC", fileService.lastAccessLevel)
+	}
+	if fileService.lastFile.OriginalName != "intro.mp3" || fileService.lastFile.ContentType != "audio/mpeg" {
+		t.Fatalf("uploaded file metadata = %+v", fileService.lastFile)
+	}
+}
+
 func TestUploadImageKeepsTemporaryMultipartFileUntilServiceReadsIt(t *testing.T) {
 	fileService := &fakeFileService{
 		uploadResult: ports.UploadResult{
@@ -370,5 +409,12 @@ func jpegHeaderBytes() []byte {
 		0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07,
 		0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c, 0x14,
 		0x0d, 0x0c, 0x0b, 0x0b,
+	}
+}
+
+func mp3HeaderBytes() []byte {
+	return []byte{
+		0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0xff, 0xfb, 0x90, 0x64,
 	}
 }

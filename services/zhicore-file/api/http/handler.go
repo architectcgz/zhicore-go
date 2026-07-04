@@ -117,7 +117,7 @@ func (h *Handler) uploadImagesBatch(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	responses := make([]uploadResponse, 0, len(results))
+	responses := make([]UploadFileResp, 0, len(results))
 	for _, result := range results {
 		responses = append(responses, responseFromUploadResult(result))
 	}
@@ -141,7 +141,7 @@ func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, nil)
 }
 
-type uploadResponse struct {
+type UploadFileResp struct {
 	FileID        string `json:"fileId"`
 	URL           string `json:"url"`
 	FileSize      int64  `json:"fileSize"`
@@ -153,12 +153,12 @@ type uploadResponse struct {
 	ContentType   string `json:"contentType"`
 }
 
-func responseFromUploadResult(result application.UploadResult) uploadResponse {
+func responseFromUploadResult(result application.UploadResult) UploadFileResp {
 	uploadTime := ""
 	if !result.UploadTime.IsZero() {
 		uploadTime = result.UploadTime.Format(time.RFC3339)
 	}
-	return uploadResponse{
+	return UploadFileResp{
 		FileID:        result.FileID,
 		URL:           result.URL,
 		FileSize:      result.FileSize,

@@ -41,9 +41,9 @@
 | 方法 | 路径 | 文档 | 状态 |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/files/image` | [endpoints/upload-image.md](endpoints/upload-image.md) | 已验证 |
-| `POST` | `/api/v1/files/audio` | [endpoints/upload-audio.md](endpoints/upload-audio.md) | 草案 |
+| `POST` | `/api/v1/files/audio` | [endpoints/upload-audio.md](endpoints/upload-audio.md) | 部分验证，失败分支待补 |
 | `POST` | `/api/v1/files/image/with-access` | [endpoints/upload-image-with-access.md](endpoints/upload-image-with-access.md) | 已验证 |
-| `POST` | `/api/v1/files/images/batch` | [endpoints/upload-images-batch.md](endpoints/upload-images-batch.md) | 草案 |
+| `POST` | `/api/v1/files/images/batch` | [endpoints/upload-images-batch.md](endpoints/upload-images-batch.md) | 部分验证，失败分支待补 |
 | `GET` | `/api/v1/files/{fileId}/url` | [endpoints/get-file-url.md](endpoints/get-file-url.md) | 已验证 |
 | `DELETE` | `/api/v1/files/{fileId}` | [endpoints/delete-file.md](endpoints/delete-file.md) | 已验证 |
 
@@ -52,9 +52,9 @@
 | Endpoint | Use case | 设计文档 | Contract 状态 | 测试状态 |
 | --- | --- | --- | --- | --- |
 | `POST /api/v1/files/image` | `UploadImage(file, PUBLIC)` | `docs/architecture/services/file/README.md` | 已验证 | `TestUploadImageUsesPublicAccessAndReturnsFileEnvelope`、`TestUploadImageRejectsUnsupportedContentType` |
-| `POST /api/v1/files/audio` | `UploadAudio(file, PUBLIC)` | `docs/architecture/services/file/README.md` | 草案 | 待补 handler contract test |
+| `POST /api/v1/files/audio` | `UploadAudio(file, PUBLIC)` | `docs/architecture/services/file/README.md` | 部分验证，失败分支待补 | `TestUploadAudioUsesPublicAccessAndReturnsUploadFileResp` |
 | `POST /api/v1/files/image/with-access` | `UploadImage(file, accessLevel)` | `docs/architecture/services/file/README.md` | 已验证 | `TestUploadImageWithAccessPassesPrivateAccess`、`TestUploadImageWithAccessRequiresAccessLevel` |
-| `POST /api/v1/files/images/batch` | `UploadImagesBatch(files, accessLevel)` | `docs/architecture/services/file/README.md` | 草案 | 待补 handler contract test |
+| `POST /api/v1/files/images/batch` | `UploadImagesBatch(files, accessLevel)` | `docs/architecture/services/file/README.md` | 部分验证，失败分支待补 | `TestUploadImagesBatchDefaultsToPublicAndReturnsUploadFileRespList`、`TestUploadImagesBatchPassesPrivateAccess`、`TestUploadImagesBatchRejectsPartialFailureInsteadOfDroppingInvalidFiles` |
 | `GET /api/v1/files/{fileId}/url` | `GetFileURL(fileId)` | `docs/architecture/services/file/README.md` | 已验证 | `TestGetFileURLAndDeleteFileUsePathFileID` |
 | `DELETE /api/v1/files/{fileId}` | `DeleteFile(fileId)` | `docs/architecture/services/file/README.md` | 已验证 | `TestGetFileURLAndDeleteFileUsePathFileID` |
 
@@ -71,6 +71,6 @@
 
 ## 待补 contract
 
-- 为 `POST /api/v1/files/audio` 补 handler contract test，覆盖音频 MIME、大小限制和成功 envelope。
-- 为 `POST /api/v1/files/images/batch` 补 handler contract test，覆盖多文件字段名、默认 `PUBLIC`、`PRIVATE`、部分失败只返回成功项的当前语义。
+- 为 `POST /api/v1/files/audio` 补更多失败分支 handler contract test，覆盖不允许的 MIME type 和大小限制。
+- 为 `POST /api/v1/files/images/batch` 补更多失败分支 handler contract test，覆盖非法 `accessLevel` 和全部失败返回错误。
 - 将 File 错误响应从 HTTP 风格 `body.code` 迁移到业务错误码时，必须作为独立 contract 变更处理。

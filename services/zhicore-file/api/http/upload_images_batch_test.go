@@ -45,6 +45,72 @@ func TestUploadImagesBatchRejectsPartialFailureInsteadOfDroppingInvalidFiles(t *
 	}
 }
 
+func TestUploadImagesBatchDefaultsToPublicAndReturnsUploadFileRespList(t *testing.T) {
+	fileService := &fakeFileService{
+		uploadResult: ports.UploadResult{
+			FileID:       "file_public",
+			URL:          "https://cdn.example.com/file_public.jpg",
+			FileSize:     int64(len(jpegHeaderBytes())),
+			AccessLevel:  ports.AccessLevelPublic,
+			OriginalName: "public.jpg",
+			ContentType:  "image/jpeg",
+		},
+	}
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := batchMultipartRequest(t, http.MethodPost, "/api/v1/files/images/batch", []multipartFile{
+		{name: "public.jpg", contentType: "image/jpeg", data: jpegHeaderBytes()},
+	}, nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	var body uploadEnvelope[[]filehttp.UploadFileResp]
+	decodeJSON(t, rr.Body.Bytes(), &body)
+	if len(body.Data) != 1 {
+		t.Fatalf("len(data) = %d, want 1; data=%+v", len(body.Data), body.Data)
+	}
+	if body.Data[0].AccessLevel != "PUBLIC" || fileService.lastAccessLevel != ports.AccessLevelPublic {
+		t.Fatalf("accessLevel response=%q service=%q, want PUBLIC", body.Data[0].AccessLevel, fileService.lastAccessLevel)
+	}
+}
+
+func TestUploadImagesBatchPassesPrivateAccess(t *testing.T) {
+	fileService := &fakeFileService{
+		uploadResult: ports.UploadResult{
+			FileID:       "file_private",
+			URL:          "https://cdn.example.com/file_private.jpg",
+			FileSize:     int64(len(jpegHeaderBytes())),
+			AccessLevel:  ports.AccessLevelPrivate,
+			OriginalName: "private.jpg",
+			ContentType:  "image/jpeg",
+		},
+	}
+	handler := filehttp.NewHandler(application.NewService(fileService, application.DefaultConfig()))
+
+	req := batchMultipartRequest(t, http.MethodPost, "/api/v1/files/images/batch", []multipartFile{
+		{name: "private.jpg", contentType: "image/jpeg", data: jpegHeaderBytes()},
+	}, map[string]string{"accessLevel": "PRIVATE"})
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	var body uploadEnvelope[[]filehttp.UploadFileResp]
+	decodeJSON(t, rr.Body.Bytes(), &body)
+	if len(body.Data) != 1 {
+		t.Fatalf("len(data) = %d, want 1; data=%+v", len(body.Data), body.Data)
+	}
+	if body.Data[0].AccessLevel != "PRIVATE" || fileService.lastAccessLevel != ports.AccessLevelPrivate {
+		t.Fatalf("accessLevel response=%q service=%q, want PRIVATE", body.Data[0].AccessLevel, fileService.lastAccessLevel)
+	}
+}
+
 type multipartFile struct {
 	name        string
 	contentType string

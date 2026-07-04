@@ -71,5 +71,5 @@
 
 ## 测试要求
 
-- Handler contract test：待补，至少覆盖成功 envelope、默认 `PUBLIC`、不允许的 MIME type 和大小限制。
+- Handler contract test：已覆盖成功 envelope 和默认 `PUBLIC`；待补不允许的 MIME type 和大小限制。
 - System HTTP test：待补。
