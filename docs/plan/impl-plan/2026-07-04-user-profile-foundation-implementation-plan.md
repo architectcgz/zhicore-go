@@ -105,17 +105,17 @@
 
   至少创建 `users` 和 User 本地 `outbox_events`；`users.public_id`、`users.account_id`、`users.nickname` 需要唯一约束。
 
-- [ ] **步骤 2：补 runtime module 和 `cmd/server`**
+- [x] **步骤 2：补 runtime module 和 `cmd/server`**
 
   `cmd/server/main.go` 只负责进程入口；业务 wiring 放 `internal/user/runtime/module.go`。
 
-- [ ] **步骤 3：运行收口测试**
+- [x] **步骤 3：运行收口测试**
 
   运行：`cd services/zhicore-user && go test ./...`
 
   预期：通过。
 
-  当前状态：`runtime.Module` 只支持依赖注入组装测试；User repository、File client、outbox dispatcher、cache 和配置加载的生产 adapter 尚未落地，因此不再提供会必然启动失败的 `cmd/server/main.go`，本步骤保持未完成。`migrate` CLI 存在，但当前环境未设置 `ZHICORE_USER_POSTGRES_DSN`，因此未执行真实数据库 `up` / `down 1` 验证，不能声称 migration 已在数据库回放通过。
+  当前状态：`runtime.Module` 支持依赖注入组装测试，`cmd/server/main.go` 已作为进程根落地，并在生产 repository、File client、outbox dispatcher、cache 和配置加载尚未落地时 fail fast，避免伪装成可运行服务。已使用隔离临时 PostgreSQL 容器和 `migrate/migrate:v4.18.3` 执行真实 `up -> down 1 -> up`，最终 `schema_migrations` 为 `20260704093000 dirty=false`，关键表 `users`、`outbox_events` 和唯一约束已确认存在。
 
 ## 架构适配评估
 
