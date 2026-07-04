@@ -5,6 +5,7 @@
 ## 目录
 
 - `impl-plan/`：正式实现计划，要求按任务 checklist 执行、记录验证并接受 review。
+- `exploratory/`：探索性设计方案和技术计划，执行前可提升为正式实现计划。
 
 ## 当前计划
 
@@ -18,3 +19,4 @@
 | `impl-plan/2026-07-04-user-relationship-foundation-implementation-plan.md` | User Block / Follow 关系、统计、事件和 HTTP endpoints | 待执行 |
 | `impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md` | Comment 创建根评论 / 回复、顶级评论分页、核心 schema 和首批 HTTP endpoints | 待执行 |
 | `impl-plan/2026-07-04-comment-interaction-outbox-implementation-plan.md` | Comment 删除、点赞、计数 delta、outbox worker 和 runtime 收口 | 待执行 |
+| `exploratory/2026-07-04-content-body-parser-typed-schema-design-plan.md` | Content V1 body parser 从动态 `map[string]any` 重构为强类型 schema | 探索方案 |
