@@ -90,5 +90,8 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖作者鉴权、`basePostVersion`、`baseDraftBodyId`、`baseDraftBodyHash`、正文 schema、媒体引用和成功 envelope。
+- Parser unit test：待补，覆盖 `V1BodyParser` 正文 schema、未启用 block、外链 scheme、external embed provider、媒体引用提取、容器深度、表格尺寸、字段长度、canonical JSON 大小和错误数量截断。
+- Parser benchmark：待补，覆盖 `small`、`medium`、`near_limit`、`many_blocks`、`large_table`、`many_links`、`large_code`、`reject_oversize`、`reject_many_errors`，用于确定正文阈值；基准命令为 `go test -bench=BenchmarkV1BodyParser -benchmem ./services/zhicore-content/...`。
+- Handler contract test：待补，覆盖作者鉴权、`basePostVersion`、`baseDraftBodyId`、`baseDraftBodyHash`、正文 schema、正文过大、媒体引用、external embed URL / provider、超大请求体拒绝、request context cancel 和成功 envelope。
 - System HTTP test：待补。
+- Autosave load test：待补，模拟 10 / 50 / 100 个作者并发保存，正文分布使用 `70% small`、`25% medium`、`5% near_limit`，记录 p95 / p99、错误码分布、CPU、GC、MongoDB 写入耗时和限流命中率。

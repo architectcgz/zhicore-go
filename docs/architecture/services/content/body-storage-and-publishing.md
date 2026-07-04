@@ -243,6 +243,56 @@ application 不直接解析 blocks，只依赖 parser 输出的 `NormalizedBody`
 
 `content_hash = SHA-256(canonical blocks)`。它只作为一致性指纹和幂等辅助，不作为安全证明。
 
+## 正文校验阈值与测试方案
+
+正文校验必须在安全性、作者体验和 autosave 成本之间取平衡。阈值不能凭感觉写死；首次实现 `V1BodyParser` 前，必须先用 parser benchmark、handler contract test 和 autosave 压测验证阈值。阈值应作为配置或集中 policy 注入 parser / use case，不从 handler、repository 或深层 helper 直接读取环境变量。
+
+首轮性能预算：
+
+| 场景 | 目标 |
+| --- | --- |
+| `V1BodyParser` 单次校验 | p95 `< 20ms`，p99 `< 50ms` |
+| `V1BodyParser` 内存分配 | 接近上限正文不出现倍数级分配膨胀 |
+| `PUT /draft/body` 单次接口 | p95 `< 150ms`，p99 `< 300ms` |
+| 明显超限输入 | 尽早失败，不能完整 canonicalize 后才拒绝 |
+| 路径级校验错误 | 单次最多返回 `20` 个 `details` |
+
+首轮候选阈值：
+
+| 配置项 | 初始值 | 说明 |
+| --- | --- | --- |
+| `maxRequestBodyBytes` | `512KB` | HTTP 层请求体上限，超过后不进入 application parser。 |
+| `maxCanonicalJSONBytes` | `256KB` | canonical blocks JSON 字节数上限，对应 `BODY_TOO_LARGE`。 |
+| `maxPlainTextChars` | `20000` | 与当前前端正文上限对齐；提高前必须有压测证据。 |
+| `maxBlocks` | `1000` | 限制大量空段落或碎片化 block。 |
+| `maxInlineNodes` | `5000` | 限制 marks / inline text 节点总量。 |
+| `maxContainerDepth` | `2` | 与 V1 容器深度设计一致。 |
+| `maxTableCells` | `1000` | 限制大表格解析和渲染成本。 |
+| `maxLatexChars` | `3000` | 后端只保存 LaTeX，不执行公式；超长公式拒绝。 |
+| `maxCodeBlockChars` | `20000` | 限制单个代码块长度。 |
+| `maxExternalLinks` | `200` | 只做 URL parse 和 provider allowlist，不抓取外部资源。 |
+| `maxValidationErrors` | `20` | 达到上限后停止继续收集路径级错误。 |
+
+阈值测试分层：
+
+1. `V1BodyParser` 单元测试覆盖每个阈值的通过和拒绝路径：正文 schema、未启用 block、容器深度、表格尺寸、超长 LaTeX、超长代码块、外链 scheme、外部媒体 provider、媒体引用提取和错误数量截断。
+2. `V1BodyParser` benchmark 覆盖 `small`、`medium`、`near_limit`、`many_blocks`、`large_table`、`many_links`、`large_code`、`reject_oversize`、`reject_many_errors`。基准命令：
+
+   ```bash
+   go test -bench=BenchmarkV1BodyParser -benchmem ./services/zhicore-content/...
+   ```
+
+3. `SaveDraftBody` handler contract test 覆盖合法正文、schema 非法、正文过大、未启用 block、媒体引用非法、external embed URL / provider 非法、超大请求体在 HTTP 层拒绝、request context cancel 后不继续写 MongoDB / PostgreSQL。
+4. autosave 压测使用接近真实正文分布：`70% small`、`25% medium`、`5% near_limit`；分别验证 10 / 50 / 100 个作者并发，每个作者每 3-10 秒保存一次。压测必须记录 p95 / p99、错误码分布、CPU、GC、MongoDB 写入耗时和限流命中率。
+
+调参规则：
+
+- 选择产品能接受的最小上限，而不是单纯追求最大可承载正文。
+- 提高任一阈值前，必须证明接近新上限的合法正文仍满足 p99 预算，并且 autosave 压测下 CPU、GC 和 MongoDB 写入都有余量。
+- 超限输入必须在进入 expensive canonicalize / hash / persistence 前失败。
+- 后端不抓取外部 URL，不渲染 HTML，不执行公式；这些操作不能进入正文保存热路径。
+- 完成首轮测试后，在 review 证据中记录最终阈值表、benchmark 输出摘要和 HTTP 压测摘要。
+
 ## schema migration
 
 schema 升级使用读兼容 + 分批 copy-on-write migration：
