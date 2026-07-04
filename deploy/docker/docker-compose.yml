@@ -4,7 +4,7 @@
 
 services:
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:3.13.7-management-alpine
     container_name: zhicore-rabbitmq
     ports:
       - "5672:5672"   # AMQP
@@ -24,16 +24,16 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine
     container_name: zhicore-postgres
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: zhicore
       POSTGRES_PASSWORD: zhicore
-      # 本地开发不预设各服务数据库；各服务 migration 工具按需创建。
-      # 生产环境数据库由部署流程（Terraform / Cloud SQL）独立管理。
+      POSTGRES_DB: zhicore
     volumes:
+      - ./postgres/init-databases.sql:/docker-entrypoint-initdb.d/010-create-databases.sql:ro
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U zhicore"]
@@ -42,6 +42,93 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:7.2.14-alpine
+    container_name: zhicore-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0.37-jammy
+    container_name: zhicore-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: zhicore
+      MONGO_INITDB_ROOT_PASSWORD: zhicore
+    volumes:
+      - ./mongo/init-databases.js:/docker-entrypoint-initdb.d/010-init-databases.js:ro
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' -u zhicore -p zhicore --authenticationDatabase admin | grep 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: zhicore-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+    restart: unless-stopped
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: zhicore-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: zhicore
+      MINIO_ROOT_PASSWORD: zhicore123
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    container_name: zhicore-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        until mc alias set local http://minio:9000 zhicore zhicore123; do
+          sleep 2
+        done
+        mc mb --ignore-existing local/zhicore-files
+        mc anonymous set download local/zhicore-files/public || true
+    restart: "no"
+
 volumes:
   rabbitmq_data:
   postgres_data:
+  redis_data:
+  mongodb_data:
+  elasticsearch_data:
+  minio_data:
