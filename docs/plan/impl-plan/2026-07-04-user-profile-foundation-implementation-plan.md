@@ -101,7 +101,7 @@
 
 **测试立场：** TDD / 手动验证 - schema 是服务事实源。
 
-- [ ] **步骤 1：编写 Profile migration**
+- [x] **步骤 1：编写 Profile migration**
 
   至少创建 `users` 和 User 本地 `outbox_events`；`users.public_id`、`users.account_id`、`users.nickname` 需要唯一约束。
 
@@ -114,6 +114,8 @@
   运行：`cd services/zhicore-user && go test ./...`
 
   预期：通过。
+
+  当前状态：`runtime.Module` 只支持依赖注入组装测试；User repository、File client、outbox dispatcher、cache 和配置加载的生产 adapter 尚未落地，因此不再提供会必然启动失败的 `cmd/server/main.go`，本步骤保持未完成。`migrate` CLI 存在，但当前环境未设置 `ZHICORE_USER_POSTGRES_DSN`，因此未执行真实数据库 `up` / `down 1` 验证，不能声称 migration 已在数据库回放通过。
 
 ## 架构适配评估
 
