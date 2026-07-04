@@ -17,7 +17,7 @@
 3. [application-and-ports.md](application-and-ports.md)：application use case、ports、包落点、事务边界和实现切片。
 4. [data-events-contracts.md](data-events-contracts.md)：API 保留范围、数据归属、事件、跨服务依赖、发布校验、错误契约和链接预览后续项。
 5. [engagement-design.md](engagement-design.md)：点赞、收藏、互动统计、当前用户状态、Redis 故障降级和产品展示语义。
-6. [page-design.md](page-design.md)：公开浏览页面、文章详情页、列表页互动摘要和前端加载编排。
+6. [frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)：公开浏览页面、文章详情页、列表页互动摘要和前端加载编排。
 7. [rate-limiting.md](rate-limiting.md)：公开读、作者写路径、互动、presence、管理端和内部调用的限流矩阵、Redis 故障原则和观测要求。
 8. [runtime-resilience.md](runtime-resilience.md)：Content 下游 provider / operation 的 timeout、retry、circuit breaker、max-in-flight 和降级策略矩阵。
 
@@ -63,7 +63,7 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 
 - 已明确：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
 - 已设计草案：Content Go-first HTTP contract，见 `services/zhicore-content/api/http/`；该 contract 是 Go 侧新事实源，不承诺兼容 Java path / DTO，且尚未由 Go handler/test 验证。
-- 已设计草案：Content engagement、公开浏览页面、业务限流和运行期 resilience 策略，见 `engagement-design.md`、`page-design.md`、`rate-limiting.md` 与 `runtime-resilience.md`；当前只固定设计和实现准入条件，不表示 Go runtime 已落地。
+- 已设计草案：Content engagement、公开浏览页面、业务限流和运行期 resilience 策略，见 `engagement-design.md`、[frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)、`rate-limiting.md` 与 `runtime-resilience.md`；当前只固定设计和实现准入条件，不表示 Go runtime 已落地。
 - 未完成：完整 migration SQL、服务级行为测试清单、Go handler / application / repository 实现。
 
 ## 下一步

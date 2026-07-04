@@ -63,7 +63,7 @@ Go Gateway 必须保持前端当前访问路径可用。它可以把请求路由
 
 ## 页面设计
 
-- [page-design.md](page-design.md)：Gateway 内部运维页面初设计、路由表、认证诊断、限流风险策略和下游健康检查。Gateway 没有普通用户产品页。
+- [frontend pages/gateway.md](../../../../../zhicore-frontend-vue/docs/design/pages/gateway.md)：Gateway 内部运维页面初设计、路由表、认证诊断、限流风险策略和下游健康检查。Gateway 没有普通用户产品页。
 
 ## 数据归属
 

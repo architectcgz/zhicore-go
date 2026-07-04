@@ -40,23 +40,23 @@ docs/architecture/services/<service>/
 
 ## 页面初设计索引
 
-页面初设计记录各服务对应产品页、管理页或运维页的前端草稿、加载顺序、空态 / 错误态 / degraded 态和跨服务页面约定。它们不替代 HTTP 字段级 contract。
+页面初设计已迁移到前端仓库 `zhicore-frontend-vue/docs/design/pages/`。这些文档记录各服务对应产品页、管理页或运维页的前端草稿、加载顺序、空态 / 错误态 / degraded 态和跨服务页面约定，不替代 HTTP 字段级 contract。
 
 | 服务 | 页面设计 | 页面性质 |
 | --- | --- | --- |
-| Auth | `auth/page-design.md` | 登录、注册、会话和安全设置 |
-| User | `user/page-design.md` | 资料、关注、拉黑和用户设置 |
-| Content | `content/page-design.md` | 文章浏览、编辑、互动和内容管理 |
-| Comment | `comment/page-design.md` | 评论区、回复、评论点赞和审核入口 |
-| Message | `message/page-design.md` | 私信会话、聊天线程、未读和发送状态 |
-| Notification | `notification/page-design.md` | 通知中心、偏好、免打扰和投递状态 |
-| Search | `search/page-design.md` | 搜索框、建议、热门词、历史和结果列表 |
-| Ranking | `ranking/page-design.md` | 热榜、周期榜、创作者 / 话题榜和 rebuild |
-| File | `file/page-design.md` | 上传组件、批量上传、URL 解析和媒体入口 |
-| Admin | `admin/page-design.md` | 管理端总览、审核、举报和审计 |
-| Gateway | `gateway/page-design.md` | 内部路由、认证、限流和下游诊断 |
-| Ops | `ops/page-design.md` | 对账、修复、事件回放和 worker 状态 |
-| ID Generator | `id-generator/page-design.md` | 当前无产品页，未来发号诊断页占位 |
+| Auth | [`auth.md`](../../../../zhicore-frontend-vue/docs/design/pages/auth.md) | 登录、注册、会话和安全设置 |
+| User | [`user.md`](../../../../zhicore-frontend-vue/docs/design/pages/user.md) | 资料、关注、拉黑和用户设置 |
+| Content | [`content.md`](../../../../zhicore-frontend-vue/docs/design/pages/content.md) | 文章浏览、编辑、互动和内容管理 |
+| Comment | [`comment.md`](../../../../zhicore-frontend-vue/docs/design/pages/comment.md) | 评论区、回复、评论点赞和审核入口 |
+| Message | [`message.md`](../../../../zhicore-frontend-vue/docs/design/pages/message.md) | 私信会话、聊天线程、未读和发送状态 |
+| Notification | [`notification.md`](../../../../zhicore-frontend-vue/docs/design/pages/notification.md) | 通知中心、偏好、免打扰和投递状态 |
+| Search | [`search.md`](../../../../zhicore-frontend-vue/docs/design/pages/search.md) | 搜索框、建议、热门词、历史和结果列表 |
+| Ranking | [`ranking.md`](../../../../zhicore-frontend-vue/docs/design/pages/ranking.md) | 热榜、周期榜、创作者 / 话题榜和 rebuild |
+| File | [`file.md`](../../../../zhicore-frontend-vue/docs/design/pages/file.md) | 上传组件、批量上传、URL 解析和媒体入口 |
+| Admin | [`admin.md`](../../../../zhicore-frontend-vue/docs/design/pages/admin.md) | 管理端总览、审核、举报和审计 |
+| Gateway | [`gateway.md`](../../../../zhicore-frontend-vue/docs/design/pages/gateway.md) | 内部路由、认证、限流和下游诊断 |
+| Ops | [`ops.md`](../../../../zhicore-frontend-vue/docs/design/pages/ops.md) | 对账、修复、事件回放和 worker 状态 |
+| ID Generator | [`id-generator.md`](../../../../zhicore-frontend-vue/docs/design/pages/id-generator.md) | 当前无产品页，未来发号诊断页占位 |
 
 Gateway 的服务级专题文档：
 

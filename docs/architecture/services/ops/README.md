@@ -25,7 +25,7 @@ Go 目标当前不保留这些运行时灰度 API，除非后续重新确认 Jav
 
 ## 页面设计
 
-- [page-design.md](page-design.md)：Ops 内部运维页面初设计、对账、修复、事件回放、worker / queue 状态和任务审计。
+- [frontend pages/ops.md](../../../../../zhicore-frontend-vue/docs/design/pages/ops.md)：Ops 内部运维页面初设计、对账、修复、事件回放、worker / queue 状态和任务审计。
 
 ## 数据归属
 

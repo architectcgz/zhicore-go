@@ -24,7 +24,7 @@
 | [query-materialization.md](query-materialization.md) | 查询路径、Redis key、Redis miss 回源、snapshot、候选集、归档和 API 保留范围。 |
 | [runtime-resilience.md](runtime-resilience.md) | timeout、retry、熔断、降级、readiness、依赖故障、metrics 和测试准入。 |
 | [schema-and-implementation.md](schema-and-implementation.md) | 数据归属、schema 草案、配置要点、实现切片、风险和实现前检查清单。 |
-| [page-design.md](page-design.md) | Ranking 页面初设计、榜单页、详情补齐、周期榜、创作者 / 话题榜和 rebuild 管理页。 |
+| [frontend pages/ranking.md](../../../../../zhicore-frontend-vue/docs/design/pages/ranking.md) | Ranking 页面初设计、榜单页、详情补齐、周期榜、创作者 / 话题榜和 rebuild 管理页。 |
 
 ## 职责边界
 

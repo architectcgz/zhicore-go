@@ -23,7 +23,7 @@ Message 不拥有系统通知事实；通知收件箱归 Notification。Message 
 
 ## 页面设计
 
-- [page-design.md](page-design.md)：Message 页面初设计、会话列表、聊天线程、发送私信、未读数和 provider 降级规则。
+- [frontend pages/message.md](../../../../../zhicore-frontend-vue/docs/design/pages/message.md)：Message 页面初设计、会话列表、聊天线程、发送私信、未读数和 provider 降级规则。
 
 ## 数据归属
 

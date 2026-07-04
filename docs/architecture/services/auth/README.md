@@ -57,7 +57,7 @@ PostgreSQL 表设计见 `docs/architecture/module/auth/data-model.md`；正式 S
 - Ports：`docs/architecture/module/auth/ports.md`
 - 数据模型：`docs/architecture/module/auth/data-model.md`
 - 数据和事件：`docs/architecture/module/auth/data-events.md`
-- 页面设计：[page-design.md](page-design.md)
+- 页面设计：[frontend pages/auth.md](../../../../../zhicore-frontend-vue/docs/design/pages/auth.md)
 
 ## 实现风险
 
