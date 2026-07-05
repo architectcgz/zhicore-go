@@ -341,7 +341,7 @@
 
   cleanup worker 只能按 `body_id` 精确删除；删除前必须确认 `posts.published_body_id` 和 `posts.draft_body_id` 都未引用该 body。
 
-- [ ] **步骤 5：编写 repair worker 失败测试**
+- [x] **步骤 5：编写 repair worker 失败测试**
 
   覆盖 published body missing、hash mismatch、schema unreadable 的修复任务处理；第一阶段可只标记 `NEEDS_MANUAL_REPAIR` / `DEAD` 并记录告警字段，不伪造自动修复成功。
 
@@ -349,7 +349,7 @@
 
   预期：失败。
 
-- [ ] **步骤 6：实现 repair worker**
+- [x] **步骤 6：实现 repair worker**
 
   repair worker 不读取 draft 冒充 published，不直接修改线上指针；能重试、dead-letter、暴露状态给 admin 查询。
 
