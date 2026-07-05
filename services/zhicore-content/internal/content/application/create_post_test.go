@@ -478,6 +478,11 @@ type fakeRepairTaskStore struct {
 	appendOutsideCalls int
 	tasks              []ports.BodyRepairTask
 	outsideTasks       []ports.BodyRepairTask
+	claimCalls         int
+	claimRequests      []ports.TaskClaimRequest
+	claimResults       [][]ports.BodyRepairTaskClaim
+	succeeded          []fakeTaskSuccess
+	failed             []ports.TaskFailure
 	err                error
 }
 
@@ -494,14 +499,30 @@ func (f *fakeRepairTaskStore) AppendOutsideTx(ctx context.Context, task ports.Bo
 }
 
 func (f *fakeRepairTaskStore) Claim(ctx context.Context, request ports.TaskClaimRequest) ([]ports.BodyRepairTaskClaim, error) {
-	return nil, f.err
+	f.claimCalls++
+	f.claimRequests = append(f.claimRequests, request)
+	if f.err != nil {
+		return nil, f.err
+	}
+	if len(f.claimResults) == 0 {
+		return nil, nil
+	}
+	tasks := f.claimResults[0]
+	f.claimResults = f.claimResults[1:]
+	return tasks, nil
 }
 
 func (f *fakeRepairTaskStore) MarkSucceeded(ctx context.Context, taskID int64, workerID string, resolvedAt time.Time) error {
+	f.succeeded = append(f.succeeded, fakeTaskSuccess{
+		taskID: taskID,
+		worker: workerID,
+		at:     resolvedAt,
+	})
 	return f.err
 }
 
 func (f *fakeRepairTaskStore) MarkFailed(ctx context.Context, failure ports.TaskFailure) error {
+	f.failed = append(f.failed, failure)
 	return f.err
 }
 
