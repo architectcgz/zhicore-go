@@ -99,7 +99,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 - `PostRepository` 包含 Post 聚合持久化方法，不拆成 10 个小接口。
 - `PostQueryRepository` 独立于 `PostRepository`，避免写模型被查询需求污染。
 - Outbox、InternalEventTask dispatcher、cleanup worker 属于 infrastructure；application 只依赖发布端口或任务记录端口。
-- HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、idempotency key、body size、presence session、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误或 no-op success，adapter 不直接构造 HTTP response。
+- HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、operation、body size、presence session、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误或 no-op success，adapter 不直接构造 HTTP response。
 - Engagement 查询在 Redis 不可用时只能走受控 DB fallback：单篇详情可以返回 `viewer.liked/favorited=null` 和 `viewer.degraded=true`，批量状态必须使用批量 repository 方法，不能循环逐条查 `(user_id, post_id)`。完整规则见 [engagement-design.md](engagement-design.md)。
 - 不定义宽泛 `Store` 大接口。
 

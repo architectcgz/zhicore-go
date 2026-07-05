@@ -18,7 +18,7 @@
 | 兼容别名 | 无 |
 | Content-Type | `application/json` |
 | 鉴权 | 作者 |
-| 幂等 | 可选 `idempotencyKey`；推荐调用方同时传 `Idempotency-Key` header |
+| 幂等 | 无业务幂等键；重复提交依赖 `basePostVersion`、`draftBodyId`、`draftBodyHash` 和当前发布状态返回冲突 |
 
 ## Path 参数
 
@@ -37,7 +37,6 @@
 | `basePostVersion` | int | 是 | 不允许为空 | 发布确认时看到的 post 版本。 |
 | `draftBodyId` | string | 是 | 不允许为空 | 要发布的草稿 body ID。 |
 | `draftBodyHash` | string | 是 | 不允许为空 | 要发布的草稿 body hash，格式 `sha256:<hex>`。 |
-| `idempotencyKey` | string | 否 | 缺失表示不启用业务幂等键 | 可选；用于重复提交保护。 |
 
 ## 成功响应 `PublishPostResp`
 
