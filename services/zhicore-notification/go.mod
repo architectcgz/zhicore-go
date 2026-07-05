@@ -1,3 +1,3 @@
 module github.com/architectcgz/zhicore-go/services/zhicore-notification
 
-go 1.22
+go 1.26.0
