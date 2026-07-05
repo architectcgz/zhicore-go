@@ -393,7 +393,7 @@
 
   publisher 只负责传输；事件业务 payload 已由 application 写入 outbox。
 
-- [ ] **步骤 5：编写 outbox dispatcher application 测试**
+- [x] **步骤 5：编写 outbox dispatcher application 测试**
 
   覆盖 batch claim、成功 mark published、publish 失败退避、超过最大次数进入 dead、context cancel 和 shutdown 不 claim 新任务。
 
@@ -401,7 +401,7 @@
 
   预期：失败。
 
-- [ ] **步骤 6：实现 outbox dispatcher**
+- [x] **步骤 6：实现 outbox dispatcher**
 
   publish RabbitMQ 不在持有 DB 行锁的事务中执行；每个事件结果必须落库。
 
