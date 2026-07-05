@@ -12,6 +12,7 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/application"
+	"github.com/gin-gonic/gin"
 )
 
 const userIDHeaderName = "X-User-Id"
@@ -38,34 +39,45 @@ type AvatarURLResolver interface {
 type Handler struct {
 	service  Service
 	resolver AvatarURLResolver
-	mux      *http.ServeMux
+	router   *gin.Engine
 }
 
 func NewHandler(service Service, resolver AvatarURLResolver) http.Handler {
 	h := &Handler{
 		service:  service,
 		resolver: resolver,
-		mux:      http.NewServeMux(),
+		router:   gin.New(),
 	}
 	h.routes()
 	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
+	h.router.ServeHTTP(w, r)
 }
 
 func (h *Handler) routes() {
-	h.mux.HandleFunc("GET /api/v1/users/me", h.getMe)
-	h.mux.HandleFunc("GET /api/v1/users/me/blocked", h.listBlockedUsers)
-	h.mux.HandleFunc("GET /api/v1/users/{publicId}", h.getProfile)
-	h.mux.HandleFunc("PATCH /api/v1/users/me/profile", h.updateProfile)
-	h.mux.HandleFunc("POST /api/v1/users/{publicId}/block", h.blockUser)
-	h.mux.HandleFunc("DELETE /api/v1/users/{publicId}/block", h.unblockUser)
-	h.mux.HandleFunc("POST /api/v1/users/{publicId}/follow", h.followUser)
-	h.mux.HandleFunc("DELETE /api/v1/users/{publicId}/follow", h.unfollowUser)
-	h.mux.HandleFunc("GET /api/v1/users/{publicId}/followers", h.listFollowers)
-	h.mux.HandleFunc("GET /api/v1/users/{publicId}/following", h.listFollowing)
+	h.router.GET("/api/v1/users/me", ginHTTPHandler(h.getMe))
+	h.router.GET("/api/v1/users/me/blocked", ginHTTPHandler(h.listBlockedUsers))
+	h.router.GET("/api/v1/users/:publicId", ginHTTPHandler(h.getProfile))
+	h.router.PATCH("/api/v1/users/me/profile", ginHTTPHandler(h.updateProfile))
+	h.router.POST("/api/v1/users/:publicId/block", ginHTTPHandler(h.blockUser))
+	h.router.DELETE("/api/v1/users/:publicId/block", ginHTTPHandler(h.unblockUser))
+	h.router.POST("/api/v1/users/:publicId/follow", ginHTTPHandler(h.followUser))
+	h.router.DELETE("/api/v1/users/:publicId/follow", ginHTTPHandler(h.unfollowUser))
+	h.router.GET("/api/v1/users/:publicId/followers", ginHTTPHandler(h.listFollowers))
+	h.router.GET("/api/v1/users/:publicId/following", ginHTTPHandler(h.listFollowing))
+}
+
+func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Path params stay on net/http.Request so Gin does not leak past the
+		// HTTP adapter and application inputs remain explicit DTOs.
+		for _, param := range c.Params {
+			c.Request.SetPathValue(param.Key, param.Value)
+		}
+		next(c.Writer, c.Request)
+	}
 }
 
 func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {

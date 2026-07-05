@@ -10,6 +10,7 @@ import (
 	"time"
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -212,33 +213,44 @@ type TrustedIdentity struct {
 
 type Handler struct {
 	service Service
-	mux     *http.ServeMux
+	router  *gin.Engine
 }
 
 func NewHandler(service Service) http.Handler {
 	h := &Handler{
 		service: service,
-		mux:     http.NewServeMux(),
+		router:  gin.New(),
 	}
 	h.routes()
 	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
+	h.router.ServeHTTP(w, r)
 }
 
 func (h *Handler) routes() {
-	h.mux.HandleFunc("POST /api/v1/auth/register", h.register)
-	h.mux.HandleFunc("POST /api/v1/auth/login", h.login)
-	h.mux.HandleFunc("POST /api/v1/auth/refresh", h.refresh)
-	h.mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
-	h.mux.HandleFunc("GET /api/v1/auth/me", h.me)
-	h.mux.HandleFunc("GET /api/v1/auth/csrf", h.csrf)
-	h.mux.HandleFunc("GET /api/v1/auth/sessions", h.listSessions)
-	h.mux.HandleFunc("DELETE /api/v1/auth/sessions/current", h.revokeCurrentSession)
-	h.mux.HandleFunc("DELETE /api/v1/auth/sessions/{sessionId}", h.revokeSession)
-	h.mux.HandleFunc("GET /api/v1/auth/security-operations/{operationId}", h.getSecurityOperation)
+	h.router.POST("/api/v1/auth/register", ginHTTPHandler(h.register))
+	h.router.POST("/api/v1/auth/login", ginHTTPHandler(h.login))
+	h.router.POST("/api/v1/auth/refresh", ginHTTPHandler(h.refresh))
+	h.router.POST("/api/v1/auth/logout", ginHTTPHandler(h.logout))
+	h.router.GET("/api/v1/auth/me", ginHTTPHandler(h.me))
+	h.router.GET("/api/v1/auth/csrf", ginHTTPHandler(h.csrf))
+	h.router.GET("/api/v1/auth/sessions", ginHTTPHandler(h.listSessions))
+	h.router.DELETE("/api/v1/auth/sessions/current", ginHTTPHandler(h.revokeCurrentSession))
+	h.router.DELETE("/api/v1/auth/sessions/:sessionId", ginHTTPHandler(h.revokeSession))
+	h.router.GET("/api/v1/auth/security-operations/:operationId", ginHTTPHandler(h.getSecurityOperation))
+}
+
+func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Keep path params on net/http.Request so the transport adapter can use
+		// standard request APIs while Gin remains the only router dependency.
+		for _, param := range c.Params {
+			c.Request.SetPathValue(param.Key, param.Value)
+		}
+		next(c.Writer, c.Request)
+	}
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {

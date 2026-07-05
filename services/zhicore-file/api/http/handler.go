@@ -10,33 +10,45 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-file/internal/file/application"
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	service *application.Service
-	mux     *http.ServeMux
+	router  *gin.Engine
 }
 
 func NewHandler(service *application.Service) http.Handler {
 	h := &Handler{
 		service: service,
-		mux:     http.NewServeMux(),
+		router:  gin.New(),
 	}
 	h.routes()
 	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
+	h.router.ServeHTTP(w, r)
 }
 
 func (h *Handler) routes() {
-	h.mux.HandleFunc("POST /api/v1/files/image", h.uploadImage)
-	h.mux.HandleFunc("POST /api/v1/files/audio", h.uploadAudio)
-	h.mux.HandleFunc("POST /api/v1/files/image/with-access", h.uploadImageWithAccess)
-	h.mux.HandleFunc("POST /api/v1/files/images/batch", h.uploadImagesBatch)
-	h.mux.HandleFunc("GET /api/v1/files/{fileId}/url", h.getFileURL)
-	h.mux.HandleFunc("DELETE /api/v1/files/{fileId}", h.deleteFile)
+	h.router.POST("/api/v1/files/image", ginHTTPHandler(h.uploadImage))
+	h.router.POST("/api/v1/files/audio", ginHTTPHandler(h.uploadAudio))
+	h.router.POST("/api/v1/files/image/with-access", ginHTTPHandler(h.uploadImageWithAccess))
+	h.router.POST("/api/v1/files/images/batch", ginHTTPHandler(h.uploadImagesBatch))
+	h.router.GET("/api/v1/files/:fileId/url", ginHTTPHandler(h.getFileURL))
+	h.router.DELETE("/api/v1/files/:fileId", ginHTTPHandler(h.deleteFile))
+}
+
+func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Preserve the standard request path-value API while using Gin as the
+		// ingress router and future middleware host.
+		for _, param := range c.Params {
+			c.Request.SetPathValue(param.Key, param.Value)
+		}
+		next(c.Writer, c.Request)
+	}
 }
 
 func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {

@@ -12,6 +12,7 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/application"
+	"github.com/gin-gonic/gin"
 )
 
 const userIDHeaderName = "X-User-Id"
@@ -25,22 +26,33 @@ type Service interface {
 
 type Handler struct {
 	service Service
-	mux     *http.ServeMux
+	router  *gin.Engine
 }
 
 func NewHandler(service Service) http.Handler {
-	h := &Handler{service: service, mux: http.NewServeMux()}
+	h := &Handler{service: service, router: gin.New()}
 	h.routes()
 	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
+	h.router.ServeHTTP(w, r)
 }
 
 func (h *Handler) routes() {
-	h.mux.HandleFunc("POST /api/v1/posts/{postId}/comments", h.createComment)
-	h.mux.HandleFunc("GET /api/v1/posts/{postId}/comments/page", h.listCommentsPage)
+	h.router.POST("/api/v1/posts/:postId/comments", ginHTTPHandler(h.createComment))
+	h.router.GET("/api/v1/posts/:postId/comments/page", ginHTTPHandler(h.listCommentsPage))
+}
+
+func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Route params are copied back to net/http so Gin remains confined to
+		// the transport adapter instead of becoming an application dependency.
+		for _, param := range c.Params {
+			c.Request.SetPathValue(param.Key, param.Value)
+		}
+		next(c.Writer, c.Request)
+	}
 }
 
 func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
