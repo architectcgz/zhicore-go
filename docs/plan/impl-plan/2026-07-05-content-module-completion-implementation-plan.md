@@ -329,7 +329,7 @@
 
   使用 `FOR UPDATE SKIP LOCKED` 或等价条件更新；不得让多个 worker 同时处理同一任务。
 
-- [ ] **步骤 3：编写 cleanup worker 失败测试**
+- [x] **步骤 3：编写 cleanup worker 失败测试**
 
   覆盖删除前查询 PG 指针未引用、Mongo body 不存在时幂等成功、被引用时跳过并重试/失败、Mongo delete 失败退避、context cancel 后不再 claim 新任务。
 
@@ -337,7 +337,7 @@
 
   预期：失败。
 
-- [ ] **步骤 4：实现 cleanup worker**
+- [x] **步骤 4：实现 cleanup worker**
 
   cleanup worker 只能按 `body_id` 精确删除；删除前必须确认 `posts.published_body_id` 和 `posts.draft_body_id` 都未引用该 body。
 
