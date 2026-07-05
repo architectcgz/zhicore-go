@@ -317,7 +317,7 @@
 
 **测试立场：** TDD - claim、幂等删除、PG 引用二次确认、retry、dead-letter 和 shutdown 属于 R4。
 
-- [ ] **步骤 1：扩展 PostgreSQL task repository 测试**
+- [x] **步骤 1：扩展 PostgreSQL task repository 测试**
 
   覆盖 cleanup / repair task claim、stale claim 重领、多实例不重复 claim、mark succeeded、mark failed、dead threshold 和条件更新。
 
@@ -325,7 +325,7 @@
 
   预期：失败。
 
-- [ ] **步骤 2：实现 task repository claim 状态机**
+- [x] **步骤 2：实现 task repository claim 状态机**
 
   使用 `FOR UPDATE SKIP LOCKED` 或等价条件更新；不得让多个 worker 同时处理同一任务。
 
