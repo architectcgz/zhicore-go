@@ -381,7 +381,7 @@
 
   优先复用 `libs/kit/postgres/outbox`；如 Content schema 缺少 dispatch columns，先补 migration，不能用内存状态假装 dispatcher。
 
-- [ ] **步骤 3：编写 RabbitMQ publisher 测试**
+- [x] **步骤 3：编写 RabbitMQ publisher 测试**
 
   覆盖 exchange、routing key、事件 envelope、payload version、publish confirm timeout 和失败错误脱敏。
 
@@ -389,7 +389,7 @@
 
   预期：失败。
 
-- [ ] **步骤 4：实现 RabbitMQ publisher**
+- [x] **步骤 4：实现 RabbitMQ publisher**
 
   publisher 只负责传输；事件业务 payload 已由 application 写入 outbox。
 
