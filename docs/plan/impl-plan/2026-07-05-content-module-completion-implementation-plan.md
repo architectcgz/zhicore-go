@@ -43,7 +43,7 @@
 
 当前残余缺口：
 
-- 分支 `task/2026-07-05-content-publish-foundation` 尚未合并回主线。
+- 发布闭环 foundation 已合并回主线，旧 worktree 和旧 task 分支已清理；后续工作在 `task/2026-07-05-content-module-completion` 推进。
 - Content 服务还不是生产可运行进程：缺配置加载、依赖打开、HTTP server listen/shutdown 和真实 readiness。
 - cleanup / repair / outbox worker 当前是 disabled descriptor。
 - `4012` / `4021` / `4023` 仍等待 application / ports sentinel error 和 handler mapping。
@@ -115,27 +115,27 @@
 
 **测试立场：** R0 文档和 Git 集成切片；不改业务行为。
 
-- [ ] **步骤 1：确认 foundation 分支状态**
+- [x] **步骤 1：确认 foundation 分支状态**
 
   运行：`git status --short --branch && git branch --contains HEAD --all`
 
   预期：worktree 干净；若当前提交仍只在 task 分支，先按项目 finishing 流程决定 merge / PR / 保留 worktree。
 
-- [ ] **步骤 2：同步 Content 架构 README**
+- [x] **步骤 2：同步 Content 架构 README**
 
   修改 `docs/architecture/services/content/README.md`：把“当前设计状态”和“下一步”更新为发布闭环 foundation 已完成、runtime / worker / API family / system test 待补。
 
-- [ ] **步骤 3：同步服务 README**
+- [x] **步骤 3：同步服务 README**
 
   修改 `services/zhicore-content/README.md`：补当前已实现 endpoint、运行状态、验证命令、剩余切片入口和本计划链接。
 
-- [ ] **步骤 4：运行文档结构验证**
+- [x] **步骤 4：运行文档结构验证**
 
   运行：`bash scripts/check-structure.sh && git diff --check`
 
   预期：`structure ok`，无 whitespace error。
 
-- [ ] **步骤 5：提交文档同步切片**
+- [x] **步骤 5：提交文档同步切片**
 
   提交前使用 @committing-changes。提交只包含本任务文档文件。
 

@@ -62,12 +62,14 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 ## 当前设计状态
 
 - 已明确：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
-- 已设计草案：Content Go-first HTTP contract，见 `services/zhicore-content/api/http/`；该 contract 是 Go 侧新事实源，不承诺兼容 Java path / DTO，且尚未由 Go handler/test 验证。
-- 已设计草案：Content engagement、公开浏览页面、业务限流和运行期 resilience 策略，见 `engagement-design.md`、[frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)、`rate-limiting.md` 与 `runtime-resilience.md`；当前只固定设计和实现准入条件，不表示 Go runtime 已落地。
-- 未完成：完整 migration SQL、服务级行为测试清单、Go handler / application / repository 实现。
+- 已实现：Content 发布闭环 foundation，覆盖 core migration、Post domain、application 编排、PostgreSQL repository、MongoDB body store、Content V1 body parser、HTTP handler 和 runtime module fail-fast 装配。
+- 已验证：`POST /api/v1/posts`、`PUT /api/v1/posts/{postId}/draft/body`、`POST /api/v1/posts/{postId}/publish`、`GET /api/v1/posts/{postId}/body` 已由 handler contract test 覆盖；验证证据见 `docs/reviews/backend/2026-07-05-content-publish-foundation.md`。
+- 已登记后续计划：Content 模块补全路线见 `docs/plan/impl-plan/2026-07-05-content-module-completion-implementation-plan.md`。
+- 待实现：生产可运行 runtime、真实配置加载、依赖打开、HTTP server listen / shutdown、真实 readiness、cleanup / repair / outbox worker、Content HTTP system test、`4012` / `4021` / `4023` 依赖语义错误、剩余 API family、限流、resilience policy 和观测接入。
+- 已设计草案但未完整落地：Content engagement、公开浏览页面、业务限流和运行期 resilience 策略，见 `engagement-design.md`、[frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)、`rate-limiting.md` 与 `runtime-resilience.md`。
 
 ## 下一步
 
-- 生成 Content migration 草案。
-- 实现“创建草稿并发布文章”核心切片，详见 [application-and-ports.md](application-and-ports.md)。
-- 先写 domain 层测试，再写 application 层编排测试，最后接入 PostgreSQL / MongoDB / HTTP。
+- 按 `2026-07-05-content-module-completion-implementation-plan.md` 先补服务可运行 runtime、真实 readiness 和配置模板。
+- 分别实现 cleanup worker、repair worker 和 outbox dispatcher，不把 disabled descriptor 伪装成生产 worker。
+- 补 Content 黑盒 HTTP system test，再按公开查询、作者工作台、发布生命周期、taxonomy、engagement / presence 和 admin API family 逐步扩展。
