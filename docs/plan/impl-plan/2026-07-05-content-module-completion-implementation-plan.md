@@ -409,11 +409,11 @@
 
   拆 `GET /api/v1/admin/content/outbox-events`、`POST /api/v1/admin/content/outbox-events/{eventId}/retry` endpoint 文档、handler contract test 和 application 查询/重试 use case。
 
-- [ ] **步骤 8：接入 runtime**
+- [x] **步骤 8：接入 runtime**
 
   outbox dispatcher 按配置启用，worker descriptor、readiness 和 shutdown 都可测。
 
-- [ ] **步骤 9：提交 outbox 切片**
+- [x] **步骤 9：提交 outbox 切片**
 
   推荐拆分为 repository、publisher、dispatcher、admin API 四个提交。
 
