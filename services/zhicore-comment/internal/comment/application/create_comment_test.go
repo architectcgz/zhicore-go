@@ -313,6 +313,8 @@ type fakeCommentStore struct {
 	postStats          map[domain.PostID]domain.CommentPostStats
 	hotRanks           map[domain.CommentID]bool
 	recommendedRanks   map[domain.CommentID]bool
+	likes              map[domain.CommentID]map[domain.UserID]bool
+	counterDeltas      []ports.CommentCounterDelta
 	queryResults       map[domain.CommentSort][]domain.Comment
 	viewerLiked        map[domain.CommentID]bool
 	lastListQuery      ports.TopLevelCommentPageQuery
@@ -331,6 +333,7 @@ func newFakeCommentStore() *fakeCommentStore {
 		postStats:        map[domain.PostID]domain.CommentPostStats{},
 		hotRanks:         map[domain.CommentID]bool{},
 		recommendedRanks: map[domain.CommentID]bool{},
+		likes:            map[domain.CommentID]map[domain.UserID]bool{},
 		queryResults:     map[domain.CommentSort][]domain.Comment{},
 		viewerLiked:      map[domain.CommentID]bool{},
 	}
@@ -397,6 +400,51 @@ func (s *fakeCommentStore) Create(ctx context.Context, draft domain.Comment) (do
 	return draft, nil
 }
 
+func (s *fakeCommentStore) FindCommentForMutation(ctx context.Context, postID domain.PostID, commentID domain.CommentID) (domain.Comment, error) {
+	comment, ok := s.comments[commentID]
+	if !ok || comment.PostID != postID {
+		return domain.Comment{}, domain.ErrCommentNotFound
+	}
+	return comment, nil
+}
+
+func (s *fakeCommentStore) SoftDeleteSubtree(ctx context.Context, input ports.DeleteSubtreeInput) (ports.DeleteSubtreeResult, error) {
+	entry, ok := s.comments[input.CommentID]
+	if !ok || entry.PostID != input.PostID {
+		return ports.DeleteSubtreeResult{}, domain.ErrCommentNotFound
+	}
+	if entry.Status == domain.CommentStatusDeleted {
+		if !input.AllowDeleted {
+			return ports.DeleteSubtreeResult{}, domain.ErrCommentNotFound
+		}
+		rootID := entry.RootID
+		if entry.IsTopLevel() {
+			rootID = entry.ID
+		}
+		return ports.DeleteSubtreeResult{Entry: entry, RootID: rootID, AlreadyDeleted: true}, nil
+	}
+	affected := 0
+	for id, comment := range s.comments {
+		if comment.PostID != input.PostID || comment.Status != domain.CommentStatusNormal {
+			continue
+		}
+		if id != entry.ID && comment.RootID != entry.ID && comment.ParentID != entry.ID && comment.RootID != entry.RootID {
+			continue
+		}
+		if entry.IsReply() && id != entry.ID && comment.RootID != entry.RootID {
+			continue
+		}
+		comment.Status = domain.CommentStatusDeleted
+		s.comments[id] = comment
+		affected++
+	}
+	rootID := entry.RootID
+	if entry.IsTopLevel() {
+		rootID = entry.ID
+	}
+	return ports.DeleteSubtreeResult{Entry: entry, RootID: rootID, AffectedCount: affected}, nil
+}
+
 func (s *fakeCommentStore) Initialize(ctx context.Context, commentID domain.CommentID, now time.Time) error {
 	s.stats[commentID] = domain.CommentStats{CommentID: commentID}
 	return nil
@@ -406,6 +454,17 @@ func (s *fakeCommentStore) IncrementReplyCount(ctx context.Context, rootID domai
 	stats := s.stats[rootID]
 	stats.CommentID = rootID
 	stats.ReplyCount++
+	s.stats[rootID] = stats
+	return nil
+}
+
+func (s *fakeCommentStore) DecrementReplyCount(ctx context.Context, rootID domain.CommentID, by int, now time.Time) error {
+	stats := s.stats[rootID]
+	stats.CommentID = rootID
+	stats.ReplyCount -= int64(by)
+	if stats.ReplyCount < 0 {
+		stats.ReplyCount = 0
+	}
 	s.stats[rootID] = stats
 	return nil
 }
@@ -427,12 +486,65 @@ func (s *fakeCommentStore) IncrementForReply(ctx context.Context, postID domain.
 	return nil
 }
 
+func (s *fakeCommentStore) DecrementForDelete(ctx context.Context, postID domain.PostID, affectedCount int, topLevelDeleted bool, now time.Time) error {
+	stats := s.postStats[postID]
+	stats.PostID = postID
+	stats.TotalComments -= int64(affectedCount)
+	if stats.TotalComments < 0 {
+		stats.TotalComments = 0
+	}
+	if topLevelDeleted {
+		stats.TotalTopLevelComments--
+		if stats.TotalTopLevelComments < 0 {
+			stats.TotalTopLevelComments = 0
+		}
+	}
+	s.postStats[postID] = stats
+	return nil
+}
+
 func (s *fakeCommentStore) InitializeTopLevelRanks(ctx context.Context, comment domain.Comment, now time.Time) error {
 	if s.failInitializeRank != nil {
 		return s.failInitializeRank
 	}
 	s.hotRanks[comment.ID] = true
 	s.recommendedRanks[comment.ID] = true
+	return nil
+}
+
+func (s *fakeCommentStore) HideTopLevelRanks(ctx context.Context, commentID domain.CommentID, now time.Time) error {
+	s.hotRanks[commentID] = false
+	s.recommendedRanks[commentID] = false
+	return nil
+}
+
+func (s *fakeCommentStore) UpsertLike(ctx context.Context, input ports.LikeMutationInput) (bool, error) {
+	if _, err := s.FindCommentForMutation(ctx, input.PostID, input.CommentID); err != nil {
+		return false, err
+	}
+	if s.likes[input.CommentID] == nil {
+		s.likes[input.CommentID] = map[domain.UserID]bool{}
+	}
+	if s.likes[input.CommentID][input.UserID] {
+		return false, nil
+	}
+	s.likes[input.CommentID][input.UserID] = true
+	return true, nil
+}
+
+func (s *fakeCommentStore) DeleteLike(ctx context.Context, input ports.LikeMutationInput) (bool, error) {
+	if _, err := s.FindCommentForMutation(ctx, input.PostID, input.CommentID); err != nil {
+		return false, err
+	}
+	if s.likes[input.CommentID] == nil || !s.likes[input.CommentID][input.UserID] {
+		return false, nil
+	}
+	delete(s.likes[input.CommentID], input.UserID)
+	return true, nil
+}
+
+func (s *fakeCommentStore) AppendCounterDelta(ctx context.Context, delta ports.CommentCounterDelta) error {
+	s.counterDeltas = append(s.counterDeltas, delta)
 	return nil
 }
 

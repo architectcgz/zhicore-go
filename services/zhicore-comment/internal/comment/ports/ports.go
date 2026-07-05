@@ -28,8 +28,46 @@ type ReplyGuardPreview struct {
 type CommentCommandRepository interface {
 	FindReplyGuardPreview(ctx context.Context, postID domain.PostID, parentID domain.CommentID) (ReplyGuardPreview, bool, error)
 	FindReplyTarget(ctx context.Context, postID domain.PostID, parentID domain.CommentID) (ReplyTarget, error)
+	FindCommentForMutation(ctx context.Context, postID domain.PostID, commentID domain.CommentID) (domain.Comment, error)
 	Create(ctx context.Context, draft domain.Comment) (domain.Comment, error)
+	SoftDeleteSubtree(ctx context.Context, input DeleteSubtreeInput) (DeleteSubtreeResult, error)
 	InitializeTopLevelRanks(ctx context.Context, comment domain.Comment, now time.Time) error
+	HideTopLevelRanks(ctx context.Context, commentID domain.CommentID, now time.Time) error
+	UpsertLike(ctx context.Context, input LikeMutationInput) (bool, error)
+	DeleteLike(ctx context.Context, input LikeMutationInput) (bool, error)
+	AppendCounterDelta(ctx context.Context, delta CommentCounterDelta) error
+}
+
+type DeleteSubtreeInput struct {
+	PostID        domain.PostID
+	CommentID     domain.CommentID
+	DeletedBy     domain.UserID
+	DeletedByRole string
+	DeleteReason  string
+	DeletedAt     time.Time
+	AllowDeleted  bool
+}
+
+type DeleteSubtreeResult struct {
+	Entry          domain.Comment
+	RootID         domain.CommentID
+	AffectedCount  int
+	AlreadyDeleted bool
+}
+
+type LikeMutationInput struct {
+	PostID    domain.PostID
+	CommentID domain.CommentID
+	UserID    domain.UserID
+	Now       time.Time
+}
+
+type CommentCounterDelta struct {
+	CommentID   domain.CommentID
+	PostID      domain.PostID
+	CounterType string
+	DeltaValue  int
+	CreatedAt   time.Time
 }
 
 type TopLevelCommentPageQuery struct {
@@ -56,11 +94,13 @@ type CommentQueryRepository interface {
 type CommentStatsRepository interface {
 	Initialize(ctx context.Context, commentID domain.CommentID, now time.Time) error
 	IncrementReplyCount(ctx context.Context, rootID domain.CommentID, now time.Time) error
+	DecrementReplyCount(ctx context.Context, rootID domain.CommentID, by int, now time.Time) error
 }
 
 type CommentPostStatsRepository interface {
 	IncrementForTopLevel(ctx context.Context, postID domain.PostID, now time.Time) error
 	IncrementForReply(ctx context.Context, postID domain.PostID, now time.Time) error
+	DecrementForDelete(ctx context.Context, postID domain.PostID, affectedCount int, topLevelDeleted bool, now time.Time) error
 	Get(ctx context.Context, postID domain.PostID) (domain.CommentPostStats, error)
 }
 
@@ -129,6 +169,43 @@ type OutboxMessage struct {
 
 type OutboxPublisher interface {
 	Publish(ctx context.Context, message OutboxMessage) error
+}
+
+type OutboxEvent struct {
+	ID            int64
+	EventID       string
+	EventType     string
+	AggregateType string
+	AggregateID   string
+	Payload       []byte
+	OccurredAt    time.Time
+	AttemptCount  int
+}
+
+type OutboxClaimOptions struct {
+	DispatcherID string
+	BatchSize    int
+	StaleAfter   time.Duration
+	Now          time.Time
+}
+
+type OutboxFailure struct {
+	ID           int64
+	AttemptCount int
+	NextRetryAt  *time.Time
+	Dead         bool
+	LastError    string
+	FailedAt     time.Time
+}
+
+type OutboxDispatchRepository interface {
+	ClaimPendingOutbox(ctx context.Context, options OutboxClaimOptions) ([]OutboxEvent, error)
+	MarkOutboxPublished(ctx context.Context, eventID int64, publishedAt time.Time) error
+	MarkOutboxFailed(ctx context.Context, failure OutboxFailure) error
+}
+
+type IntegrationEventPublisher interface {
+	PublishIntegrationEvent(ctx context.Context, event OutboxEvent) error
 }
 
 type Clock interface {

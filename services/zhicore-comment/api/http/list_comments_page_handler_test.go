@@ -81,14 +81,33 @@ func TestListCommentsPageRejectsInvalidQuery(t *testing.T) {
 }
 
 type fakeCommentService struct {
-	createCalls  int
-	createCmd    application.CreateCommentCommand
-	createResult application.CreateCommentResult
-	createErr    error
-	listCalls    int
-	listQuery    application.ListTopLevelCommentsQuery
-	pageResult   application.TopLevelCommentPage
-	listErr      error
+	createCalls      int
+	createCmd        application.CreateCommentCommand
+	createResult     application.CreateCommentResult
+	createErr        error
+	listCalls        int
+	listQuery        application.ListTopLevelCommentsQuery
+	pageResult       application.TopLevelCommentPage
+	listErr          error
+	detailQuery      application.GetCommentDetailQuery
+	detailResult     application.CommentItem
+	detailErr        error
+	repliesQuery     application.ListRepliesByPageQuery
+	repliesResult    application.CommentPage
+	repliesErr       error
+	deleteCmd        application.DeleteCommentCommand
+	adminDeleteCmd   application.AdminDeleteCommentCommand
+	deleteResult     application.DeleteCommentResult
+	deleteErr        error
+	likeCmd          application.LikeCommentCommand
+	unlikeCmd        application.UnlikeCommentCommand
+	likeResult       application.LikeCommentResult
+	unlikeResult     application.LikeCommentResult
+	likeErr          error
+	unlikeErr        error
+	likeStatusQuery  application.GetLikeStatusQuery
+	likeStatusResult application.LikeStatusResult
+	likeStatusErr    error
 }
 
 func (f *fakeCommentService) CreateComment(ctx context.Context, cmd application.CreateCommentCommand) (application.CreateCommentResult, error) {
@@ -101,6 +120,41 @@ func (f *fakeCommentService) ListTopLevelCommentsByPage(ctx context.Context, que
 	f.listCalls++
 	f.listQuery = query
 	return f.pageResult, f.listErr
+}
+
+func (f *fakeCommentService) GetCommentDetail(ctx context.Context, query application.GetCommentDetailQuery) (application.CommentItem, error) {
+	f.detailQuery = query
+	return f.detailResult, f.detailErr
+}
+
+func (f *fakeCommentService) ListRepliesByPage(ctx context.Context, query application.ListRepliesByPageQuery) (application.CommentPage, error) {
+	f.repliesQuery = query
+	return f.repliesResult, f.repliesErr
+}
+
+func (f *fakeCommentService) DeleteComment(ctx context.Context, cmd application.DeleteCommentCommand) (application.DeleteCommentResult, error) {
+	f.deleteCmd = cmd
+	return f.deleteResult, f.deleteErr
+}
+
+func (f *fakeCommentService) AdminDeleteComment(ctx context.Context, cmd application.AdminDeleteCommentCommand) (application.DeleteCommentResult, error) {
+	f.adminDeleteCmd = cmd
+	return f.deleteResult, f.deleteErr
+}
+
+func (f *fakeCommentService) LikeComment(ctx context.Context, cmd application.LikeCommentCommand) (application.LikeCommentResult, error) {
+	f.likeCmd = cmd
+	return f.likeResult, f.likeErr
+}
+
+func (f *fakeCommentService) UnlikeComment(ctx context.Context, cmd application.UnlikeCommentCommand) (application.LikeCommentResult, error) {
+	f.unlikeCmd = application.LikeCommentCommand(cmd)
+	return f.unlikeResult, f.unlikeErr
+}
+
+func (f *fakeCommentService) GetLikeStatus(ctx context.Context, query application.GetLikeStatusQuery) (application.LikeStatusResult, error) {
+	f.likeStatusQuery = query
+	return f.likeStatusResult, f.likeStatusErr
 }
 
 type envelope[T any] struct {

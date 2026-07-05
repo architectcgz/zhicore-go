@@ -13,12 +13,19 @@ import (
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/ports"
 )
 
-const commentCreatedEventType = "comment.created"
+const (
+	commentCreatedEventType = "comment.created"
+	commentDeletedEventType = "comment.deleted"
+	commentLikedEventType   = "comment.liked"
+	commentUnlikedEventType = "comment.unliked"
+)
 
 var (
 	ErrInvalidRequest         = errors.New("invalid request")
 	ErrDependencyUnavailable  = ports.ErrDependencyUnavailable
 	ErrPostNotFound           = errors.New("post not found")
+	ErrCommentNotFound        = domain.ErrCommentNotFound
+	ErrForbidden              = errors.New("forbidden")
 	ErrInteractionBlocked     = errors.New("interaction blocked")
 	ErrCommentContentRequired = domain.ErrCommentContentRequired
 	ErrCommentContentTooLong  = domain.ErrCommentContentTooLong
@@ -32,6 +39,7 @@ type PostID string
 type PublicCommentID string
 type CommentStatus string
 type CommentSort string
+type DeletedByRole string
 
 const (
 	CommentStatusNormal  CommentStatus = "NORMAL"
@@ -40,6 +48,9 @@ const (
 	CommentSortRecommended CommentSort = "RECOMMENDED"
 	CommentSortHot         CommentSort = "HOT"
 	CommentSortTime        CommentSort = "TIME"
+
+	DeletedByRoleAuthor DeletedByRole = "AUTHOR"
+	DeletedByRoleAdmin  DeletedByRole = "ADMIN"
 )
 
 type Dependencies struct {
@@ -100,6 +111,72 @@ type ListTopLevelCommentsQuery struct {
 	Sort         CommentSort
 }
 
+type GetCommentDetailQuery struct {
+	PostID       PostID
+	CommentID    PublicCommentID
+	ViewerUserID UserID
+}
+
+type ListRepliesByPageQuery struct {
+	PostID        PostID
+	RootCommentID PublicCommentID
+	ViewerUserID  UserID
+	Page          int
+	Size          int
+	Sort          CommentSort
+}
+
+type DeleteCommentCommand struct {
+	ActorUserID UserID
+	PostID      PostID
+	CommentID   PublicCommentID
+}
+
+type AdminDeleteCommentCommand struct {
+	ActorUserID UserID
+	PostID      PostID
+	CommentID   PublicCommentID
+	Reason      string
+}
+
+type DeleteCommentResult struct {
+	PostID         PostID
+	CommentID      PublicCommentID
+	RootCommentID  PublicCommentID
+	DeletedAt      time.Time
+	DeletedByRole  DeletedByRole
+	AffectedCount  int
+	AlreadyDeleted bool
+}
+
+type LikeCommentCommand struct {
+	ActorUserID UserID
+	PostID      PostID
+	CommentID   PublicCommentID
+}
+
+type UnlikeCommentCommand = LikeCommentCommand
+
+type LikeCommentResult struct {
+	PostID     PostID
+	CommentID  PublicCommentID
+	Liked      bool
+	Changed    bool
+	OccurredAt time.Time
+}
+
+type GetLikeStatusQuery struct {
+	PostID       PostID
+	CommentID    PublicCommentID
+	ViewerUserID UserID
+}
+
+type LikeStatusResult struct {
+	PostID    PostID
+	CommentID PublicCommentID
+	Liked     bool
+}
+
 type TopLevelCommentPage struct {
 	Items                 []CommentItem
 	Page                  int
@@ -107,6 +184,14 @@ type TopLevelCommentPage struct {
 	TotalComments         int64
 	TotalTopLevelComments int64
 	Pages                 int
+}
+
+type CommentPage struct {
+	Items []CommentItem
+	Page  int
+	Size  int
+	Total int64
+	Pages int
 }
 
 type CommentItem struct {
@@ -303,6 +388,177 @@ func (s *Service) ListTopLevelCommentsByPage(ctx context.Context, query ListTopL
 		TotalComments:         postStats.TotalComments,
 		TotalTopLevelComments: postStats.TotalTopLevelComments,
 		Pages:                 pageCount(postStats.TotalTopLevelComments, normalized.Size),
+	}, nil
+}
+
+func (s *Service) DeleteComment(ctx context.Context, cmd DeleteCommentCommand) (DeleteCommentResult, error) {
+	return s.deleteComment(ctx, deleteCommentInput{
+		actorUserID:   cmd.ActorUserID,
+		postID:        cmd.PostID,
+		commentID:     cmd.CommentID,
+		deletedByRole: DeletedByRoleAuthor,
+	})
+}
+
+func (s *Service) AdminDeleteComment(ctx context.Context, cmd AdminDeleteCommentCommand) (DeleteCommentResult, error) {
+	return s.deleteComment(ctx, deleteCommentInput{
+		actorUserID:   cmd.ActorUserID,
+		postID:        cmd.PostID,
+		commentID:     cmd.CommentID,
+		deletedByRole: DeletedByRoleAdmin,
+		deleteReason:  strings.TrimSpace(cmd.Reason),
+		allowDeleted:  true,
+		requireReason: true,
+	})
+}
+
+type deleteCommentInput struct {
+	actorUserID   UserID
+	postID        PostID
+	commentID     PublicCommentID
+	deletedByRole DeletedByRole
+	deleteReason  string
+	allowDeleted  bool
+	requireReason bool
+}
+
+func (s *Service) deleteComment(ctx context.Context, input deleteCommentInput) (DeleteCommentResult, error) {
+	now := s.clock.Now()
+	actorID := domain.UserID(input.actorUserID)
+	postID := domain.PostID(strings.TrimSpace(string(input.postID)))
+	commentID, err := s.ids.Decode(domain.PublicCommentID(strings.TrimSpace(string(input.commentID))))
+	if actorID <= 0 || postID == "" || err != nil {
+		return DeleteCommentResult{}, ErrInvalidRequest
+	}
+	if input.requireReason && strings.TrimSpace(input.deleteReason) == "" {
+		return DeleteCommentResult{}, ErrInvalidRequest
+	}
+
+	var deleted ports.DeleteSubtreeResult
+	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		entry, err := s.commands.FindCommentForMutation(txCtx, postID, commentID)
+		if err != nil {
+			return mapCommentLookupError(err)
+		}
+		if !input.allowDeleted && entry.Status != domain.CommentStatusNormal {
+			return ErrCommentNotFound
+		}
+		if input.deletedByRole == DeletedByRoleAuthor && entry.AuthorID != actorID {
+			return ErrForbidden
+		}
+
+		deleted, err = s.commands.SoftDeleteSubtree(txCtx, ports.DeleteSubtreeInput{
+			PostID:        postID,
+			CommentID:     commentID,
+			DeletedBy:     actorID,
+			DeletedByRole: string(input.deletedByRole),
+			DeleteReason:  input.deleteReason,
+			DeletedAt:     now,
+			AllowDeleted:  input.allowDeleted,
+		})
+		if err != nil {
+			return mapCommentLookupError(err)
+		}
+		if deleted.AffectedCount == 0 {
+			return nil
+		}
+		if !deleted.Entry.IsTopLevel() {
+			if err := s.stats.DecrementReplyCount(txCtx, deleted.RootID, deleted.AffectedCount, now); err != nil {
+				return fmt.Errorf("decrement root reply count: %w", err)
+			}
+		}
+		if err := s.postStats.DecrementForDelete(txCtx, postID, deleted.AffectedCount, deleted.Entry.IsTopLevel(), now); err != nil {
+			return fmt.Errorf("decrement post stats: %w", err)
+		}
+		if deleted.Entry.IsTopLevel() {
+			if err := s.commands.HideTopLevelRanks(txCtx, deleted.Entry.ID, now); err != nil {
+				return fmt.Errorf("hide top level ranks: %w", err)
+			}
+		}
+		return s.publishDeleted(txCtx, deleted, actorID, input.deletedByRole, input.deleteReason, now)
+	}); err != nil {
+		return DeleteCommentResult{}, err
+	}
+
+	return DeleteCommentResult{
+		PostID:         PostID(postID),
+		CommentID:      PublicCommentID(s.ids.Encode(commentID)),
+		RootCommentID:  rootPublicID(s.ids, deleted.Entry),
+		DeletedAt:      now,
+		DeletedByRole:  input.deletedByRole,
+		AffectedCount:  deleted.AffectedCount,
+		AlreadyDeleted: deleted.AlreadyDeleted,
+	}, nil
+}
+
+func (s *Service) LikeComment(ctx context.Context, cmd LikeCommentCommand) (LikeCommentResult, error) {
+	return s.changeLike(ctx, cmd, true)
+}
+
+func (s *Service) UnlikeComment(ctx context.Context, cmd UnlikeCommentCommand) (LikeCommentResult, error) {
+	return s.changeLike(ctx, LikeCommentCommand(cmd), false)
+}
+
+func (s *Service) changeLike(ctx context.Context, cmd LikeCommentCommand, liked bool) (LikeCommentResult, error) {
+	now := s.clock.Now()
+	actorID := domain.UserID(cmd.ActorUserID)
+	postID := domain.PostID(strings.TrimSpace(string(cmd.PostID)))
+	commentID, err := s.ids.Decode(domain.PublicCommentID(strings.TrimSpace(string(cmd.CommentID))))
+	if actorID <= 0 || postID == "" || err != nil {
+		return LikeCommentResult{}, ErrInvalidRequest
+	}
+
+	var changed bool
+	var comment domain.Comment
+	if err := s.txRunner.WithinTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		comment, err = s.commands.FindCommentForMutation(txCtx, postID, commentID)
+		if err != nil {
+			return mapCommentLookupError(err)
+		}
+		if liked && comment.Status != domain.CommentStatusNormal {
+			return ErrCommentNotFound
+		}
+		if liked {
+			if err := s.ensureCommentAllowedByRelations(txCtx, actorID, comment.AuthorID); err != nil {
+				return err
+			}
+			changed, err = s.commands.UpsertLike(txCtx, ports.LikeMutationInput{PostID: postID, CommentID: commentID, UserID: actorID, Now: now})
+		} else {
+			changed, err = s.commands.DeleteLike(txCtx, ports.LikeMutationInput{PostID: postID, CommentID: commentID, UserID: actorID, Now: now})
+		}
+		if err != nil {
+			return fmt.Errorf("change comment like state: %w", err)
+		}
+		if !changed {
+			return nil
+		}
+		delta := 1
+		eventType := commentLikedEventType
+		if !liked {
+			delta = -1
+			eventType = commentUnlikedEventType
+		}
+		if err := s.commands.AppendCounterDelta(txCtx, ports.CommentCounterDelta{
+			CommentID:   comment.ID,
+			PostID:      comment.PostID,
+			CounterType: "LIKE",
+			DeltaValue:  delta,
+			CreatedAt:   now,
+		}); err != nil {
+			return fmt.Errorf("append comment counter delta: %w", err)
+		}
+		return s.publishLikeChanged(txCtx, eventType, comment, actorID, now)
+	}); err != nil {
+		return LikeCommentResult{}, err
+	}
+
+	return LikeCommentResult{
+		PostID:     PostID(postID),
+		CommentID:  PublicCommentID(s.ids.Encode(commentID)),
+		Liked:      liked,
+		Changed:    changed,
+		OccurredAt: now,
 	}, nil
 }
 
@@ -542,6 +798,78 @@ func (s *Service) publishCreated(ctx context.Context, event domain.CommentCreate
 		return fmt.Errorf("publish comment created outbox: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) publishDeleted(ctx context.Context, deleted ports.DeleteSubtreeResult, deletedBy domain.UserID, role DeletedByRole, reason string, occurredAt time.Time) error {
+	entry := deleted.Entry
+	payload := map[string]any{
+		"commentId":     entry.ID,
+		"publicId":      entry.PostID,
+		"internalId":    entry.ContentInternalID,
+		"authorId":      entry.AuthorID,
+		"deletedBy":     deletedBy,
+		"deletedByRole": string(role),
+		"deletedAt":     occurredAt.UTC().Format(time.RFC3339),
+		"isRoot":        entry.IsTopLevel(),
+		"affectedCount": deleted.AffectedCount,
+	}
+	if entry.IsReply() {
+		payload["rootId"] = entry.RootID
+	}
+	if strings.TrimSpace(reason) != "" {
+		payload["deleteReason"] = strings.TrimSpace(reason)
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal comment deleted event: %w", err)
+	}
+	return s.outbox.Publish(ctx, ports.OutboxMessage{
+		EventType:     commentDeletedEventType,
+		AggregateType: "comment",
+		AggregateID:   strconv.FormatInt(int64(entry.ID), 10),
+		OccurredAt:    occurredAt,
+		Payload:       body,
+	})
+}
+
+func (s *Service) publishLikeChanged(ctx context.Context, eventType string, comment domain.Comment, actorID domain.UserID, occurredAt time.Time) error {
+	payload := map[string]any{
+		"commentId":       comment.ID,
+		"publicId":        comment.PostID,
+		"internalId":      comment.ContentInternalID,
+		"commentAuthorId": comment.AuthorID,
+		"occurredAt":      occurredAt.UTC().Format(time.RFC3339),
+	}
+	if eventType == commentLikedEventType {
+		payload["likedBy"] = actorID
+	} else {
+		payload["unlikedBy"] = actorID
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal %s event: %w", eventType, err)
+	}
+	return s.outbox.Publish(ctx, ports.OutboxMessage{
+		EventType:     eventType,
+		AggregateType: "comment",
+		AggregateID:   strconv.FormatInt(int64(comment.ID), 10),
+		OccurredAt:    occurredAt,
+		Payload:       body,
+	})
+}
+
+func rootPublicID(ids ports.CommentIDCodec, comment domain.Comment) PublicCommentID {
+	if !comment.IsReply() {
+		return ""
+	}
+	return PublicCommentID(ids.Encode(comment.RootID))
+}
+
+func mapCommentLookupError(err error) error {
+	if errors.Is(err, domain.ErrCommentNotFound) || errors.Is(err, domain.ErrParentCommentNotFound) || errors.Is(err, domain.ErrRootCommentNotFound) {
+		return ErrCommentNotFound
+	}
+	return mapDomainValidationError(err)
 }
 
 func mapDomainValidationError(err error) error {
