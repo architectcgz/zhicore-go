@@ -57,65 +57,54 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) routes() {
-	h.router.GET("/api/v1/users/me", ginHTTPHandler(h.getMe))
-	h.router.GET("/api/v1/users/me/blocked", ginHTTPHandler(h.listBlockedUsers))
-	h.router.GET("/api/v1/users/:publicId", ginHTTPHandler(h.getProfile))
-	h.router.PATCH("/api/v1/users/me/profile", ginHTTPHandler(h.updateProfile))
-	h.router.POST("/api/v1/users/:publicId/block", ginHTTPHandler(h.blockUser))
-	h.router.DELETE("/api/v1/users/:publicId/block", ginHTTPHandler(h.unblockUser))
-	h.router.POST("/api/v1/users/:publicId/follow", ginHTTPHandler(h.followUser))
-	h.router.DELETE("/api/v1/users/:publicId/follow", ginHTTPHandler(h.unfollowUser))
-	h.router.GET("/api/v1/users/:publicId/followers", ginHTTPHandler(h.listFollowers))
-	h.router.GET("/api/v1/users/:publicId/following", ginHTTPHandler(h.listFollowing))
+	h.router.GET("/api/v1/users/me", h.getMe)
+	h.router.GET("/api/v1/users/me/blocked", h.listBlockedUsers)
+	h.router.GET("/api/v1/users/:publicId", h.getProfile)
+	h.router.PATCH("/api/v1/users/me/profile", h.updateProfile)
+	h.router.POST("/api/v1/users/:publicId/block", h.blockUser)
+	h.router.DELETE("/api/v1/users/:publicId/block", h.unblockUser)
+	h.router.POST("/api/v1/users/:publicId/follow", h.followUser)
+	h.router.DELETE("/api/v1/users/:publicId/follow", h.unfollowUser)
+	h.router.GET("/api/v1/users/:publicId/followers", h.listFollowers)
+	h.router.GET("/api/v1/users/:publicId/following", h.listFollowing)
 }
 
-func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Path params stay on net/http.Request so Gin does not leak past the
-		// HTTP adapter and application inputs remain explicit DTOs.
-		for _, param := range c.Params {
-			c.Request.SetPathValue(param.Key, param.Value)
-		}
-		next(c.Writer, c.Request)
-	}
-}
-
-func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) getMe(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
 
-	profile, err := h.service.GetMyProfile(r.Context(), userID)
+	profile, err := h.service.GetMyProfile(c.Request.Context(), userID)
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
 
-	sharedhttp.WriteSuccess(w, h.profileResponse(r.Context(), profile))
+	sharedhttp.WriteSuccess(c.Writer, h.profileResponse(c.Request.Context(), profile))
 }
 
-func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
-	publicID := strings.TrimSpace(r.PathValue("publicId"))
+func (h *Handler) getProfile(c *gin.Context) {
+	publicID := strings.TrimSpace(c.Param("publicId"))
 	if !isValidPublicID(publicID) {
-		writeValidationError(w)
+		writeValidationError(c)
 		return
 	}
 
-	profile, err := h.service.GetUserProfileByPublicID(r.Context(), application.PublicID(publicID))
+	profile, err := h.service.GetUserProfileByPublicID(c.Request.Context(), application.PublicID(publicID))
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
 
-	sharedhttp.WriteSuccess(w, h.profileResponse(r.Context(), profile))
+	sharedhttp.WriteSuccess(c.Writer, h.profileResponse(c.Request.Context(), profile))
 }
 
-func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) updateProfile(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
 
@@ -124,137 +113,137 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	cmd := application.UpdateProfileCommand{
 		UserID: userID,
 	}
-	if !decodeUpdateProfileBody(w, r, &cmd) {
+	if !decodeUpdateProfileBody(c, &cmd) {
 		return
 	}
 
-	updated, err := h.service.UpdateProfile(r.Context(), cmd)
+	updated, err := h.service.UpdateProfile(c.Request.Context(), cmd)
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
 
-	sharedhttp.WriteSuccess(w, h.profileResponse(r.Context(), updated))
+	sharedhttp.WriteSuccess(c.Writer, h.profileResponse(c.Request.Context(), updated))
 }
 
-func (h *Handler) blockUser(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) blockUser(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
-	publicID, ok := publicIDFromPath(w, r)
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	if err := h.service.BlockUser(r.Context(), application.BlockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
-		writeMappedError(w, err)
+	if err := h.service.BlockUser(c.Request.Context(), application.BlockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, map[string]bool{"blocked": true})
+	sharedhttp.WriteSuccess(c.Writer, map[string]bool{"blocked": true})
 }
 
-func (h *Handler) unblockUser(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) unblockUser(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
-	publicID, ok := publicIDFromPath(w, r)
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	if err := h.service.UnblockUser(r.Context(), application.UnblockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
-		writeMappedError(w, err)
+	if err := h.service.UnblockUser(c.Request.Context(), application.UnblockUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, map[string]bool{"blocked": false})
+	sharedhttp.WriteSuccess(c.Writer, map[string]bool{"blocked": false})
 }
 
-func (h *Handler) followUser(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) followUser(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
-	publicID, ok := publicIDFromPath(w, r)
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	if err := h.service.FollowUser(r.Context(), application.FollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
-		writeMappedError(w, err)
+	if err := h.service.FollowUser(c.Request.Context(), application.FollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, map[string]bool{"following": true})
+	sharedhttp.WriteSuccess(c.Writer, map[string]bool{"following": true})
 }
 
-func (h *Handler) unfollowUser(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) unfollowUser(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
-	publicID, ok := publicIDFromPath(w, r)
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	if err := h.service.UnfollowUser(r.Context(), application.UnfollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
-		writeMappedError(w, err)
+	if err := h.service.UnfollowUser(c.Request.Context(), application.UnfollowUserCommand{ActorUserID: userID, TargetPublicID: publicID}); err != nil {
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, map[string]bool{"following": false})
+	sharedhttp.WriteSuccess(c.Writer, map[string]bool{"following": false})
 }
 
-func (h *Handler) listBlockedUsers(w http.ResponseWriter, r *http.Request) {
-	userID, ok := trustedUserIDFromRequest(r)
+func (h *Handler) listBlockedUsers(c *gin.Context) {
+	userID, ok := trustedUserIDFromContext(c)
 	if !ok {
-		writeMappedError(w, errLoginRequired)
+		writeMappedError(c, errLoginRequired)
 		return
 	}
-	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	cursor, limit, ok := decodeRelationshipPageQuery(c)
 	if !ok {
 		return
 	}
-	page, err := h.service.ListBlockedUsers(r.Context(), application.ListBlockedUsersQuery{ActorUserID: userID, Cursor: cursor, Limit: limit})
+	page, err := h.service.ListBlockedUsers(c.Request.Context(), application.ListBlockedUsersQuery{ActorUserID: userID, Cursor: cursor, Limit: limit})
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+	sharedhttp.WriteSuccess(c.Writer, h.relationshipPageResponse(c.Request.Context(), page))
 }
 
-func (h *Handler) listFollowers(w http.ResponseWriter, r *http.Request) {
-	publicID, ok := publicIDFromPath(w, r)
+func (h *Handler) listFollowers(c *gin.Context) {
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	cursor, limit, ok := decodeRelationshipPageQuery(c)
 	if !ok {
 		return
 	}
-	page, err := h.service.ListFollowers(r.Context(), application.ListFollowersQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
+	page, err := h.service.ListFollowers(c.Request.Context(), application.ListFollowersQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+	sharedhttp.WriteSuccess(c.Writer, h.relationshipPageResponse(c.Request.Context(), page))
 }
 
-func (h *Handler) listFollowing(w http.ResponseWriter, r *http.Request) {
-	publicID, ok := publicIDFromPath(w, r)
+func (h *Handler) listFollowing(c *gin.Context) {
+	publicID, ok := publicIDFromPath(c)
 	if !ok {
 		return
 	}
-	cursor, limit, ok := decodeRelationshipPageQuery(w, r)
+	cursor, limit, ok := decodeRelationshipPageQuery(c)
 	if !ok {
 		return
 	}
-	page, err := h.service.ListFollowing(r.Context(), application.ListFollowingQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
+	page, err := h.service.ListFollowing(c.Request.Context(), application.ListFollowingQuery{TargetPublicID: publicID, Cursor: cursor, Limit: limit})
 	if err != nil {
-		writeMappedError(w, err)
+		writeMappedError(c, err)
 		return
 	}
-	sharedhttp.WriteSuccess(w, h.relationshipPageResponse(r.Context(), page))
+	sharedhttp.WriteSuccess(c.Writer, h.relationshipPageResponse(c.Request.Context(), page))
 }
 
 type userProfileResp struct {
@@ -307,17 +296,17 @@ func (h *Handler) relationshipPageResponse(ctx context.Context, page application
 	}
 }
 
-func publicIDFromPath(w http.ResponseWriter, r *http.Request) (application.PublicID, bool) {
-	publicID := strings.TrimSpace(r.PathValue("publicId"))
+func publicIDFromPath(c *gin.Context) (application.PublicID, bool) {
+	publicID := strings.TrimSpace(c.Param("publicId"))
 	if !isValidPublicID(publicID) {
-		writeValidationError(w)
+		writeValidationError(c)
 		return "", false
 	}
 	return application.PublicID(publicID), true
 }
 
-func trustedUserIDFromRequest(r *http.Request) (application.UserID, bool) {
-	raw := strings.TrimSpace(r.Header.Get(userIDHeaderName))
+func trustedUserIDFromContext(c *gin.Context) (application.UserID, bool) {
+	raw := strings.TrimSpace(c.GetHeader(userIDHeaderName))
 	if raw == "" {
 		return 0, false
 	}
@@ -341,13 +330,13 @@ func isValidPublicID(value string) bool {
 	return true
 }
 
-func decodeRelationshipPageQuery(w http.ResponseWriter, r *http.Request) (string, int, bool) {
-	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+func decodeRelationshipPageQuery(c *gin.Context) (string, int, bool) {
+	cursor := strings.TrimSpace(c.Query("cursor"))
 	limit := 0
-	if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
 		parsed, err := strconv.Atoi(rawLimit)
 		if err != nil || parsed <= 0 {
-			writeValidationError(w)
+			writeValidationError(c)
 			return "", 0, false
 		}
 		limit = parsed
@@ -355,22 +344,22 @@ func decodeRelationshipPageQuery(w http.ResponseWriter, r *http.Request) (string
 	return cursor, limit, true
 }
 
-func decodeUpdateProfileBody(w http.ResponseWriter, r *http.Request, cmd *application.UpdateProfileCommand) bool {
+func decodeUpdateProfileBody(c *gin.Context, cmd *application.UpdateProfileCommand) bool {
 	var body map[string]json.RawMessage
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(c.Request.Body)
 	if err := decoder.Decode(&body); err != nil {
-		writeValidationError(w)
+		writeValidationError(c)
 		return false
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeValidationError(w)
+		writeValidationError(c)
 		return false
 	}
 
 	if raw, ok := body["nickname"]; ok {
 		value, ok := decodeRequiredString(raw)
 		if !ok {
-			writeValidationError(w)
+			writeValidationError(c)
 			return false
 		}
 		cmd.Nickname = &value
@@ -378,7 +367,7 @@ func decodeUpdateProfileBody(w http.ResponseWriter, r *http.Request, cmd *applic
 	if raw, ok := body["avatarFileId"]; ok {
 		value, ok := decodeAvatarFileID(raw)
 		if !ok {
-			writeValidationError(w)
+			writeValidationError(c)
 			return false
 		}
 		cmd.AvatarFileID = &value
@@ -386,7 +375,7 @@ func decodeUpdateProfileBody(w http.ResponseWriter, r *http.Request, cmd *applic
 	if raw, ok := body["bio"]; ok {
 		value, ok := decodeRequiredString(raw)
 		if !ok {
-			writeValidationError(w)
+			writeValidationError(c)
 			return false
 		}
 		cmd.Bio = &value
@@ -394,7 +383,7 @@ func decodeUpdateProfileBody(w http.ResponseWriter, r *http.Request, cmd *applic
 	if raw, ok := body["strangerMessageAllowed"]; ok {
 		var value bool
 		if err := json.Unmarshal(raw, &value); err != nil {
-			writeValidationError(w)
+			writeValidationError(c)
 			return false
 		}
 		cmd.StrangerMessageAllowed = &value
@@ -421,13 +410,13 @@ func decodeAvatarFileID(raw json.RawMessage) (string, bool) {
 	return decodeRequiredString(raw)
 }
 
-func writeValidationError(w http.ResponseWriter) {
-	sharedhttp.WriteErrorCode(w, http.StatusBadRequest, 1001, "参数校验失败")
+func writeValidationError(c *gin.Context) {
+	sharedhttp.WriteErrorCode(c.Writer, http.StatusBadRequest, 1001, "参数校验失败")
 }
 
-func writeMappedError(w http.ResponseWriter, err error) {
+func writeMappedError(c *gin.Context, err error) {
 	status, code, message := errorMapping(err)
-	sharedhttp.WriteErrorCode(w, status, code, message)
+	sharedhttp.WriteErrorCode(c.Writer, status, code, message)
 }
 
 func errorMapping(err error) (int, int, string) {
