@@ -216,44 +216,30 @@ type Handler struct {
 	router  *gin.Engine
 }
 
-func NewHandler(service Service) http.Handler {
+func NewHandler(service Service) *gin.Engine {
 	h := &Handler{
 		service: service,
 		router:  gin.New(),
 	}
 	h.routes()
-	return h
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.router.ServeHTTP(w, r)
+	return h.router
 }
 
 func (h *Handler) routes() {
-	h.router.POST("/api/v1/auth/register", ginHTTPHandler(h.register))
-	h.router.POST("/api/v1/auth/login", ginHTTPHandler(h.login))
-	h.router.POST("/api/v1/auth/refresh", ginHTTPHandler(h.refresh))
-	h.router.POST("/api/v1/auth/logout", ginHTTPHandler(h.logout))
-	h.router.GET("/api/v1/auth/me", ginHTTPHandler(h.me))
-	h.router.GET("/api/v1/auth/csrf", ginHTTPHandler(h.csrf))
-	h.router.GET("/api/v1/auth/sessions", ginHTTPHandler(h.listSessions))
-	h.router.DELETE("/api/v1/auth/sessions/current", ginHTTPHandler(h.revokeCurrentSession))
-	h.router.DELETE("/api/v1/auth/sessions/:sessionId", ginHTTPHandler(h.revokeSession))
-	h.router.GET("/api/v1/auth/security-operations/:operationId", ginHTTPHandler(h.getSecurityOperation))
+	h.router.POST("/api/v1/auth/register", h.register)
+	h.router.POST("/api/v1/auth/login", h.login)
+	h.router.POST("/api/v1/auth/refresh", h.refresh)
+	h.router.POST("/api/v1/auth/logout", h.logout)
+	h.router.GET("/api/v1/auth/me", h.me)
+	h.router.GET("/api/v1/auth/csrf", h.csrf)
+	h.router.GET("/api/v1/auth/sessions", h.listSessions)
+	h.router.DELETE("/api/v1/auth/sessions/current", h.revokeCurrentSession)
+	h.router.DELETE("/api/v1/auth/sessions/:sessionId", h.revokeSession)
+	h.router.GET("/api/v1/auth/security-operations/:operationId", h.getSecurityOperation)
 }
 
-func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Keep path params on net/http.Request so the transport adapter can use
-		// standard request APIs while Gin remains the only router dependency.
-		for _, param := range c.Params {
-			c.Request.SetPathValue(param.Key, param.Value)
-		}
-		next(c.Writer, c.Request)
-	}
-}
-
-func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) register(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	var req struct {
 		Email                  string `json:"email"`
 		Nickname               string `json:"nickname"`
@@ -294,7 +280,8 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) login(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -326,7 +313,8 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) refresh(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	refreshToken, hasRefresh := cookieValue(r, refreshTokenCookieName)
 	if !hasRefresh {
 		writeMappedError(w, ErrTokenInvalid)
@@ -367,7 +355,8 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) logout(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	refreshToken, hasRefresh := cookieValue(r, refreshTokenCookieName)
 	identity, hasIdentity := trustedIdentityFromRequest(r)
 	csrfToken := ""
@@ -419,7 +408,8 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) me(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	identity, ok := trustedIdentityFromRequest(r)
 	if !ok {
 		writeMappedError(w, ErrLoginRequired)
@@ -436,7 +426,8 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) csrf(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) csrf(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	result, err := h.service.IssueCSRFToken(r.Context())
 	if err != nil {
 		writeMappedError(w, err)
@@ -448,7 +439,8 @@ func (h *Handler) csrf(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) listSessions(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	identity, ok := trustedIdentityFromRequest(r)
 	if !ok {
 		writeMappedError(w, ErrLoginRequired)
@@ -490,7 +482,8 @@ func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) revokeCurrentSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) revokeCurrentSession(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	identity, ok := trustedIdentityFromRequest(r)
 	if !ok {
 		writeMappedError(w, ErrLoginRequired)
@@ -515,7 +508,8 @@ func (h *Handler) revokeCurrentSession(w http.ResponseWriter, r *http.Request) {
 	h.writeRevokeSessionResponse(w, result)
 }
 
-func (h *Handler) revokeSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) revokeSession(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	identity, ok := trustedIdentityFromRequest(r)
 	if !ok {
 		writeMappedError(w, ErrLoginRequired)
@@ -526,7 +520,7 @@ func (h *Handler) revokeSession(w http.ResponseWriter, r *http.Request) {
 		writeMappedError(w, ErrCSRFInvalid)
 		return
 	}
-	sessionID := strings.TrimSpace(r.PathValue("sessionId"))
+	sessionID := strings.TrimSpace(c.Param("sessionId"))
 	if sessionID == "" {
 		writeValidationError(w)
 		return
@@ -565,13 +559,14 @@ func (h *Handler) writeRevokeSessionResponse(w http.ResponseWriter, result Revok
 	})
 }
 
-func (h *Handler) getSecurityOperation(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getSecurityOperation(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	identity, ok := trustedIdentityFromRequest(r)
 	if !ok {
 		writeMappedError(w, ErrLoginRequired)
 		return
 	}
-	operationID := strings.TrimSpace(r.PathValue("operationId"))
+	operationID := strings.TrimSpace(c.Param("operationId"))
 	if operationID == "" {
 		writeValidationError(w)
 		return

@@ -14,6 +14,7 @@ import (
 	commentpostgres "github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/infrastructure/postgres"
 	commentrabbitmq "github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/infrastructure/rabbitmq"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/ports"
+	"github.com/gin-gonic/gin"
 )
 
 type Worker interface {
@@ -30,10 +31,8 @@ type Deps struct {
 }
 
 type Module struct {
-	HTTPHandler  http.Handler
-	LiveHandler  http.Handler
-	ReadyHandler http.Handler
-	Workers      []Worker
+	HTTPHandler *gin.Engine
+	Workers     []Worker
 }
 
 type OutboxConfig struct {
@@ -63,21 +62,13 @@ func Build(deps Deps) (*Module, error) {
 		workers = append(workers, outboxWorker)
 	}
 
-	liveHandler := healthHandler()
-	readyHandler := healthHandler()
-	commentHandler := commenthttp.NewHandler(deps.Service)
-
-	root := http.NewServeMux()
-	root.Handle("GET /health/live", liveHandler)
-	root.Handle("GET /health/ready", readyHandler)
-	root.Handle("/api/v1/posts/", commentHandler)
-	root.Handle("/api/v1/admin/comments/", commentHandler)
+	root := commenthttp.NewHandler(deps.Service)
+	root.GET("/health/live", healthHandler())
+	root.GET("/health/ready", healthHandler())
 
 	return &Module{
-		HTTPHandler:  root,
-		LiveHandler:  liveHandler,
-		ReadyHandler: readyHandler,
-		Workers:      workers,
+		HTTPHandler: root,
+		Workers:     workers,
 	}, nil
 }
 
@@ -132,11 +123,10 @@ type systemClock struct{}
 
 func (systemClock) Now() time.Time { return time.Now().UTC() }
 
-func healthHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+func healthHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Readiness stays dependency-free until PostgreSQL, RabbitMQ, Redis and
 		// downstream clients have concrete runtime adapters wired.
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+		c.String(http.StatusOK, "ok")
+	}
 }

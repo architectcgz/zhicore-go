@@ -18,40 +18,26 @@ type Handler struct {
 	router  *gin.Engine
 }
 
-func NewHandler(service *application.Service) http.Handler {
+func NewHandler(service *application.Service) *gin.Engine {
 	h := &Handler{
 		service: service,
 		router:  gin.New(),
 	}
 	h.routes()
-	return h
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.router.ServeHTTP(w, r)
+	return h.router
 }
 
 func (h *Handler) routes() {
-	h.router.POST("/api/v1/files/image", ginHTTPHandler(h.uploadImage))
-	h.router.POST("/api/v1/files/audio", ginHTTPHandler(h.uploadAudio))
-	h.router.POST("/api/v1/files/image/with-access", ginHTTPHandler(h.uploadImageWithAccess))
-	h.router.POST("/api/v1/files/images/batch", ginHTTPHandler(h.uploadImagesBatch))
-	h.router.GET("/api/v1/files/:fileId/url", ginHTTPHandler(h.getFileURL))
-	h.router.DELETE("/api/v1/files/:fileId", ginHTTPHandler(h.deleteFile))
+	h.router.POST("/api/v1/files/image", h.uploadImage)
+	h.router.POST("/api/v1/files/audio", h.uploadAudio)
+	h.router.POST("/api/v1/files/image/with-access", h.uploadImageWithAccess)
+	h.router.POST("/api/v1/files/images/batch", h.uploadImagesBatch)
+	h.router.GET("/api/v1/files/:fileId/url", h.getFileURL)
+	h.router.DELETE("/api/v1/files/:fileId", h.deleteFile)
 }
 
-func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Preserve the standard request path-value API while using Gin as the
-		// ingress router and future middleware host.
-		for _, param := range c.Params {
-			c.Request.SetPathValue(param.Key, param.Value)
-		}
-		next(c.Writer, c.Request)
-	}
-}
-
-func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) uploadImage(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	limitMultipartBody(w, r, h.service.MaxImageSize())
 	// 大文件 multipart 会落到临时文件，必须等应用层完成校验和上传读取后再清理。
 	defer cleanupMultipartForm(r)
@@ -68,7 +54,8 @@ func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, responseFromUploadResult(result))
 }
 
-func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) uploadAudio(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	limitMultipartBody(w, r, h.service.MaxAudioSize())
 	// 音频上传同样可能使用临时文件，提前清理会让后续存储适配器读不到内容。
 	defer cleanupMultipartForm(r)
@@ -85,7 +72,8 @@ func (h *Handler) uploadAudio(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, responseFromUploadResult(result))
 }
 
-func (h *Handler) uploadImageWithAccess(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) uploadImageWithAccess(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	limitMultipartBody(w, r, h.service.MaxImageSize())
 	// 带权限上传仍由应用层最终读取文件，临时文件生命周期要覆盖整个 handler。
 	defer cleanupMultipartForm(r)
@@ -108,7 +96,8 @@ func (h *Handler) uploadImageWithAccess(w http.ResponseWriter, r *http.Request) 
 	sharedhttp.WriteSuccess(w, responseFromUploadResult(result))
 }
 
-func (h *Handler) uploadImagesBatch(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) uploadImagesBatch(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	limitMultipartBody(w, r, h.service.MaxBatchImageSize())
 	if err := r.ParseMultipartForm(h.service.MaxBatchImageSize()); err != nil {
 		sharedhttp.WriteError(w, http.StatusBadRequest, "无效的 multipart 请求")
@@ -136,8 +125,9 @@ func (h *Handler) uploadImagesBatch(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, responses)
 }
 
-func (h *Handler) getFileURL(w http.ResponseWriter, r *http.Request) {
-	url, err := h.service.GetFileURL(r.Context(), r.PathValue("fileId"))
+func (h *Handler) getFileURL(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	url, err := h.service.GetFileURL(r.Context(), c.Param("fileId"))
 	if err != nil {
 		writeError(w, err)
 		return
@@ -145,8 +135,9 @@ func (h *Handler) getFileURL(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, url)
 }
 
-func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
-	if err := h.service.DeleteFile(r.Context(), r.PathValue("fileId")); err != nil {
+func (h *Handler) deleteFile(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	if err := h.service.DeleteFile(r.Context(), c.Param("fileId")); err != nil {
 		writeError(w, err)
 		return
 	}

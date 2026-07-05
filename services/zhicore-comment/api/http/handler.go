@@ -39,46 +39,32 @@ type Handler struct {
 	router  *gin.Engine
 }
 
-func NewHandler(service Service) http.Handler {
+func NewHandler(service Service) *gin.Engine {
 	h := &Handler{service: service, router: gin.New()}
 	h.routes()
-	return h
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.router.ServeHTTP(w, r)
+	return h.router
 }
 
 func (h *Handler) routes() {
-	h.router.POST("/api/v1/posts/:postId/comments", ginHTTPHandler(h.createComment))
-	h.router.GET("/api/v1/posts/:postId/comments/page", ginHTTPHandler(h.listCommentsPage))
-	h.router.GET("/api/v1/posts/:postId/comments/:commentId", ginHTTPHandler(h.getCommentDetail))
-	h.router.GET("/api/v1/posts/:postId/comments/:commentId/replies/page", ginHTTPHandler(h.listRepliesPage))
-	h.router.DELETE("/api/v1/posts/:postId/comments/:commentId", ginHTTPHandler(h.deleteComment))
-	h.router.DELETE("/api/v1/admin/comments/posts/:postId/comments/:commentId", ginHTTPHandler(h.adminDeleteComment))
-	h.router.POST("/api/v1/posts/:postId/comments/:commentId/like", ginHTTPHandler(h.likeComment))
-	h.router.DELETE("/api/v1/posts/:postId/comments/:commentId/like", ginHTTPHandler(h.unlikeComment))
-	h.router.GET("/api/v1/posts/:postId/comments/:commentId/liked", ginHTTPHandler(h.getLikeStatus))
+	h.router.POST("/api/v1/posts/:postId/comments", h.createComment)
+	h.router.GET("/api/v1/posts/:postId/comments/page", h.listCommentsPage)
+	h.router.GET("/api/v1/posts/:postId/comments/:commentId", h.getCommentDetail)
+	h.router.GET("/api/v1/posts/:postId/comments/:commentId/replies/page", h.listRepliesPage)
+	h.router.DELETE("/api/v1/posts/:postId/comments/:commentId", h.deleteComment)
+	h.router.DELETE("/api/v1/admin/comments/posts/:postId/comments/:commentId", h.adminDeleteComment)
+	h.router.POST("/api/v1/posts/:postId/comments/:commentId/like", h.likeComment)
+	h.router.DELETE("/api/v1/posts/:postId/comments/:commentId/like", h.unlikeComment)
+	h.router.GET("/api/v1/posts/:postId/comments/:commentId/liked", h.getLikeStatus)
 }
 
-func ginHTTPHandler(next http.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Route params are copied back to net/http so Gin remains confined to
-		// the transport adapter instead of becoming an application dependency.
-		for _, param := range c.Params {
-			c.Request.SetPathValue(param.Key, param.Value)
-		}
-		next(c.Writer, c.Request)
-	}
-}
-
-func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createComment(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	actorID, ok := trustedUserIDFromRequest(r)
 	if !ok {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, ok := postIDFromPath(w, r)
+	postID, ok := postIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -108,8 +94,9 @@ func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) listCommentsPage(w http.ResponseWriter, r *http.Request) {
-	postID, ok := postIDFromPath(w, r)
+func (h *Handler) listCommentsPage(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	postID, ok := postIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -132,8 +119,9 @@ func (h *Handler) listCommentsPage(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, topLevelCommentPageResponse(result))
 }
 
-func (h *Handler) getCommentDetail(w http.ResponseWriter, r *http.Request) {
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+func (h *Handler) getCommentDetail(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -146,8 +134,9 @@ func (h *Handler) getCommentDetail(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, commentItemResponse(result))
 }
 
-func (h *Handler) listRepliesPage(w http.ResponseWriter, r *http.Request) {
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+func (h *Handler) listRepliesPage(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -171,13 +160,14 @@ func (h *Handler) listRepliesPage(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, commentPageResponse(result))
 }
 
-func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteComment(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	actorID, ok := trustedUserIDFromRequest(r)
 	if !ok {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -189,7 +179,8 @@ func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, deleteCommentResponse(result))
 }
 
-func (h *Handler) adminDeleteComment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) adminDeleteComment(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	actorID, ok := trustedUserIDFromRequest(r)
 	if !ok {
 		writeMappedError(w, errLoginRequired)
@@ -199,7 +190,7 @@ func (h *Handler) adminDeleteComment(w http.ResponseWriter, r *http.Request) {
 		writeMappedError(w, errAdminRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -215,21 +206,22 @@ func (h *Handler) adminDeleteComment(w http.ResponseWriter, r *http.Request) {
 	sharedhttp.WriteSuccess(w, deleteCommentResponse(result))
 }
 
-func (h *Handler) likeComment(w http.ResponseWriter, r *http.Request) {
-	h.changeLike(w, r, true)
+func (h *Handler) likeComment(c *gin.Context) {
+	h.changeLike(c, true)
 }
 
-func (h *Handler) unlikeComment(w http.ResponseWriter, r *http.Request) {
-	h.changeLike(w, r, false)
+func (h *Handler) unlikeComment(c *gin.Context) {
+	h.changeLike(c, false)
 }
 
-func (h *Handler) changeLike(w http.ResponseWriter, r *http.Request, liked bool) {
+func (h *Handler) changeLike(c *gin.Context, liked bool) {
+	w, r := c.Writer, c.Request
 	actorID, ok := trustedUserIDFromRequest(r)
 	if !ok {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -249,13 +241,14 @@ func (h *Handler) changeLike(w http.ResponseWriter, r *http.Request, liked bool)
 	sharedhttp.WriteSuccess(w, likeCommentResponse(result))
 }
 
-func (h *Handler) getLikeStatus(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getLikeStatus(c *gin.Context) {
+	w, r := c.Writer, c.Request
 	viewerID, ok := trustedUserIDFromRequest(r)
 	if !ok {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, r)
+	postID, commentID, ok := postAndCommentIDFromPath(w, c)
 	if !ok {
 		return
 	}
@@ -448,8 +441,8 @@ func trustedUserIDFromRequest(r *http.Request) (application.UserID, bool) {
 	return application.UserID(userID), true
 }
 
-func postIDFromPath(w http.ResponseWriter, r *http.Request) (application.PostID, bool) {
-	postID := strings.TrimSpace(r.PathValue("postId"))
+func postIDFromPath(w http.ResponseWriter, c *gin.Context) (application.PostID, bool) {
+	postID := strings.TrimSpace(c.Param("postId"))
 	if postID == "" {
 		writeValidationError(w)
 		return "", false
@@ -457,12 +450,12 @@ func postIDFromPath(w http.ResponseWriter, r *http.Request) (application.PostID,
 	return application.PostID(postID), true
 }
 
-func postAndCommentIDFromPath(w http.ResponseWriter, r *http.Request) (application.PostID, application.PublicCommentID, bool) {
-	postID, ok := postIDFromPath(w, r)
+func postAndCommentIDFromPath(w http.ResponseWriter, c *gin.Context) (application.PostID, application.PublicCommentID, bool) {
+	postID, ok := postIDFromPath(w, c)
 	if !ok {
 		return "", "", false
 	}
-	commentID := application.PublicCommentID(strings.TrimSpace(r.PathValue("commentId")))
+	commentID := application.PublicCommentID(strings.TrimSpace(c.Param("commentId")))
 	if commentID == "" {
 		writeValidationError(w)
 		return "", "", false

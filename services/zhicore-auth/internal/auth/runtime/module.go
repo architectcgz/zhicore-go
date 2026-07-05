@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	authhttp "github.com/architectcgz/zhicore-go/services/zhicore-auth/api/http"
+	"github.com/gin-gonic/gin"
 )
 
 type Deps struct {
@@ -12,9 +13,7 @@ type Deps struct {
 }
 
 type Module struct {
-	HTTPHandler  http.Handler
-	LiveHandler  http.Handler
-	ReadyHandler http.Handler
+	HTTPHandler *gin.Engine
 }
 
 func Build(deps Deps) (*Module, error) {
@@ -22,27 +21,19 @@ func Build(deps Deps) (*Module, error) {
 		return nil, fmt.Errorf("auth runtime Service dependency is required")
 	}
 
-	liveHandler := healthHandler()
-	readyHandler := healthHandler()
-	authHandler := authhttp.NewHandler(deps.Service)
-
-	root := http.NewServeMux()
-	root.Handle("GET /health/live", liveHandler)
-	root.Handle("GET /health/ready", readyHandler)
-	root.Handle("/api/v1/auth/", authHandler)
+	root := authhttp.NewHandler(deps.Service)
+	root.GET("/health/live", healthHandler())
+	root.GET("/health/ready", healthHandler())
 
 	return &Module{
-		HTTPHandler:  root,
-		LiveHandler:  liveHandler,
-		ReadyHandler: readyHandler,
+		HTTPHandler: root,
 	}, nil
 }
 
-func healthHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+func healthHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Readiness stays dependency-free in this slice because repository/Redis/MQ adapters are not wired yet.
 		// Once runtime owns real downstream clients, this handler should reflect required dependency health.
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+		c.String(http.StatusOK, "ok")
+	}
 }

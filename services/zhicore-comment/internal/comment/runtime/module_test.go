@@ -29,7 +29,7 @@ func TestBuildReturnsCommentHealthHandlersAndWorkers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if module.HTTPHandler == nil || module.LiveHandler == nil || module.ReadyHandler == nil {
+	if module.HTTPHandler == nil {
 		t.Fatalf("module handlers = %#v", module)
 	}
 	if len(module.Workers) != 1 {

@@ -28,12 +28,6 @@ func TestBuildReturnsUserAndHealthHandlers(t *testing.T) {
 	if module.HTTPHandler == nil {
 		t.Fatal("Build() returned nil HTTPHandler")
 	}
-	if module.LiveHandler == nil {
-		t.Fatal("Build() returned nil LiveHandler")
-	}
-	if module.ReadyHandler == nil {
-		t.Fatal("Build() returned nil ReadyHandler")
-	}
 
 	for _, path := range []string{"/health/live", "/health/ready"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

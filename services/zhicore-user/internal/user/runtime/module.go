@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	userhttp "github.com/architectcgz/zhicore-go/services/zhicore-user/api/http"
+	"github.com/gin-gonic/gin"
 )
 
 type Deps struct {
@@ -13,9 +14,7 @@ type Deps struct {
 }
 
 type Module struct {
-	HTTPHandler  http.Handler
-	LiveHandler  http.Handler
-	ReadyHandler http.Handler
+	HTTPHandler *gin.Engine
 }
 
 func Build(deps Deps) (*Module, error) {
@@ -23,28 +22,19 @@ func Build(deps Deps) (*Module, error) {
 		return nil, fmt.Errorf("user runtime Service dependency is required")
 	}
 
-	liveHandler := healthHandler()
-	readyHandler := healthHandler()
-	userHandler := userhttp.NewHandler(deps.Service, deps.AvatarURLResolver)
-
-	root := http.NewServeMux()
-	root.Handle("GET /health/live", liveHandler)
-	root.Handle("GET /health/ready", readyHandler)
-	root.Handle("/api/v1/internal/users/", userHandler)
-	root.Handle("/api/v1/users/", userHandler)
+	root := userhttp.NewHandler(deps.Service, deps.AvatarURLResolver)
+	root.GET("/health/live", healthHandler())
+	root.GET("/health/ready", healthHandler())
 
 	return &Module{
-		HTTPHandler:  root,
-		LiveHandler:  liveHandler,
-		ReadyHandler: readyHandler,
+		HTTPHandler: root,
 	}, nil
 }
 
-func healthHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+func healthHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Readiness remains dependency-free until User owns real repository, cache,
 		// File client and outbox adapters; runtime must not fake downstream health.
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+		c.String(http.StatusOK, "ok")
+	}
 }

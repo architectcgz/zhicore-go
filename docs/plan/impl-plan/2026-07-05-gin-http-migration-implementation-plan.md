@@ -80,3 +80,20 @@ cd services/zhicore-comment && go test ./api/http
 bash scripts/check-structure.sh
 rg -n "gin.Context|\\*gin.Context" services libs
 ```
+
+## 任务 6：去除 Gin 迁移中间状态
+
+- [x] Auth / User / Comment runtime 不再用 `http.NewServeMux` 聚合健康检查和业务 handler，统一由 `*gin.Engine` 承载。
+- [x] Auth / Comment / File handler 不再保留 `ginHTTPHandler`、`SetPathValue` 和 `PathValue` 参数桥接，路由参数直接由 Gin 读取。
+- [x] `NewHandler(...)` 对已有 HTTP handler 服务直接返回 `*gin.Engine`，runtime 的 `Module.HTTPHandler` 也收窄为 `*gin.Engine`。
+- [x] Runtime 不再额外暴露 `LiveHandler` / `ReadyHandler` 字段，健康检查只通过同一个 Gin engine 注册。
+
+验证：
+
+```bash
+cd services/zhicore-auth && go test ./api/http ./internal/auth/runtime
+cd services/zhicore-user && go test ./api/http ./internal/user/runtime
+cd services/zhicore-comment && go test ./api/http ./internal/comment/runtime
+cd services/zhicore-file && go test ./api/http
+rg -n "ginHTTPHandler|SetPathValue|PathValue\\(|http\\.NewServeMux|root\\.Handle\\(|http\\.Handle" services -g '*.go'
+```

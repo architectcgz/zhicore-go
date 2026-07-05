@@ -46,18 +46,14 @@ type Handler struct {
 	router   *gin.Engine
 }
 
-func NewHandler(service Service, resolver AvatarURLResolver) http.Handler {
+func NewHandler(service Service, resolver AvatarURLResolver) *gin.Engine {
 	h := &Handler{
 		service:  service,
 		resolver: resolver,
 		router:   gin.New(),
 	}
 	h.routes()
-	return h
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.router.ServeHTTP(w, r)
+	return h.router
 }
 
 func (h *Handler) routes() {
