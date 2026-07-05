@@ -1,0 +1,147 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
+	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
+)
+
+func TestSaveDraftBody(t *testing.T) {
+	t.Run("rejects non owner before body write", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.OwnerID = 2002
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if !errors.Is(err, domain.ErrForbidden) {
+			t.Fatalf("error = %v, want ErrForbidden", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.posts.saveCalls != 0 {
+			t.Fatalf("body/save calls = %d/%d, want none", deps.bodies.writeDraftCalls, deps.posts.saveCalls)
+		}
+	})
+
+	t.Run("rejects stale post version", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.PostVersion = 6
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if !errors.Is(err, domain.ErrDraftConflict) {
+			t.Fatalf("error = %v, want ErrDraftConflict", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 {
+			t.Fatalf("body writes = %d, want none", deps.bodies.writeDraftCalls)
+		}
+	})
+
+	t.Run("rejects stale draft pointer", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.DraftBodyHash = "sha256:server"
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if !errors.Is(err, domain.ErrDraftConflict) {
+			t.Fatalf("error = %v, want ErrDraftConflict", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 {
+			t.Fatalf("body writes = %d, want none", deps.bodies.writeDraftCalls)
+		}
+	})
+
+	t.Run("returns no-op when content hash is unchanged", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.parser.normalized.ContentHash = "sha256:old"
+		service := NewService(deps.asDeps())
+
+		got, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if err != nil {
+			t.Fatalf("SaveDraftBody returned error: %v", err)
+		}
+		if got.DraftBodyID != "body_old" || got.PostVersion != 5 {
+			t.Fatalf("result = %+v, want existing draft pointer", got)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.posts.saveCalls != 0 || deps.cleanup.appendCalls != 0 {
+			t.Fatalf("write/save/cleanup calls = %d/%d/%d, want none", deps.bodies.writeDraftCalls, deps.posts.saveCalls, deps.cleanup.appendCalls)
+		}
+	})
+
+	t.Run("copy-on-write saves new draft and schedules old draft cleanup", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.bodies.draftResult = ports.StoredBody{ID: "body_new"}
+		deps.posts.saveResult = ports.PostRecord{PublicID: "post_1", PostVersion: 6, DraftBodyID: "body_new", DraftBodyHash: "sha256:new"}
+		service := NewService(deps.asDeps())
+
+		got, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if err != nil {
+			t.Fatalf("SaveDraftBody returned error: %v", err)
+		}
+		if got.DraftBodyID != "body_new" || got.DraftBodyHash != "sha256:new" || got.PostVersion != 6 {
+			t.Fatalf("result = %+v, want new draft pointer", got)
+		}
+		if deps.posts.saveInput.NewDraftBodyID != "body_new" || deps.posts.saveInput.NewDraftBodyHash != "sha256:new" {
+			t.Fatalf("save input pointer = %+v, want new body", deps.posts.saveInput)
+		}
+		if deps.cleanup.appendCalls != 1 || deps.cleanup.tasks[0].BodyID != "body_old" {
+			t.Fatalf("cleanup tasks = %+v, want old draft cleanup", deps.cleanup.tasks)
+		}
+	})
+
+	t.Run("records orphan cleanup when PostgreSQL update fails after body write", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.bodies.draftResult = ports.StoredBody{ID: "body_orphan"}
+		deps.posts.saveErr = errors.New("pg failed")
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.cleanup.appendOutsideCalls != 1 {
+			t.Fatalf("outside cleanup calls = %d, want 1", deps.cleanup.appendOutsideCalls)
+		}
+		if got := deps.cleanup.outsideTasks[0]; got.BodyID != "body_orphan" || got.TaskType != "ORPHAN_DRAFT" {
+			t.Fatalf("outside cleanup task = %+v, want orphan draft body", got)
+		}
+	})
+}
+
+func newSaveDraftDeps() createPostDeps {
+	deps := newCreatePostDeps()
+	deps.posts.getResult = ports.PostRecord{
+		ID:                   10,
+		PublicID:             "post_1",
+		OwnerID:              1001,
+		Status:               domain.PostStatusDraft,
+		PostVersion:          5,
+		DraftBodyID:          "body_old",
+		DraftBodyHash:        "sha256:old",
+		DraftSizeBytes:       100,
+		DraftPlainTextLength: 8,
+	}
+	deps.parser.normalized = ports.NormalizedBody{
+		PlainText:     "new body",
+		CanonicalJSON: []byte(`{"schemaVersion":1,"blocks":[]}`),
+		ContentHash:   "sha256:new",
+		SizeBytes:     36,
+		BlockCount:    1,
+	}
+	return deps
+}
+
+func saveDraftCommand() SaveDraftBodyCommand {
+	return SaveDraftBodyCommand{
+		Actor:             &Actor{UserID: 1001},
+		PostID:            "post_1",
+		BasePostVersion:   5,
+		BaseDraftBodyID:   "body_old",
+		BaseDraftBodyHash: "sha256:old",
+		Body: PostBodyInput{
+			SchemaVersion: 1,
+			Blocks:        ports.Blocks{},
+		},
+	}
+}
