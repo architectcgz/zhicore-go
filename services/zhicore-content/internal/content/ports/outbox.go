@@ -2,8 +2,11 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrOutboxEventNotFound = errors.New("outbox event not found")
 
 type OutboxPublisher interface {
 	Append(ctx context.Context, tx Tx, event OutboxEvent) error
