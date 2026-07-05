@@ -143,53 +143,113 @@
 
 **测试立场：** TDD - 启动配置、依赖打开、健康检查、server timeout 和 graceful shutdown 属于 R4。
 
-- [ ] **步骤 1：编写配置加载失败测试**
+**验收事实源清单：**
 
-  测试 `cmd/server` 或 runtime config loader：缺少 PostgreSQL DSN、Mongo URI、RabbitMQ URL、User/File base URL 时 fail fast；默认 HTTP timeout、shutdown timeout、worker disabled/enabled 开关和最大 request body 可见。
+- 已读取事实源：`AGENTS.md`、`docs/architecture/configuration.md`、`docs/architecture/runtime-operations.md`、`docs/architecture/observability.md`、`docs/architecture/testing.md`、`docs/reviews/quality-gates.md`。
+- 配置加载验收必须展开为具体规则，不得只写“遵守配置规范”：
+  - [x] required env 缺失或 present-but-empty 必须 fail fast，错误包含对应 env 名：`ZHICORE_CONTENT_POSTGRES_DSN`、`ZHICORE_CONTENT_MONGO_URI`、`ZHICORE_CONTENT_RABBITMQ_URL`、`ZHICORE_CONTENT_USER_SERVICE_BASE_URL`、`ZHICORE_CONTENT_FILE_SERVICE_BASE_URL`。
+  - [x] defaulted / optional env present-but-empty 必须 fail fast，不能静默回退默认值；至少覆盖 HTTP addr、所有 HTTP timeout、max JSON body、worker bool。
+  - [x] 环境变量统一使用 `ZHICORE_CONTENT_*`；required secret-like 值不允许代码默认值，默认值只用于安全的本地运行参数。
+  - [x] bool 只接受严格字面量 `true` / `false`；`1`、`t`、`TRUE`、`yes` 等必须失败。
+  - [x] duration 使用 Go duration 字符串；所有 HTTP timeout 必须 `> 0`；shutdown timeout 必须显式配置且默认和 env override 都 `<= 30s`。
+  - [x] size 使用显式单位，例如 `1MiB` / `100MB`；空值、无单位整数、`<= 0`、负数和 int64 overflow 必须失败。
+  - [x] HTTP server 配置必须包含 `Addr`、`ReadHeaderTimeout`、`ReadTimeout`、`WriteTimeout`、`IdleTimeout`、`ShutdownTimeout`、`MaxJSONBodyBytes`；默认值必须精确固定为 `:8080`、`2s`、`5s`、`10s`、`60s`、`20s`、`1 << 20`，env overlay 单独覆盖每个字段。
+  - [x] User/File base URL 必须是合法 `http` / `https` URL 且 hostname 非空；Mongo URI 至少校验 `mongodb` / `mongodb+srv` scheme 和 hostname；RabbitMQ URL 至少校验 `amqp` / `amqps` scheme 和 hostname；错误不得回显 raw URL 或 secret。
+  - [x] 配置摘要必须显式脱敏；日志、错误、panic、`RedactedSummary()`、`String()`、`GoString()`、`%+v`、`%#v` 不得输出 DSN / URL secret、userinfo 或完整敏感 URL。顶层 `ContentServerConfig` 和含敏感字段的内层 config（Postgres、Mongo、RabbitMQ、User/File dependency）被单独 `fmt.Sprintf("%+v", value)` 或 `fmt.Sprintf("%#v", value)` 打印时也必须脱敏。
+- runtime / server 生命周期验收必须展开为具体规则，不得只写“实现 server lifecycle”：
+  - [x] `/health/live` 只表示进程可响应，不检查 PostgreSQL、MongoDB、RabbitMQ 或外部服务。
+  - [x] `/health/ready` 检查必需依赖：PostgreSQL ping、Mongo ping、RabbitMQ publisher 状态和 worker descriptor；依赖失败返回非 ready，不执行昂贵查询、不写业务数据。
+  - [x] shutdown 顺序必须先标记 readiness=false，再停止新 worker/queue/outbox claim，等待 HTTP 请求和 worker 在 shutdown timeout 内完成，最后关闭 HTTP server、数据库、Mongo、RabbitMQ 和其他 client。
+  - [x] `cmd/server/main.go` 只负责加载配置、打开依赖、调用 runtime、启动 HTTP server 和 shutdown；业务 wiring 放在 `internal/content/runtime`，启动路径不得执行 migration。
+  - [x] 启动日志只能记录 service、listen addr、关键依赖和配置脱敏摘要；不得打印明文 config struct。
+- 本任务验收命令：
+  - [x] 配置切片：`cd services/zhicore-content && go test ./cmd/server -run TestLoadContentServerConfig -count=1`。
+  - [x] readiness 切片：`cd services/zhicore-content && go test ./internal/content/runtime -run TestHealthReadiness -count=1`。
+  - [x] server lifecycle 切片：`cd services/zhicore-content && go test ./cmd/server -run TestContentServerLifecycle -count=1`。
+  - [x] runtime 收口：`cd services/zhicore-content && go test ./cmd/server ./internal/content/runtime -count=1`。
+  - [x] 文档 / whitespace：`git diff --check`；若新增路径或模板影响结构，再运行 `bash scripts/check-structure.sh`。
+
+- [x] **步骤 1：编写配置加载失败测试**
+
+  测试 `cmd/server` 或 runtime config loader，并逐条覆盖“验收事实源清单”中的配置加载规则：required 缺失 / 空值、defaulted 空值、strict bool、duration 正值和 shutdown 上限、显式单位 size、size overflow、URL scheme / hostname、脱敏摘要和 `%+v` / `%#v` 防泄漏。默认 HTTP addr、readHeader/read/write/idle/shutdown timeout、worker disabled/enabled 开关和最大 request body 必须可见；默认值测试必须使用 required-only fixture 精确断言默认值，overlay 测试单独覆盖每个 env。
 
   运行：`cd services/zhicore-content && go test ./cmd/server -run TestLoadContentServerConfig`
 
   预期：失败。
 
-- [ ] **步骤 2：实现配置结构和加载**
+- [x] **步骤 2：实现配置结构和加载**
 
-  新增服务私有配置，环境变量遵守 `ZHICORE_CONTENT_*` 命名。敏感字段提供脱敏摘要，不在日志和错误中输出明文 DSN / URL secret。
+  新增服务私有配置，环境变量遵守 `ZHICORE_CONTENT_*` 命名。实现 required / defaulted / optional 的 fail-fast 校验、HTTP server 全量 timeout、strict bool、显式单位 size、URL scheme / hostname 校验和敏感字段脱敏摘要；不得在错误、日志摘要、`String()`、`GoString()` 中输出明文 DSN / URL secret。
 
-- [ ] **步骤 3：补本地配置模板**
+  完成标准：
+  - [x] `cd services/zhicore-content && go test ./cmd/server -run TestLoadContentServerConfig -count=1` 通过。
+  - [x] `cd services/zhicore-content && go test ./cmd/server -count=1` 通过。
+  - [x] required-only fixture 精确断言 HTTP 默认值；overlay fixture 单独证明每个 HTTP env 生效。
+  - [x] present-but-empty 覆盖所有 required env、所有 HTTP timeout env、`ZHICORE_CONTENT_HTTP_MAX_JSON_BODY`、`ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED`、`ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED`、`ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED`。
+  - [x] Mongo / RabbitMQ / User / File URL 测试覆盖 missing scheme、wrong scheme、empty hostname，并断言错误不包含 raw URL 或 `secret`。
+  - [x] 顶层和内层敏感 config 的 `String()` / `GoString()` / `%+v` / `%#v` 均有脱敏回归测试。
+  - [x] 配置切片通过 spec review 和 code quality review，无 Critical / Important finding。
+
+- [x] **步骤 3：补本地配置模板**
 
   新增 `services/zhicore-content/configs/local.example.env`，只写 fake 示例值和本地默认 timeout，不提交真实凭证。
 
-- [ ] **步骤 4：编写 runtime readiness 失败测试**
+  完成标准：
+  - [x] 模板列出所有 required env、HTTP addr、readHeader/read/write/idle/shutdown timeout、max JSON body、worker bool，并使用 `true` / `false`、Go duration 和显式 size 单位。
+  - [x] 示例 DSN / URI / URL 明显为本地 fake 值或 `change-me`，不包含真实凭证、生产地址、token 或 secret。
+  - [x] `git diff --check` 通过；如新增 `configs/` 路径触发结构检查，运行 `bash scripts/check-structure.sh`。
 
-  覆盖 `/health/live` 不检查依赖，`/health/ready` 检查 PostgreSQL ping、Mongo ping、RabbitMQ publisher 状态和 worker descriptor；依赖失败返回非 ready。
+- [x] **步骤 4：编写 runtime readiness 失败测试**
+
+  覆盖 `/health/live` 不检查依赖，`/health/ready` 检查 PostgreSQL ping、Mongo ping、RabbitMQ publisher 状态和 worker descriptor；依赖失败返回非 ready。ready check 不执行昂贵查询、不写业务数据，错误响应不暴露 DSN / URL secret。
 
   运行：`cd services/zhicore-content && go test ./internal/content/runtime -run TestHealthReadiness`
 
   预期：失败。
 
-- [ ] **步骤 5：实现 runtime readiness checker**
+- [x] **步骤 5：实现 runtime readiness checker**
 
   在 `internal/content/runtime` 中引入可注入 `HealthChecker` / dependency checker；ready 不执行昂贵查询、不写业务数据。
 
-- [ ] **步骤 6：编写 HTTP server 生命周期测试**
+  完成标准：
+  - [x] `/health/live` 在依赖失败时仍能返回 live。
+  - [x] `/health/ready` 对 PostgreSQL、MongoDB、RabbitMQ publisher 或 enabled worker descriptor 任一失败返回 non-ready。
+  - [x] ready check 的依赖错误被脱敏汇总，便于排查但不泄漏 secret。
 
-  覆盖 `http.Server` timeout 配置、SIGINT/SIGTERM shutdown path、readiness 关闭顺序和依赖 close 调用。
+- [x] **步骤 6：编写 HTTP server 生命周期测试**
+
+  覆盖 `http.Server` 的 `ReadHeaderTimeout`、`ReadTimeout`、`WriteTimeout`、`IdleTimeout` 配置，`SIGINT` / `SIGTERM` shutdown path，readiness 关闭顺序和依赖 close 调用。
 
   运行：`cd services/zhicore-content && go test ./cmd/server -run TestContentServerLifecycle`
 
   预期：失败。
 
-- [ ] **步骤 7：实现 `cmd/server` 可运行入口**
+- [x] **步骤 7：实现 `cmd/server` 可运行入口**
 
   `cmd/server/main.go` 只负责加载配置、打开依赖、调用 runtime、启动 HTTP server 和 shutdown；不放业务 wiring，不执行 migration。
 
-- [ ] **步骤 8：运行 runtime 收口测试**
+  完成标准：
+  - [x] 启动路径按“读取并校验配置 -> 初始化日志基础设施 -> 打开依赖 -> 构建 runtime module -> 注册 HTTP / worker -> 启动服务 -> 记录脱敏摘要”顺序组织。
+  - [x] 关键依赖不可用时启动失败或进入 non-ready，不静默降级到错误行为。
+  - [x] 收到 shutdown 信号后先标记 readiness=false，再停止 worker / outbox claim，最后关闭 HTTP server 和依赖；所有等待受 `ShutdownTimeout` 控制。
+  - [x] 启动路径不执行 schema migration / auto migrate。
+
+- [x] **步骤 8：运行 runtime 收口测试**
 
   运行：`cd services/zhicore-content && go test ./cmd/server ./internal/content/runtime`
 
   预期：通过。
 
-- [ ] **步骤 9：提交 runtime 切片**
+- [x] **步骤 8.5：runtime 切片代码质量 review**
+
+  对配置加载、依赖打开、readiness、HTTP server lifecycle、shutdown 顺序、敏感信息脱敏、未实现依赖 fail-fast / non-ready 语义和启动路径不执行 migration 做 review。
+
+  完成标准：
+  - [x] review 覆盖 `cmd/server`、`internal/content/runtime` 和本任务计划 checkbox。
+  - [x] 无 Critical / Important finding；如有，先修复并重跑 `cd services/zhicore-content && go test ./cmd/server ./internal/content/runtime -count=1`。
+  - [x] review 结论记录在交付说明或后续 review 证据中，且明确是否满足独立 review gate。
+
+- [x] **步骤 9：提交 runtime 切片**
 
   提交前使用 @committing-changes。配置、runtime 和 server 生命周期可以按“配置加载”和“HTTP server 生命周期”拆成两个提交。
 
