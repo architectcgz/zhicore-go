@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -19,10 +20,23 @@ type Config struct {
 	ServiceName string
 }
 
+type HealthChecker interface {
+	Check(context.Context) error
+}
+
+type HealthCheckers struct {
+	Lifecycle HealthChecker
+	Postgres  HealthChecker
+	Mongo     HealthChecker
+	RabbitMQ  HealthChecker
+}
+
 type Deps struct {
 	Config         *Config
 	PostgresDB     *sql.DB
 	BodyCollection *drivermongo.Collection
+	Health         HealthCheckers
+	Workers        []WorkerDescriptor
 	Parser         ports.BodyParserRegistry
 	Outbox         ports.OutboxPublisher
 	Clock          ports.Clock
@@ -37,9 +51,10 @@ type Module struct {
 }
 
 type WorkerDescriptor struct {
-	Name           string `json:"name"`
-	Enabled        bool   `json:"enabled"`
-	DisabledReason string `json:"disabledReason,omitempty"`
+	Name           string        `json:"name"`
+	Enabled        bool          `json:"enabled"`
+	DisabledReason string        `json:"disabledReason,omitempty"`
+	Checker        HealthChecker `json:"-"`
 }
 
 type HealthDetails struct {
@@ -73,7 +88,7 @@ func Build(deps Deps) (*Module, error) {
 		Clock:   deps.Clock,
 	})
 
-	workers := disabledWorkerDescriptors()
+	workers := configuredWorkerDescriptors(deps.Workers)
 	health := HealthDetails{
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
@@ -83,7 +98,7 @@ func Build(deps Deps) (*Module, error) {
 	}
 	root := contenthttp.NewHandler(service)
 	root.GET("/health/live", healthHandler(health))
-	root.GET("/health/ready", healthHandler(health))
+	root.GET("/health/ready", readyHandler(health, deps.Health, workers))
 
 	return &Module{
 		HTTPHandler:   root,
@@ -101,6 +116,15 @@ func validateDeps(deps Deps) error {
 	}
 	if deps.BodyCollection == nil {
 		return fmt.Errorf("content runtime BodyCollection dependency is required")
+	}
+	if deps.Health.Postgres == nil {
+		return fmt.Errorf("content runtime Postgres health checker dependency is required")
+	}
+	if deps.Health.Mongo == nil {
+		return fmt.Errorf("content runtime Mongo health checker dependency is required")
+	}
+	if deps.Health.RabbitMQ == nil {
+		return fmt.Errorf("content runtime RabbitMQ health checker dependency is required")
 	}
 	if deps.Parser == nil {
 		return fmt.Errorf("content runtime Parser dependency is required")
@@ -127,6 +151,15 @@ func serviceName(config *Config) string {
 	return strings.TrimSpace(config.ServiceName)
 }
 
+func configuredWorkerDescriptors(workers []WorkerDescriptor) []WorkerDescriptor {
+	if len(workers) == 0 {
+		return disabledWorkerDescriptors()
+	}
+	copied := make([]WorkerDescriptor, len(workers))
+	copy(copied, workers)
+	return copied
+}
+
 func disabledWorkerDescriptors() []WorkerDescriptor {
 	reason := "disabled until dedicated worker runtime is implemented"
 	return []WorkerDescriptor{
@@ -142,4 +175,61 @@ func healthHandler(details HealthDetails) gin.HandlerFunc {
 		// pretending disabled cleanup, repair or outbox workers are running.
 		c.JSON(http.StatusOK, details)
 	}
+}
+
+func readyHandler(details HealthDetails, checks HealthCheckers, workers []WorkerDescriptor) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		failures := readinessFailures(c.Request.Context(), checks, workers)
+		if len(failures) > 0 {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"service":  details.Service,
+				"status":   "not_ready",
+				"failures": failures,
+				"workers":  workers,
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"service": details.Service,
+			"status":  "ready",
+			"details": details,
+		})
+	}
+}
+
+func readinessFailures(ctx context.Context, checks HealthCheckers, workers []WorkerDescriptor) []string {
+	failures := make([]string, 0, 4)
+	if checks.Lifecycle != nil && checkFailed(ctx, checks.Lifecycle) {
+		failures = append(failures, "lifecycle not ready")
+	}
+	if checkFailed(ctx, checks.Postgres) {
+		failures = append(failures, "postgres unavailable")
+	}
+	if checkFailed(ctx, checks.Mongo) {
+		failures = append(failures, "mongo unavailable")
+	}
+	if checkFailed(ctx, checks.RabbitMQ) {
+		failures = append(failures, "rabbitmq unavailable")
+	}
+	for _, worker := range workers {
+		if !worker.Enabled {
+			continue
+		}
+		if strings.TrimSpace(worker.Name) == "" {
+			failures = append(failures, "worker unavailable")
+			continue
+		}
+		if worker.Checker == nil || checkFailed(ctx, worker.Checker) {
+			failures = append(failures, worker.Name+" unavailable")
+		}
+	}
+	return failures
+}
+
+func checkFailed(ctx context.Context, checker HealthChecker) bool {
+	if checker == nil {
+		return true
+	}
+	return checker.Check(ctx) != nil
 }

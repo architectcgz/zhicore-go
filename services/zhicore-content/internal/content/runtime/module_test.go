@@ -88,11 +88,16 @@ func validDeps(t *testing.T) Deps {
 		Config:         &Config{ServiceName: "zhicore-content"},
 		PostgresDB:     db,
 		BodyCollection: &drivermongo.Collection{},
-		Parser:         stubBodyParser{},
-		Outbox:         store,
-		Clock:          fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
-		Users:          stubUsers{},
-		Files:          stubFiles{},
+		Health: HealthCheckers{
+			Postgres: healthyCheck("postgres"),
+			Mongo:    healthyCheck("mongo"),
+			RabbitMQ: healthyCheck("rabbitmq"),
+		},
+		Parser: stubBodyParser{},
+		Outbox: store,
+		Clock:  fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
+		Users:  stubUsers{},
+		Files:  stubFiles{},
 	}
 }
 
