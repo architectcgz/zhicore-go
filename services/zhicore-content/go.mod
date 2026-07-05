@@ -4,11 +4,14 @@ go 1.26.0
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/architectcgz/zhicore-go/libs/contracts v0.0.0
 	github.com/architectcgz/zhicore-go/libs/kit v0.0.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/lib/pq v1.10.9
 	go.mongodb.org/mongo-driver/v2 v2.5.0
 )
+
+replace github.com/architectcgz/zhicore-go/libs/contracts => ../../libs/contracts
 
 replace github.com/architectcgz/zhicore-go/libs/kit => ../../libs/kit
 
