@@ -9,6 +9,7 @@
 - 配置加载
 - 日志、指标、链路追踪等可观测性基础设施
 - PostgreSQL、Redis、MongoDB、RabbitMQ、Elasticsearch 的轻量客户端封装
+- claim 型后台任务的通用运行循环，例如批量 claim、逐条处理、成功 / 失败标记、退避和 context 停机
 
 不允许放入这里的内容包括：
 
