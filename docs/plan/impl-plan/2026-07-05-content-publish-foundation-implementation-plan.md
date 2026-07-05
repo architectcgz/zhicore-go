@@ -210,7 +210,7 @@
 
 **测试立场：** TDD - repository 条件更新、唯一约束、cleanup / repair、MongoDB body hash 和 context 传播属于 R4。
 
-- [ ] **步骤 1：编写 PostgreSQL repository 失败测试**
+- [x] **步骤 1：编写 PostgreSQL repository 失败测试**
 
   覆盖 public ID 唯一、owner 条件查询、draft 指针 CAS 更新、publish 指针 CAS 更新、outbox 写入、cleanup / repair task 幂等写入和底层错误翻译。
 
@@ -218,11 +218,11 @@
 
   预期：失败。
 
-- [ ] **步骤 2：实现 PostgreSQL repository**
+- [x] **步骤 2：实现 PostgreSQL repository**
 
   Repository 使用显式 mapper，不让 GORM / SQL row model 进入 domain 或 application。所有查询传递 `context.Context`，事务边界由 `TransactionRunner` 或 repository 显式方法承载。
 
-- [ ] **步骤 3：编写 MongoDB body store 失败测试**
+- [x] **步骤 3：编写 MongoDB body store 失败测试**
 
   覆盖写 draft body、写 snapshot body、读取 published body、hash mismatch、context cancel、精确 body id delete 和删除不存在 body 幂等成功。
 
@@ -230,11 +230,11 @@
 
   预期：失败。
 
-- [ ] **步骤 4：实现 MongoDB body store**
+- [x] **步骤 4：实现 MongoDB body store**
 
   Body store 只保存 body 文档，不决定 published 可见性；所有公开可见性以 PostgreSQL 指针为准。删除 cleanup 前必须由 application / repository 确认 body 未被 `posts` 引用。
 
-- [ ] **步骤 5：运行 infrastructure 收口测试**
+- [x] **步骤 5：运行 infrastructure 收口测试**
 
   运行：
 
