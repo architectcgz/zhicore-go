@@ -178,6 +178,79 @@ func TestCreatePost(t *testing.T) {
 			t.Fatalf("outside cleanup = %+v, want orphan draft", got)
 		}
 	})
+
+	t.Run("returns taxonomy reference error without treating it as dependency outage", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.posts.createErr = ports.ErrTaxonomyReferenceNotFound
+		service := NewService(deps.asDeps())
+
+		_, err := service.CreatePost(context.Background(), CreatePostCommand{
+			Actor:      &Actor{UserID: 1001},
+			Title:      "draft",
+			CategoryID: "cat_missing",
+		})
+
+		if !errors.Is(err, ErrTaxonomyReferenceNotFound) {
+			t.Fatalf("error = %v, want ErrTaxonomyReferenceNotFound", err)
+		}
+		if errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("error = %v, must not be dependency unavailable", err)
+		}
+	})
+
+	t.Run("returns media reference error before body write", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.parser.normalized = ports.NormalizedBody{
+			PlainText:     "hello world",
+			CanonicalJSON: []byte(`{"schemaVersion":1,"blocks":[]}`),
+			ContentHash:   "sha256:body",
+			SizeBytes:     35,
+			BlockCount:    1,
+			MediaRefs:     []ports.MediaRef{{FileID: "file_missing"}},
+		}
+		deps.files.err = ports.ErrMediaRefInvalid
+		service := NewService(deps.asDeps())
+
+		_, err := service.CreatePost(context.Background(), CreatePostCommand{
+			Actor: &Actor{UserID: 1001},
+			Title: "draft",
+			Body:  &PostBodyInput{SchemaVersion: 1, Blocks: ports.Blocks{}},
+		})
+
+		if !errors.Is(err, ErrMediaRefInvalid) {
+			t.Fatalf("error = %v, want ErrMediaRefInvalid", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.tx.calls != 0 {
+			t.Fatalf("body/tx calls = %d/%d, want none", deps.bodies.writeDraftCalls, deps.tx.calls)
+		}
+	})
+
+	t.Run("returns dependency unavailable for file service outage", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.parser.normalized = ports.NormalizedBody{
+			PlainText:     "hello world",
+			CanonicalJSON: []byte(`{"schemaVersion":1,"blocks":[]}`),
+			ContentHash:   "sha256:body",
+			SizeBytes:     35,
+			BlockCount:    1,
+			MediaRefs:     []ports.MediaRef{{FileID: "file_1"}},
+		}
+		deps.files.err = ports.ErrDependencyUnavailable
+		service := NewService(deps.asDeps())
+
+		_, err := service.CreatePost(context.Background(), CreatePostCommand{
+			Actor: &Actor{UserID: 1001},
+			Title: "draft",
+			Body:  &PostBodyInput{SchemaVersion: 1, Blocks: ports.Blocks{}},
+		})
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.tx.calls != 0 {
+			t.Fatalf("body/tx calls = %d/%d, want none", deps.bodies.writeDraftCalls, deps.tx.calls)
+		}
+	})
 }
 
 type createPostDeps struct {

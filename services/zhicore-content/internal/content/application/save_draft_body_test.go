@@ -107,6 +107,38 @@ func TestSaveDraftBody(t *testing.T) {
 			t.Fatalf("outside cleanup task = %+v, want orphan draft body", got)
 		}
 	})
+
+	t.Run("returns media reference error before writing new draft", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.parser.normalized.MediaRefs = []ports.MediaRef{{FileID: "file_missing"}}
+		deps.files.err = ports.ErrMediaRefInvalid
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+
+		if !errors.Is(err, ErrMediaRefInvalid) {
+			t.Fatalf("error = %v, want ErrMediaRefInvalid", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.posts.saveCalls != 0 {
+			t.Fatalf("body/save calls = %d/%d, want none", deps.bodies.writeDraftCalls, deps.posts.saveCalls)
+		}
+	})
+
+	t.Run("returns dependency unavailable for file service outage", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.parser.normalized.MediaRefs = []ports.MediaRef{{FileID: "file_1"}}
+		deps.files.err = ports.ErrDependencyUnavailable
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.bodies.writeDraftCalls != 0 || deps.posts.saveCalls != 0 {
+			t.Fatalf("body/save calls = %d/%d, want none", deps.bodies.writeDraftCalls, deps.posts.saveCalls)
+		}
+	})
 }
 
 func newSaveDraftDeps() createPostDeps {

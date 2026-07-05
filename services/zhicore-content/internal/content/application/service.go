@@ -12,21 +12,24 @@ import (
 )
 
 var (
-	ErrLoginRequired         = errors.New("login required")
-	ErrInvalidArgument       = errors.New("invalid argument")
-	ErrDependencyUnavailable = errors.New("dependency unavailable")
-	ErrBodySchemaUnsupported = errors.New("body schema unsupported")
-	ErrPostNotFound          = domain.ErrPostNotFound
-	ErrForbidden             = domain.ErrForbidden
-	ErrPostAlreadyPublished  = domain.ErrPostAlreadyPublished
-	ErrPostDeleted           = domain.ErrPostDeleted
-	ErrTitleRequired         = domain.ErrTitleRequired
-	ErrTitleTooLong          = domain.ErrTitleTooLong
-	ErrBodyRequired          = domain.ErrBodyRequired
-	ErrBodyTooShort          = domain.ErrBodyTooShort
-	ErrDraftConflict         = domain.ErrDraftConflict
-	ErrBodyUnavailable       = domain.ErrBodyUnavailable
-	ErrBodyInconsistent      = domain.ErrBodyInconsistent
+	ErrLoginRequired             = errors.New("login required")
+	ErrInvalidArgument           = errors.New("invalid argument")
+	ErrDependencyUnavailable     = errors.New("dependency unavailable")
+	ErrBodySchemaUnsupported     = errors.New("body schema unsupported")
+	ErrTaxonomyReferenceNotFound = ports.ErrTaxonomyReferenceNotFound
+	ErrMediaRefInvalid           = ports.ErrMediaRefInvalid
+	ErrCoverUnavailable          = ports.ErrCoverUnavailable
+	ErrPostNotFound              = domain.ErrPostNotFound
+	ErrForbidden                 = domain.ErrForbidden
+	ErrPostAlreadyPublished      = domain.ErrPostAlreadyPublished
+	ErrPostDeleted               = domain.ErrPostDeleted
+	ErrTitleRequired             = domain.ErrTitleRequired
+	ErrTitleTooLong              = domain.ErrTitleTooLong
+	ErrBodyRequired              = domain.ErrBodyRequired
+	ErrBodyTooShort              = domain.ErrBodyTooShort
+	ErrDraftConflict             = domain.ErrDraftConflict
+	ErrBodyUnavailable           = domain.ErrBodyUnavailable
+	ErrBodyInconsistent          = domain.ErrBodyInconsistent
 )
 
 type Actor struct {
@@ -179,7 +182,7 @@ func (s *Service) CreatePost(ctx context.Context, cmd CreatePostCommand) (Create
 		}
 		if s.files != nil && len(normalized.MediaRefs) > 0 {
 			if err := s.files.ValidateBodyMediaRefs(ctx, normalized.MediaRefs); err != nil {
-				return CreatePostResult{}, err
+				return CreatePostResult{}, mapFileValidationError(err, ErrMediaRefInvalid)
 			}
 		}
 
@@ -233,6 +236,9 @@ func (s *Service) CreatePost(ctx context.Context, cmd CreatePostCommand) (Create
 				CreatedAt: s.clock.Now(),
 			})
 		}
+		if errors.Is(err, ErrTaxonomyReferenceNotFound) {
+			return CreatePostResult{}, err
+		}
 		return CreatePostResult{}, fmt.Errorf("%w: create draft", ErrDependencyUnavailable)
 	}
 
@@ -272,7 +278,7 @@ func (s *Service) SaveDraftBody(ctx context.Context, cmd SaveDraftBodyCommand) (
 	}
 	if s.files != nil && len(normalized.MediaRefs) > 0 {
 		if err := s.files.ValidateBodyMediaRefs(ctx, normalized.MediaRefs); err != nil {
-			return SaveDraftBodyResult{}, err
+			return SaveDraftBodyResult{}, mapFileValidationError(err, ErrMediaRefInvalid)
 		}
 	}
 
@@ -446,12 +452,12 @@ func (s *Service) PublishPost(ctx context.Context, cmd PublishPostCommand) (Publ
 	if s.files != nil {
 		if len(normalized.MediaRefs) > 0 {
 			if err := s.files.ValidateBodyMediaRefs(ctx, normalized.MediaRefs); err != nil {
-				return PublishPostResult{}, err
+				return PublishPostResult{}, mapFileValidationError(err, ErrMediaRefInvalid)
 			}
 		}
 		if current.DraftCoverFileID != "" {
 			if err := s.files.ValidateCoverFile(ctx, current.DraftCoverFileID); err != nil {
-				return PublishPostResult{}, err
+				return PublishPostResult{}, mapFileValidationError(err, ErrCoverUnavailable)
 			}
 		}
 	}
@@ -656,6 +662,18 @@ func (s *Service) appendRepairTask(ctx context.Context, task ports.BodyRepairTas
 		return
 	}
 	_ = s.repair.AppendOutsideTx(ctx, task)
+}
+
+func mapFileValidationError(err error, semantic error) error {
+	if errors.Is(err, semantic) || errors.Is(err, ports.ErrMediaRefInvalid) || errors.Is(err, ports.ErrCoverUnavailable) {
+		return err
+	}
+	if errors.Is(err, ports.ErrDependencyUnavailable) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("%w: validate file reference", ErrDependencyUnavailable)
+	}
+	// File adapters own transport details. Unknown adapter errors are treated as
+	// dependency failures so Content never branches on provider error text.
+	return fmt.Errorf("%w: validate file reference: %w", ErrDependencyUnavailable, err)
 }
 
 func (s *Service) validateStoredBody(ctx context.Context, body ports.StoredBody) (ports.NormalizedBody, error) {

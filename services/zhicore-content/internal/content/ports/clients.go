@@ -2,7 +2,15 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+var (
+	ErrTaxonomyReferenceNotFound = errors.New("taxonomy reference not found")
+	ErrMediaRefInvalid           = errors.New("media reference invalid")
+	ErrCoverUnavailable          = errors.New("cover unavailable")
+	ErrDependencyUnavailable     = errors.New("dependency unavailable")
 )
 
 type UserProfileClient interface {

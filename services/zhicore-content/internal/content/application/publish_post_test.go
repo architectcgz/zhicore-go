@@ -199,6 +199,54 @@ func TestPublishPost(t *testing.T) {
 		}
 	})
 
+	t.Run("returns media reference error before snapshot write", func(t *testing.T) {
+		deps := newPublishPostDeps()
+		deps.parser.normalized.MediaRefs = []ports.MediaRef{{FileID: "file_missing"}}
+		deps.files.err = ports.ErrMediaRefInvalid
+		service := NewService(deps.asDeps())
+
+		_, err := service.PublishPost(context.Background(), publishCommand())
+
+		if !errors.Is(err, ErrMediaRefInvalid) {
+			t.Fatalf("error = %v, want ErrMediaRefInvalid", err)
+		}
+		if deps.bodies.writeSnapshotCalls != 0 || deps.posts.publishCalls != 0 {
+			t.Fatalf("snapshot/publish calls = %d/%d, want none", deps.bodies.writeSnapshotCalls, deps.posts.publishCalls)
+		}
+	})
+
+	t.Run("returns cover unavailable before snapshot write", func(t *testing.T) {
+		deps := newPublishPostDeps()
+		deps.posts.getResult.DraftCoverFileID = "cover_missing"
+		deps.files.err = ports.ErrCoverUnavailable
+		service := NewService(deps.asDeps())
+
+		_, err := service.PublishPost(context.Background(), publishCommand())
+
+		if !errors.Is(err, ErrCoverUnavailable) {
+			t.Fatalf("error = %v, want ErrCoverUnavailable", err)
+		}
+		if deps.bodies.writeSnapshotCalls != 0 || deps.posts.publishCalls != 0 {
+			t.Fatalf("snapshot/publish calls = %d/%d, want none", deps.bodies.writeSnapshotCalls, deps.posts.publishCalls)
+		}
+	})
+
+	t.Run("returns dependency unavailable for file service outage", func(t *testing.T) {
+		deps := newPublishPostDeps()
+		deps.parser.normalized.MediaRefs = []ports.MediaRef{{FileID: "file_1"}}
+		deps.files.err = ports.ErrDependencyUnavailable
+		service := NewService(deps.asDeps())
+
+		_, err := service.PublishPost(context.Background(), publishCommand())
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.bodies.writeSnapshotCalls != 0 || deps.posts.publishCalls != 0 {
+			t.Fatalf("snapshot/publish calls = %d/%d, want none", deps.bodies.writeSnapshotCalls, deps.posts.publishCalls)
+		}
+	})
+
 	t.Run("allows exactly ten effective runes", func(t *testing.T) {
 		deps := newPublishPostDeps()
 		deps.bodies.readResult.PlainText = "1234567890"
