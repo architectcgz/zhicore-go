@@ -144,6 +144,16 @@ type fakeContentService struct {
 	getBodyQuery  application.GetPublishedPostBodyQuery
 	getBodyResult application.GetPublishedPostBodyResult
 	getBodyErr    error
+
+	listOutboxCalls  int
+	listOutboxQuery  application.ListAdminOutboxEventsQuery
+	listOutboxResult application.ListAdminOutboxEventsResult
+	listOutboxErr    error
+
+	retryOutboxCalls   int
+	retryOutboxCommand application.RetryAdminOutboxEventCommand
+	retryOutboxResult  application.RetryAdminOutboxEventResult
+	retryOutboxErr     error
 }
 
 func (f *fakeContentService) CreatePost(ctx context.Context, cmd application.CreatePostCommand) (application.CreatePostResult, error) {
@@ -183,6 +193,24 @@ func (f *fakeContentService) GetPublishedPostBody(ctx context.Context, query app
 	return f.getBodyResult, nil
 }
 
+func (f *fakeContentService) ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error) {
+	f.listOutboxCalls++
+	f.listOutboxQuery = query
+	if f.listOutboxErr != nil {
+		return application.ListAdminOutboxEventsResult{}, f.listOutboxErr
+	}
+	return f.listOutboxResult, nil
+}
+
+func (f *fakeContentService) RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error) {
+	f.retryOutboxCalls++
+	f.retryOutboxCommand = command
+	if f.retryOutboxErr != nil {
+		return application.RetryAdminOutboxEventResult{}, f.retryOutboxErr
+	}
+	return f.retryOutboxResult, nil
+}
+
 type envelope[T any] struct {
 	Code      int    `json:"code"`
 	Message   string `json:"message"`
@@ -204,6 +232,11 @@ func withJSON(req *http.Request) *http.Request {
 
 func withUserID(req *http.Request, userID string) *http.Request {
 	req.Header.Set("X-User-Id", userID)
+	return req
+}
+
+func withRoles(req *http.Request, roles string) *http.Request {
+	req.Header.Set("X-User-Roles", roles)
 	return req
 }
 

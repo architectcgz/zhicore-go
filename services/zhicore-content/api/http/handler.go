@@ -17,6 +17,7 @@ import (
 
 const (
 	userIDHeaderName        = "X-User-Id"
+	userRolesHeaderName     = "X-User-Roles"
 	maxJSONRequestBodyBytes = 512 << 10
 )
 
@@ -27,6 +28,8 @@ type Service interface {
 	SaveDraftBody(ctx context.Context, cmd application.SaveDraftBodyCommand) (application.SaveDraftBodyResult, error)
 	PublishPost(ctx context.Context, cmd application.PublishPostCommand) (application.PublishPostResult, error)
 	GetPublishedPostBody(ctx context.Context, query application.GetPublishedPostBodyQuery) (application.GetPublishedPostBodyResult, error)
+	ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error)
+	RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error)
 }
 
 type Handler struct {
@@ -45,6 +48,8 @@ func (h *Handler) routes() {
 	h.router.PUT("/api/v1/posts/:postId/draft/body", h.saveDraftBody)
 	h.router.POST("/api/v1/posts/:postId/publish", h.publishPost)
 	h.router.GET("/api/v1/posts/:postId/body", h.getPostBody)
+	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
+	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
 }
 
 func (h *Handler) createPost(c *gin.Context) {
@@ -208,6 +213,97 @@ func (h *Handler) getPostBody(c *gin.Context) {
 	})
 }
 
+func (h *Handler) listAdminOutboxEvents(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := adminActorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrRoleRequired)
+		return
+	}
+	page, ok := optionalPositiveIntQuery(w, c, "page")
+	if !ok {
+		return
+	}
+	size, ok := optionalPositiveIntQuery(w, c, "size")
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ListAdminOutboxEvents(r.Context(), application.ListAdminOutboxEventsQuery{
+		Actor:     actor,
+		Status:    c.Query("status"),
+		EventType: c.Query("eventType"),
+		Page:      page,
+		Size:      size,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAdminOutbox)
+		return
+	}
+
+	items := make([]adminOutboxEventResp, 0, len(result.Items))
+	for _, item := range result.Items {
+		items = append(items, adminOutboxEventResp{
+			EventID:          item.EventID,
+			EventType:        item.EventType,
+			AggregateType:    item.AggregateType,
+			AggregateID:      item.AggregateID,
+			AggregateVersion: item.AggregateVersion,
+			Status:           item.Status,
+			RetryCount:       item.RetryCount,
+			LastError:        item.LastError,
+			OccurredAt:       formatTime(item.OccurredAt),
+			CreatedAt:        formatTime(item.CreatedAt),
+			UpdatedAt:        formatTime(item.UpdatedAt),
+		})
+	}
+	sharedhttp.WriteSuccess(w, adminOutboxListResp{
+		Items: items,
+		Page:  result.Page,
+		Size:  result.Size,
+		Total: result.Total,
+	})
+}
+
+func (h *Handler) retryAdminOutboxEvent(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := adminActorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrRoleRequired)
+		return
+	}
+	eventID := strings.TrimSpace(c.Param("eventId"))
+	if eventID == "" {
+		writeValidationError(w)
+		return
+	}
+
+	var req adminOutboxRetryReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		writeValidationError(w)
+		return
+	}
+
+	result, err := h.service.RetryAdminOutboxEvent(r.Context(), application.RetryAdminOutboxEventCommand{
+		Actor:   actor,
+		EventID: eventID,
+		Reason:  req.Reason,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAdminOutbox)
+		return
+	}
+	sharedhttp.WriteSuccess(w, adminOutboxRetryResp{
+		EventID:    result.EventID,
+		Status:     result.Status,
+		RetryCount: result.RetryCount,
+		RetriedAt:  formatTime(result.RetriedAt),
+	})
+}
+
 type createPostReq struct {
 	Title       string       `json:"title"`
 	Summary     string       `json:"summary"`
@@ -269,6 +365,38 @@ type postBodyResp struct {
 	CreatedAt     string          `json:"createdAt"`
 }
 
+type adminOutboxRetryReq struct {
+	Reason string `json:"reason"`
+}
+
+type adminOutboxListResp struct {
+	Items []adminOutboxEventResp `json:"items"`
+	Page  int                    `json:"page"`
+	Size  int                    `json:"size"`
+	Total int64                  `json:"total"`
+}
+
+type adminOutboxEventResp struct {
+	EventID          string `json:"eventId"`
+	EventType        string `json:"eventType"`
+	AggregateType    string `json:"aggregateType"`
+	AggregateID      string `json:"aggregateId"`
+	AggregateVersion int64  `json:"aggregateVersion"`
+	Status           string `json:"status"`
+	RetryCount       int    `json:"retryCount"`
+	LastError        string `json:"lastError"`
+	OccurredAt       string `json:"occurredAt"`
+	CreatedAt        string `json:"createdAt"`
+	UpdatedAt        string `json:"updatedAt"`
+}
+
+type adminOutboxRetryResp struct {
+	EventID    string `json:"eventId"`
+	Status     string `json:"status"`
+	RetryCount int    `json:"retryCount"`
+	RetriedAt  string `json:"retriedAt"`
+}
+
 func actorFromRequest(r *http.Request) (*application.Actor, bool) {
 	raw := strings.TrimSpace(r.Header.Get(userIDHeaderName))
 	if raw == "" {
@@ -278,7 +406,30 @@ func actorFromRequest(r *http.Request) (*application.Actor, bool) {
 	if err != nil || userID <= 0 {
 		return nil, false
 	}
-	return &application.Actor{UserID: userID}, true
+	return &application.Actor{UserID: userID, Roles: rolesFromRequest(r)}, true
+}
+
+func adminActorFromRequest(r *http.Request) (*application.Actor, bool) {
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		return nil, false
+	}
+	return actor, actor.HasRole("admin") || actor.HasRole("role_admin")
+}
+
+func rolesFromRequest(r *http.Request) []string {
+	raw := strings.TrimSpace(r.Header.Get(userRolesHeaderName))
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	roles := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if role := strings.TrimSpace(part); role != "" {
+			roles = append(roles, role)
+		}
+	}
+	return roles
 }
 
 func postIDFromPath(w http.ResponseWriter, c *gin.Context) (string, bool) {
@@ -312,6 +463,19 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, target any) bool {
 	return true
 }
 
+func optionalPositiveIntQuery(w http.ResponseWriter, c *gin.Context, key string) (int, bool) {
+	raw := strings.TrimSpace(c.Query(key))
+	if raw == "" {
+		return 0, true
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		writeValidationError(w)
+		return 0, false
+	}
+	return value, true
+}
+
 func isRequestBodyTooLarge(err error) bool {
 	var maxBytesErr *http.MaxBytesError
 	return errors.As(err, &maxBytesErr)
@@ -328,6 +492,7 @@ const (
 	errorOperationSaveDraftBody errorOperation = "saveDraftBody"
 	errorOperationPublishPost   errorOperation = "publishPost"
 	errorOperationGetPostBody   errorOperation = "getPostBody"
+	errorOperationAdminOutbox   errorOperation = "adminOutbox"
 )
 
 func writeMappedError(w http.ResponseWriter, err error, operation ...errorOperation) {
@@ -363,6 +528,8 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusBadRequest, 4023, "Cover unavailable", nil
 	case errors.Is(err, application.ErrDependencyUnavailable):
 		return http.StatusServiceUnavailable, 1004, "Service unavailable", nil
+	case errors.Is(err, application.ErrRoleRequired):
+		return http.StatusForbidden, 2007, "Role required", nil
 	case errors.Is(err, application.ErrBodySchemaUnsupported):
 		if operation == errorOperationSaveDraftBody || operation == errorOperationCreatePost {
 			return http.StatusBadRequest, 4024, "Body schema unsupported", nil
