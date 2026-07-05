@@ -42,6 +42,7 @@ Read this file for every `frontend-engineer` task. These are stable implementati
 10. Do not use Vue deep selectors as the default way to style child components. Use `:deep()` only for a narrow third-party or legacy component override after checking props, slots, wrapper classes, tokens, and CSS variables.
 11. Do not hardcode color values, font sizes, or spacing inline when the project already provides tokens or shared classes.
 12. Use lazy loading for images and always provide `alt` text.
+13. When adding a mobile or desktop alternate for the same product action, run this parity prompt before completion: "List every mirrored desktop/mobile control. For each one, verify the route or handler, auth/permission guard, badge/count source, loading/disabled state, aria label, focus state, and tests are aligned or intentionally different." Scope tests by owner when both variants render in the DOM.
 
 ## Data, copy, and implementation hygiene
 
