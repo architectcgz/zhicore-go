@@ -9,11 +9,10 @@ import (
 	"time"
 
 	kitrabbitmq "github.com/architectcgz/zhicore-go/libs/kit/rabbitmq"
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/application"
 	contentbody "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/body"
+	contentclients "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/clients"
 	contentpostgres "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/postgres"
 	contentrabbitmq "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/rabbitmq"
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -98,8 +97,15 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		Outbox:            outboxStore,
 		IntegrationEvents: contentrabbitmq.NewIntegrationEventPublisher(topicPublisher),
 		Clock:             systemClock{},
-		Users:             unavailableUserProfileClient{},
-		Files:             unavailableFileResourceClient{},
+		Users: contentclients.NewUserClient(contentclients.UserClientConfig{
+			BaseURL: cfg.UserService.BaseURL,
+			Timeout: cfg.HTTP.ReadTimeout,
+		}),
+		Files: contentclients.NewFileClient(contentclients.FileClientConfig{
+			BaseURL:     cfg.FileService.BaseURL,
+			Timeout:     cfg.HTTP.ReadTimeout,
+			MaxAttempts: 2,
+		}),
 	})
 	if err != nil {
 		closeNamedClosers(closers)
@@ -246,22 +252,6 @@ type systemClock struct{}
 
 func (systemClock) Now() time.Time {
 	return time.Now().UTC()
-}
-
-type unavailableUserProfileClient struct{}
-
-func (unavailableUserProfileClient) GetOwnerSnapshot(context.Context, int64) (ports.OwnerSnapshot, error) {
-	return ports.OwnerSnapshot{}, application.ErrDependencyUnavailable
-}
-
-type unavailableFileResourceClient struct{}
-
-func (unavailableFileResourceClient) ValidateBodyMediaRefs(context.Context, []ports.MediaRef) error {
-	return application.ErrDependencyUnavailable
-}
-
-func (unavailableFileResourceClient) ValidateCoverFile(context.Context, string) error {
-	return application.ErrDependencyUnavailable
 }
 
 func closeNamedClosers(closers []namedCloser) {

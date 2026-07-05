@@ -3,6 +3,7 @@ go 1.26.0
 use (
 	./libs/contracts
 	./libs/kit
+	./tests
 	./services/zhicore-admin
 	./services/zhicore-auth
 	./services/zhicore-comment

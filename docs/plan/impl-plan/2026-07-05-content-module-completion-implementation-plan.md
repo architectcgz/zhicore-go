@@ -421,11 +421,11 @@
 
 **测试立场：** TDD - 端到端 contract、真实依赖 wiring 和迁移闭环属于 R4。
 
-- [ ] **步骤 1：补 testkit 依赖 fixture**
+- [x] **步骤 1：补 testkit 依赖 fixture**
 
   在 `tests/testkit` 新增 PostgreSQL、MongoDB、HTTP server fixture。优先使用显式 DSN / URI；没有外部依赖时测试可 `t.Skip`，但不能伪造已验证。
 
-- [ ] **步骤 2：编写发布闭环 system test**
+- [x] **步骤 2：编写发布闭环 system test**
 
   新增 `tests/system/http/content_publish_flow_test.go`，覆盖 create -> save draft -> publish -> get body；断言可信 `X-User-Id`、envelope、postVersion、body hash 和 published body blocks。
 
@@ -433,21 +433,21 @@
 
   预期：失败。
 
-- [ ] **步骤 3：接入可运行 Content server fixture**
+- [x] **步骤 3：接入可运行 Content server fixture**
 
   使用 runtime module 和真实 PostgreSQL / MongoDB；User/File client 可用本地 `httptest` fake provider，但必须走真实 HTTP client adapter。
 
-- [ ] **步骤 4：补真实 MongoDB adapter 端到端验证**
+- [x] **步骤 4：补真实 MongoDB adapter 端到端验证**
 
   覆盖 Mongo write draft、write snapshot、read published、hash mismatch 和 context cancel。
 
-- [ ] **步骤 5：运行系统测试**
+- [x] **步骤 5：运行系统测试**
 
   运行：`go test ./tests/system/http -run TestContentPublishFlow`
 
   预期：通过；若缺真实依赖，review 证据必须明确列为未验证。
 
-- [ ] **步骤 6：提交 system test 切片**
+- [x] **步骤 6：提交 system test 切片**
 
   testkit 和具体 system test 可分开提交。
 
