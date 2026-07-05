@@ -17,7 +17,10 @@ type OutboxDispatchRepository struct {
 
 func NewOutboxDispatchRepository(db *sql.DB) *OutboxDispatchRepository {
 	return &OutboxDispatchRepository{
-		repo: kitoutbox.NewDispatchRepository(db, kitoutbox.Config{Table: "outbox_events"}),
+		repo: kitoutbox.NewDispatchRepository(db, kitoutbox.Config{
+			Table:                  "outbox_events",
+			AggregateVersionColumn: "aggregate_version",
+		}),
 	}
 }
 
@@ -33,7 +36,7 @@ func (r *OutboxDispatchRepository) ClaimPendingOutbox(ctx context.Context, optio
 	}
 	result := make([]ports.OutboxEvent, 0, len(events))
 	for _, event := range events {
-		result = append(result, ports.OutboxEvent{
+		outboxEvent := ports.OutboxEvent{
 			ID:             event.ID,
 			EventID:        event.EventID,
 			EventType:      event.EventType,
@@ -43,7 +46,11 @@ func (r *OutboxDispatchRepository) ClaimPendingOutbox(ctx context.Context, optio
 			PayloadJSON:    event.Payload,
 			OccurredAt:     event.OccurredAt,
 			AttemptCount:   event.AttemptCount,
-		})
+		}
+		if event.AggregateVersion != nil {
+			outboxEvent.AggregateVersion = *event.AggregateVersion
+		}
+		result = append(result, outboxEvent)
 	}
 	return result, nil
 }

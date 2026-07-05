@@ -62,6 +62,60 @@ func TestRepositoryClaimPendingUsesAtomicSkipLockedClaim(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestRepositoryClaimPendingCanReadConfiguredAggregateVersionColumn(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewDispatchRepository(db, Config{
+		Table:                  "outbox_events",
+		AggregateVersionColumn: "aggregate_version",
+	})
+
+	now := time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC)
+	occurredAt := now.Add(-time.Minute)
+
+	mock.ExpectQuery(regexp.QuoteMeta(repo.claimPendingSQL)).
+		WithArgs(now, now.Add(-30*time.Second), "dispatcher:test", 10).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id",
+			"event_id",
+			"event_type",
+			"payload_version",
+			"aggregate_type",
+			"aggregate_id",
+			"aggregate_version",
+			"payload_json",
+			"occurred_at",
+			"attempt_count",
+		}).AddRow(
+			int64(42),
+			"evt_post_published_1",
+			"content.post.published",
+			2,
+			"post",
+			"post_1",
+			int64(6),
+			[]byte(`{"postId":"post_1"}`),
+			occurredAt,
+			2,
+		))
+
+	events, err := repo.ClaimPending(context.Background(), ClaimOptions{
+		DispatcherID: "dispatcher:test",
+		BatchSize:    10,
+		StaleAfter:   30 * time.Second,
+		Now:          now,
+	})
+	if err != nil {
+		t.Fatalf("ClaimPending() error = %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1", len(events))
+	}
+	if events[0].AggregateVersion == nil || *events[0].AggregateVersion != 6 {
+		t.Fatalf("aggregate version = %#v, want 6", events[0].AggregateVersion)
+	}
+	assertExpectations(t, mock)
+}
+
 func TestRepositoryMarkPublishedDetectsLostClaim(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewDispatchRepository(db, Config{Table: "outbox_events"})

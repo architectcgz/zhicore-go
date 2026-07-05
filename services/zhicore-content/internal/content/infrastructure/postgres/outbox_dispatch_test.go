@@ -29,6 +29,7 @@ func TestOutboxDispatchRepositoryClaimPendingOutboxUsesAtomicSkipLockedClaim(t *
 			"payload_version",
 			"aggregate_type",
 			"aggregate_id",
+			"aggregate_version",
 			"payload_json",
 			"occurred_at",
 			"attempt_count",
@@ -39,6 +40,7 @@ func TestOutboxDispatchRepositoryClaimPendingOutboxUsesAtomicSkipLockedClaim(t *
 			2,
 			"post",
 			"post_1",
+			int64(6),
 			payload,
 			occurredAt,
 			2,
@@ -58,6 +60,9 @@ func TestOutboxDispatchRepositoryClaimPendingOutboxUsesAtomicSkipLockedClaim(t *
 	}
 	if got := events[0]; got.ID != 42 || got.EventID != "evt_post_published_1" || got.EventType != "content.post.published" || got.PayloadVersion != 2 || got.AttemptCount != 2 {
 		t.Fatalf("claimed event = %#v", got)
+	}
+	if events[0].AggregateVersion != 6 {
+		t.Fatalf("aggregate version = %d, want 6", events[0].AggregateVersion)
 	}
 	if string(events[0].PayloadJSON) != string(payload) || !events[0].OccurredAt.Equal(occurredAt) {
 		t.Fatalf("claimed payload/occurredAt = %s/%v", events[0].PayloadJSON, events[0].OccurredAt)

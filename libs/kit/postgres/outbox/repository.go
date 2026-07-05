@@ -29,20 +29,22 @@ type Execer interface {
 }
 
 type Config struct {
-	Table         string
-	VersionColumn string
+	Table                  string
+	VersionColumn          string
+	AggregateVersionColumn string
 }
 
 type Event struct {
-	ID             int64
-	EventID        string
-	EventType      string
-	PayloadVersion int
-	AggregateType  string
-	AggregateID    string
-	Payload        []byte
-	OccurredAt     time.Time
-	AttemptCount   int
+	ID               int64
+	EventID          string
+	EventType        string
+	PayloadVersion   int
+	AggregateType    string
+	AggregateID      string
+	AggregateVersion *int64
+	Payload          []byte
+	OccurredAt       time.Time
+	AttemptCount     int
 }
 
 type ClaimOptions struct {
@@ -82,19 +84,21 @@ type EventIDGenerator interface {
 }
 
 type DispatchRepository struct {
-	db               DB
-	claimPendingSQL  string
-	markPublishedSQL string
-	markFailedSQL    string
+	db                    DB
+	claimPendingSQL       string
+	claimAggregateVersion bool
+	markPublishedSQL      string
+	markFailedSQL         string
 }
 
 func NewDispatchRepository(db DB, config Config) *DispatchRepository {
 	sqls := buildSQL(config)
 	return &DispatchRepository{
-		db:               db,
-		claimPendingSQL:  sqls.claimPending,
-		markPublishedSQL: sqls.markPublished,
-		markFailedSQL:    sqls.markFailed,
+		db:                    db,
+		claimPendingSQL:       sqls.claimPending,
+		claimAggregateVersion: sqls.claimAggregateVersion,
+		markPublishedSQL:      sqls.markPublished,
+		markFailedSQL:         sqls.markFailed,
 	}
 }
 
@@ -109,18 +113,29 @@ func (r *DispatchRepository) ClaimPending(ctx context.Context, options ClaimOpti
 	var events []Event
 	for rows.Next() {
 		var event Event
-		if err := rows.Scan(
+		dest := []any{
 			&event.ID,
 			&event.EventID,
 			&event.EventType,
 			&event.PayloadVersion,
 			&event.AggregateType,
 			&event.AggregateID,
+		}
+		var aggregateVersion sql.NullInt64
+		if r.claimAggregateVersion {
+			dest = append(dest, &aggregateVersion)
+		}
+		dest = append(dest,
 			&event.Payload,
 			&event.OccurredAt,
 			&event.AttemptCount,
-		); err != nil {
+		)
+		if err := rows.Scan(dest...); err != nil {
 			return nil, fmt.Errorf("scan claimed outbox event: %w", err)
+		}
+		if aggregateVersion.Valid {
+			value := aggregateVersion.Int64
+			event.AggregateVersion = &value
 		}
 		events = append(events, event)
 	}
@@ -210,20 +225,29 @@ func requireClaimedRow(result sql.Result) error {
 }
 
 type sqlSet struct {
-	claimPending  string
-	markPublished string
-	markFailed    string
-	insert        string
+	claimPending          string
+	claimAggregateVersion bool
+	markPublished         string
+	markFailed            string
+	insert                string
 }
 
 func buildSQL(config Config) sqlSet {
 	table := identifier(config.Table, "outbox_events")
 	versionColumn := identifier(config.VersionColumn, "payload_version")
+	aggregateVersionSelect := ""
+	claimAggregateVersion := false
+	if config.AggregateVersionColumn != "" {
+		aggregateVersionColumn := identifier(config.AggregateVersionColumn, "")
+		aggregateVersionSelect = fmt.Sprintf("    e.%s,\n", aggregateVersionColumn)
+		claimAggregateVersion = true
+	}
 	return sqlSet{
-		claimPending:  fmt.Sprintf(claimPendingTemplate, table, table, versionColumn),
-		markPublished: fmt.Sprintf(markPublishedTemplate, table),
-		markFailed:    fmt.Sprintf(markFailedTemplate, table),
-		insert:        fmt.Sprintf(insertTemplate, table, versionColumn),
+		claimPending:          fmt.Sprintf(claimPendingTemplate, table, table, versionColumn, aggregateVersionSelect),
+		claimAggregateVersion: claimAggregateVersion,
+		markPublished:         fmt.Sprintf(markPublishedTemplate, table),
+		markFailed:            fmt.Sprintf(markFailedTemplate, table),
+		insert:                fmt.Sprintf(insertTemplate, table, versionColumn),
 	}
 }
 
@@ -271,6 +295,7 @@ RETURNING
     e.%s,
     e.aggregate_type,
     e.aggregate_id,
+%s
     e.payload_json,
     e.occurred_at,
     e.attempt_count`
