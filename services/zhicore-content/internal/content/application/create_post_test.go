@@ -474,6 +474,18 @@ func (f *fakeRepairTaskStore) AppendOutsideTx(ctx context.Context, task ports.Bo
 	return f.err
 }
 
+func (f *fakeRepairTaskStore) Claim(ctx context.Context, request ports.TaskClaimRequest) ([]ports.BodyRepairTaskClaim, error) {
+	return nil, f.err
+}
+
+func (f *fakeRepairTaskStore) MarkSucceeded(ctx context.Context, taskID int64, workerID string, resolvedAt time.Time) error {
+	return f.err
+}
+
+func (f *fakeRepairTaskStore) MarkFailed(ctx context.Context, failure ports.TaskFailure) error {
+	return f.err
+}
+
 type fakeOutboxPublisher struct {
 	appendCalls int
 	events      []ports.OutboxEvent
@@ -495,6 +507,18 @@ func (f *fakeCleanupTaskStore) Append(ctx context.Context, tx ports.Tx, task por
 func (f *fakeCleanupTaskStore) AppendOutsideTx(ctx context.Context, task ports.BodyCleanupTask) error {
 	f.appendOutsideCalls++
 	f.outsideTasks = append(f.outsideTasks, task)
+	return f.err
+}
+
+func (f *fakeCleanupTaskStore) Claim(ctx context.Context, request ports.TaskClaimRequest) ([]ports.BodyCleanupTaskClaim, error) {
+	return nil, f.err
+}
+
+func (f *fakeCleanupTaskStore) MarkSucceeded(ctx context.Context, taskID int64, workerID string, completedAt time.Time) error {
+	return f.err
+}
+
+func (f *fakeCleanupTaskStore) MarkFailed(ctx context.Context, failure ports.TaskFailure) error {
 	return f.err
 }
 

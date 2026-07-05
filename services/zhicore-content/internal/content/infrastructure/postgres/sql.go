@@ -155,3 +155,97 @@ ON CONFLICT (post_id, task_type, body_id) DO UPDATE
 SET expected_hash = EXCLUDED.expected_hash,
     observed_hash = EXCLUDED.observed_hash,
     updated_at = EXCLUDED.updated_at`
+
+const claimCleanupTasksSQL = `
+WITH picked AS (
+    SELECT id
+    FROM content_body_cleanup_tasks
+    WHERE (
+        status IN ('PENDING', 'FAILED')
+        AND (next_retry_at IS NULL OR next_retry_at <= $1)
+    )
+    OR (
+        status = 'PROCESSING'
+        AND claimed_at < $2
+    )
+    ORDER BY id
+    LIMIT $3
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE content_body_cleanup_tasks AS task
+SET status = 'PROCESSING',
+    claimed_by = $4,
+    claimed_at = $1,
+    attempt_count = attempt_count + 1,
+    updated_at = $1
+FROM picked
+WHERE task.id = picked.id
+RETURNING task.id, task.post_id, task.body_id, task.task_type, task.reason, task.attempt_count`
+
+const claimRepairTasksSQL = `
+WITH picked AS (
+    SELECT id
+    FROM content_body_repair_tasks
+    WHERE (
+        status IN ('PENDING', 'FAILED')
+        AND (next_retry_at IS NULL OR next_retry_at <= $1)
+    )
+    OR (
+        status = 'PROCESSING'
+        AND claimed_at < $2
+    )
+    ORDER BY id
+    LIMIT $3
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE content_body_repair_tasks AS task
+SET status = 'PROCESSING',
+    claimed_by = $4,
+    claimed_at = $1,
+    attempt_count = attempt_count + 1,
+    updated_at = $1
+FROM picked
+WHERE task.id = picked.id
+RETURNING task.id, task.post_id, task.body_id, task.task_type, task.expected_hash, task.observed_hash, task.attempt_count`
+
+const markCleanupTaskSucceededSQL = `
+UPDATE content_body_cleanup_tasks
+SET status = 'DONE',
+    completed_at = $3,
+    updated_at = $3
+WHERE id = $1
+  AND claimed_by = $2
+  AND status = 'PROCESSING'`
+
+const markRepairTaskSucceededSQL = `
+UPDATE content_body_repair_tasks
+SET status = 'DONE',
+    resolved_at = $3,
+    updated_at = $3
+WHERE id = $1
+  AND claimed_by = $2
+  AND status = 'PROCESSING'`
+
+const markCleanupTaskFailedSQL = `
+UPDATE content_body_cleanup_tasks
+SET status = CASE WHEN attempt_count >= $3 THEN 'DEAD' ELSE 'FAILED' END,
+    last_error = $4,
+    next_retry_at = CASE WHEN attempt_count >= $3 THEN NULL ELSE $5 END,
+    claimed_by = NULL,
+    claimed_at = NULL,
+    updated_at = $6
+WHERE id = $1
+  AND claimed_by = $2
+  AND status = 'PROCESSING'`
+
+const markRepairTaskFailedSQL = `
+UPDATE content_body_repair_tasks
+SET status = CASE WHEN attempt_count >= $3 THEN 'DEAD' ELSE 'FAILED' END,
+    last_error = $4,
+    next_retry_at = CASE WHEN attempt_count >= $3 THEN NULL ELSE $5 END,
+    claimed_by = NULL,
+    claimed_at = NULL,
+    updated_at = $6
+WHERE id = $1
+  AND claimed_by = $2
+  AND status = 'PROCESSING'`
