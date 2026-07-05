@@ -542,6 +542,8 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusServiceUnavailable, 1004, "Service unavailable", nil
 	case errors.Is(err, application.ErrPostNotFound):
 		return http.StatusNotFound, 4001, "Post not found", nil
+	case errors.Is(err, application.ErrOutboxEventNotFound):
+		return http.StatusNotFound, 1005, "Data not found", nil
 	case errors.Is(err, application.ErrForbidden):
 		return http.StatusForbidden, 2008, "Forbidden", nil
 	case errors.Is(err, application.ErrPostAlreadyPublished):

@@ -91,6 +91,7 @@ func Build(deps Deps) (*Module, error) {
 	cleanupStore := contentpostgres.NewCleanupTaskStore(store)
 	repairStore := contentpostgres.NewRepairTaskStore(store)
 	outboxDispatch := contentpostgres.NewOutboxDispatchRepository(deps.PostgresDB)
+	outboxAdmin := contentpostgres.NewOutboxAdminRepository(deps.PostgresDB)
 	service := application.NewService(application.Deps{
 		Posts:   store,
 		Queries: store,
@@ -98,6 +99,7 @@ func Build(deps Deps) (*Module, error) {
 		Cleanup: cleanupStore,
 		Repair:  repairStore,
 		Outbox:  deps.Outbox,
+		Admin:   outboxAdmin,
 		Users:   deps.Users,
 		Files:   deps.Files,
 		Tx:      contentpostgres.NewTransactionRunner(deps.PostgresDB),

@@ -31,6 +31,7 @@ var (
 	ErrDraftConflict             = domain.ErrDraftConflict
 	ErrBodyUnavailable           = domain.ErrBodyUnavailable
 	ErrBodyInconsistent          = domain.ErrBodyInconsistent
+	ErrOutboxEventNotFound       = ports.ErrOutboxEventNotFound
 )
 
 type Actor struct {

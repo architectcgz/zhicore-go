@@ -133,6 +133,21 @@ func TestAdminOutboxUseCases(t *testing.T) {
 			t.Fatalf("retry calls = %d, want none after validation failures", deps.outboxAdmin.retryCalls)
 		}
 	})
+
+	t.Run("preserves missing event error for handler mapping", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.outboxAdmin = &fakeOutboxAdminRepository{retryErr: ports.ErrOutboxEventNotFound}
+		service := NewService(deps.asDeps())
+
+		_, err := service.RetryAdminOutboxEvent(context.Background(), RetryAdminOutboxEventCommand{
+			Actor:   &Actor{UserID: 1001, Roles: []string{"admin"}},
+			EventID: "evt_missing",
+			Reason:  "manual replay",
+		})
+		if !errors.Is(err, ErrOutboxEventNotFound) {
+			t.Fatalf("RetryAdminOutboxEvent() error = %v, want ErrOutboxEventNotFound", err)
+		}
+	})
 }
 
 type fakeOutboxAdminRepository struct {
@@ -142,6 +157,7 @@ type fakeOutboxAdminRepository struct {
 	retryCalls   int
 	retryCommand ports.OutboxRetryCommand
 	retryResult  ports.OutboxRetryResult
+	retryErr     error
 }
 
 func (f *fakeOutboxAdminRepository) ListOutboxEvents(ctx context.Context, query ports.OutboxEventQuery) (ports.OutboxEventPage, error) {
@@ -153,5 +169,8 @@ func (f *fakeOutboxAdminRepository) ListOutboxEvents(ctx context.Context, query 
 func (f *fakeOutboxAdminRepository) RetryOutboxEvent(ctx context.Context, command ports.OutboxRetryCommand) (ports.OutboxRetryResult, error) {
 	f.retryCalls++
 	f.retryCommand = command
+	if f.retryErr != nil {
+		return ports.OutboxRetryResult{}, f.retryErr
+	}
 	return f.retryResult, nil
 }

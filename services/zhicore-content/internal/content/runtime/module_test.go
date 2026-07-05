@@ -76,6 +76,23 @@ func TestBuildReturnsHTTPHandlerWorkerDescriptionsAndHealthDetails(t *testing.T)
 	}
 }
 
+func TestBuildWiresAdminOutboxRepository(t *testing.T) {
+	module, err := Build(validDeps(t))
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/content/outbox-events?status=failed", nil)
+	req.Header.Set("X-User-Id", "1001")
+	req.Header.Set("X-User-Roles", "admin")
+	module.HTTPHandler.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusServiceUnavailable {
+		t.Fatalf("admin outbox route returned service unavailable, want runtime Admin repository wired; body=%s", rec.Body.String())
+	}
+}
+
 func validDeps(t *testing.T) Deps {
 	t.Helper()
 	db, _, err := sqlmock.New()

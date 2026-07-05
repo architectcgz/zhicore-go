@@ -158,3 +158,17 @@ func TestAdminOutboxRetryRequiresReason(t *testing.T) {
 		t.Fatalf("retryOutboxCalls = %d, want 0", service.retryOutboxCalls)
 	}
 }
+
+func TestAdminOutboxRetryMapsMissingEvent(t *testing.T) {
+	service := &fakeContentService{retryOutboxErr: application.ErrOutboxEventNotFound}
+	rr := httptest.NewRecorder()
+	req := withRoles(withUserID(withJSON(httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/admin/content/outbox-events/evt_missing/retry",
+		bytes.NewBufferString(`{"reason":"manual replay"}`),
+	)), "42"), "admin")
+
+	NewHandler(service).ServeHTTP(rr, req)
+
+	assertErrorEnvelope(t, rr, http.StatusNotFound, 1005)
+}
