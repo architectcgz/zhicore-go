@@ -128,6 +128,7 @@ libs/contracts/events/<domain>/
 
 - Provider 拥有 contract。
 - Consumer 可以依赖 contract，但 consumer 内部仍定义自己的 port。
+- 同步 HTTP client 的 path、caller operation、请求 DTO 和响应 DTO 放在 provider contract 目录；consumer adapter 只引用 contract 并适配自己的 port。
 - Provider DTO、数据库实体、repository filter、内部 command/query 不进入 `libs/contracts`。
 - 外部 HTTP API schema 放在 `services/<service>/api/http`，必须保持当前 API 兼容基线。
 - HTTP envelope、错误、数据类型、分页和事件的通用契约规则见 `docs/contracts/` 下的专题文档。

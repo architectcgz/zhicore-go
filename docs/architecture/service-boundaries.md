@@ -58,6 +58,8 @@ libs/contracts/clients/<provider-service>/
 
 Provider 拥有 contract，因为 provider 拥有 API 行为和数据生命周期。Consumer 可以依赖 contract，但不拥有 contract。
 
+同步 HTTP client 的 endpoint path、caller operation、请求 DTO 和响应 DTO 必须放在 provider contract 目录。Consumer 的 `infrastructure/clients` 只负责 HTTP 传输、错误映射和本地 consumer-side port 适配，不在本地复制跨服务 URL 或 DTO。
+
 ### 事件 contract
 
 跨服务事件 payload 放在：

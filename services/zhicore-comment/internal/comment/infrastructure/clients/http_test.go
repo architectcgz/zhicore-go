@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	usercontract "github.com/architectcgz/zhicore-go/libs/contracts/clients/user"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/ports"
 )
@@ -61,15 +62,15 @@ func TestUserClientChecksAvailabilityAndBlockedPairs(t *testing.T) {
 			t.Fatalf("caller service = %q", r.Header.Get("X-Caller-Service"))
 		}
 		switch r.URL.Path {
-		case "/api/v1/internal/users/batch-availability":
-			if r.Header.Get("X-Caller-Operation") != "comment.check_user_availability" {
+		case usercontract.BatchAvailabilityPath:
+			if r.Header.Get("X-Caller-Operation") != usercontract.OperationCommentCheckUserAvailability {
 				t.Fatalf("operation = %q", r.Header.Get("X-Caller-Operation"))
 			}
 			writeEnvelope(t, w, http.StatusOK, 200, map[string]any{
 				"items": []map[string]any{{"userId": float64(77), "available": true, "status": "ACTIVE"}},
 			})
-		case "/api/v1/internal/users/blocks/batch-check":
-			if r.Header.Get("X-Caller-Operation") != "comment.batch_check_blocked" {
+		case usercontract.BatchCheckBlockedPath:
+			if r.Header.Get("X-Caller-Operation") != usercontract.OperationCommentBatchCheckBlocked {
 				t.Fatalf("operation = %q", r.Header.Get("X-Caller-Operation"))
 			}
 			writeEnvelope(t, w, http.StatusOK, 200, map[string]any{
@@ -96,7 +97,7 @@ func TestUserClientChecksAvailabilityAndBlockedPairs(t *testing.T) {
 
 func TestUserClientBatchGetAuthorSummariesReturnsMissingAsUnavailable(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/internal/users/batch-simple" || r.Header.Get("X-Caller-Operation") != "comment.batch_get_author_summaries" {
+		if r.URL.Path != usercontract.BatchSimplePath || r.Header.Get("X-Caller-Operation") != usercontract.OperationCommentBatchGetAuthorSummaries {
 			t.Fatalf("request path/op = %s/%s", r.URL.Path, r.Header.Get("X-Caller-Operation"))
 		}
 		writeEnvelope(t, w, http.StatusOK, 200, map[string]any{

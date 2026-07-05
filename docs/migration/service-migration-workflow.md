@@ -120,6 +120,7 @@ services/<service>/api/http/endpoints/<operation>.md
 - repository / adapter 负责基础设施细节和底层错误翻译。
 - domain 只表达稳定业务规则，不依赖框架、数据库或 HTTP DTO。
 - 跨服务调用通过 `libs/contracts/clients/<provider-service>` 或 provider-owned contract。
+- 同步 HTTP client 不在 consumer 中硬编码跨服务 path、caller operation 或 DTO；这些契约放在 provider-owned `libs/contracts/clients/<provider-service>`，consumer adapter 只做传输和 port 适配。
 
 权限、错误、运行期和观测必须同步判断：
 

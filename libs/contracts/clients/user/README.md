@@ -2,7 +2,7 @@
 
 本目录放 `zhicore-user` 作为 provider 拥有的同步 typed client contract。
 
-当前状态为设计草案，尚未生成 Go client 代码。实现时应把本文件拆成稳定 DTO、client interface、HTTP adapter 和 contract tests。
+当前状态：已提供第一批 Go contract 常量和 DTO，用于内部 HTTP path、caller operation、批量用户摘要、可用性和拉黑关系检查。HTTP adapter 仍由 consumer 服务实现，User provider 后续注册 internal route 时必须复用本目录的 path / DTO。
 
 ## 使用场景
 
@@ -56,10 +56,11 @@ type Client interface {
 | `publicId` | string | 前端公开用户 ID。 |
 | `nickname` | string | 唯一昵称。非 ACTIVE 用户可返回占位昵称。 |
 | `avatarFileId` | string | Upload / File Service 文件引用，可空。 |
+| `avatarUrl` | string | 可选展示 URL。consumer 不应依赖该字段必定存在。 |
 | `profileVersion` | int64 | 公开资料版本。 |
 | `status` | string | `ACTIVE`、`DEACTIVATED`、`DELETED`。 |
 
-默认 typed client 不返回 `avatarUrl`。需要展示 URL 的前端聚合接口由 owning service 调 Upload/File Service 批量解析。
+需要稳定展示 URL 的前端聚合接口应由 owning service 调 Upload/File Service 批量解析；`avatarUrl` 只能作为 provider 已解析时的可选快照字段。
 
 批量查询中缺失用户不让整体失败，结果省略缺失项并返回 `missingUserIds`。
 

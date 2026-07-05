@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 
+	usercontract "github.com/architectcgz/zhicore-go/libs/contracts/clients/user"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/ports"
 )
@@ -81,8 +82,8 @@ func (c *UserClient) EnsureUserCanComment(ctx context.Context, userID domain.Use
 	if userID <= 0 {
 		return ports.ErrUserUnavailable
 	}
-	var data userAvailabilityBatch
-	err := c.base.doJSON(ctx, http.MethodPost, "/api/v1/internal/users/batch-availability", "comment.check_user_availability", userIDsRequest{UserIDs: []int64{int64(userID)}}, &data)
+	var data usercontract.AvailabilityBatchResponse
+	err := c.base.doJSON(ctx, http.MethodPost, usercontract.BatchAvailabilityPath, usercontract.OperationCommentCheckUserAvailability, usercontract.IDsRequest{UserIDs: []int64{int64(userID)}}, &data)
 	if err != nil {
 		return mapProviderError(err, providerUser)
 	}
@@ -103,8 +104,8 @@ func (c *UserClient) BatchGetAuthorSummaries(ctx context.Context, userIDs []doma
 	for _, id := range userIDs {
 		ids = append(ids, int64(id))
 	}
-	var data userSimpleBatch
-	if err := c.base.doJSON(ctx, http.MethodPost, "/api/v1/internal/users/batch-simple", "comment.batch_get_author_summaries", userIDsRequest{UserIDs: ids}, &data); err != nil {
+	var data usercontract.SimpleBatchResponse
+	if err := c.base.doJSON(ctx, http.MethodPost, usercontract.BatchSimplePath, usercontract.OperationCommentBatchGetAuthorSummaries, usercontract.IDsRequest{UserIDs: ids}, &data); err != nil {
 		return nil, mapProviderError(err, providerUser)
 	}
 	for _, item := range data.Items {
@@ -128,13 +129,13 @@ func (c *UserClient) BatchCheckBlocked(ctx context.Context, pairs []ports.BlockP
 	if len(pairs) == 0 {
 		return result, nil
 	}
-	req := blockPairsRequest{Pairs: make([]blockPairDTO, 0, len(pairs))}
+	req := usercontract.BlockPairsRequest{Pairs: make([]usercontract.BlockPair, 0, len(pairs))}
 	for _, pair := range pairs {
 		result[pair] = false
-		req.Pairs = append(req.Pairs, blockPairDTO{BlockerID: int64(pair.BlockerID), BlockedID: int64(pair.BlockedID)})
+		req.Pairs = append(req.Pairs, usercontract.BlockPair{BlockerID: int64(pair.BlockerID), BlockedID: int64(pair.BlockedID)})
 	}
-	var data blockPairsResponse
-	if err := c.base.doJSON(ctx, http.MethodPost, "/api/v1/internal/users/blocks/batch-check", "comment.batch_check_blocked", req, &data); err != nil {
+	var data usercontract.BlockPairsResponse
+	if err := c.base.doJSON(ctx, http.MethodPost, usercontract.BatchCheckBlockedPath, usercontract.OperationCommentBatchCheckBlocked, req, &data); err != nil {
 		return nil, mapProviderError(err, providerUser)
 	}
 	for _, item := range data.Items {
@@ -266,47 +267,6 @@ type contentCommentContext struct {
 	AuthorID    int64  `json:"authorId"`
 	Commentable bool   `json:"commentable"`
 	Status      string `json:"status"`
-}
-
-type userIDsRequest struct {
-	UserIDs []int64 `json:"userIds"`
-}
-
-type userAvailabilityBatch struct {
-	Items []struct {
-		UserID    int64  `json:"userId"`
-		Available bool   `json:"available"`
-		Status    string `json:"status"`
-	} `json:"items"`
-}
-
-type userSimpleBatch struct {
-	Items []struct {
-		UserID       int64  `json:"userId"`
-		PublicID     string `json:"publicId"`
-		Nickname     string `json:"nickname"`
-		AvatarFileID string `json:"avatarFileId"`
-		AvatarURL    string `json:"avatarUrl"`
-		Status       string `json:"status"`
-	} `json:"items"`
-	MissingUserIDs []int64 `json:"missingUserIds"`
-}
-
-type blockPairsRequest struct {
-	Pairs []blockPairDTO `json:"pairs"`
-}
-
-type blockPairDTO struct {
-	BlockerID int64 `json:"blockerId"`
-	BlockedID int64 `json:"blockedId"`
-}
-
-type blockPairsResponse struct {
-	Items []struct {
-		BlockerID int64 `json:"blockerId"`
-		BlockedID int64 `json:"blockedId"`
-		Blocked   bool  `json:"blocked"`
-	} `json:"items"`
 }
 
 type commentMediaRequest struct {
