@@ -23,10 +23,10 @@ const (
 var (
 	ErrInvalidRequest         = errors.New("invalid request")
 	ErrDependencyUnavailable  = ports.ErrDependencyUnavailable
-	ErrPostNotFound           = errors.New("post not found")
+	ErrPostNotFound           = ports.ErrPostNotFound
 	ErrCommentNotFound        = domain.ErrCommentNotFound
 	ErrForbidden              = errors.New("forbidden")
-	ErrInteractionBlocked     = errors.New("interaction blocked")
+	ErrInteractionBlocked     = ports.ErrInteractionBlocked
 	ErrCommentContentRequired = domain.ErrCommentContentRequired
 	ErrCommentContentTooLong  = domain.ErrCommentContentTooLong
 	ErrParentCommentNotFound  = domain.ErrParentCommentNotFound
@@ -391,6 +391,87 @@ func (s *Service) ListTopLevelCommentsByPage(ctx context.Context, query ListTopL
 	}, nil
 }
 
+func (s *Service) GetCommentDetail(ctx context.Context, query GetCommentDetailQuery) (CommentItem, error) {
+	postID := domain.PostID(strings.TrimSpace(string(query.PostID)))
+	commentID, err := s.ids.Decode(domain.PublicCommentID(strings.TrimSpace(string(query.CommentID))))
+	if postID == "" || err != nil {
+		return CommentItem{}, ErrInvalidRequest
+	}
+	if _, err := s.contentPosts.CheckPostCommentable(ctx, postID); err != nil {
+		return CommentItem{}, mapGuardError(err)
+	}
+	record, err := s.queries.GetCommentDetail(ctx, postID, commentID)
+	if err != nil {
+		return CommentItem{}, mapCommentLookupError(err)
+	}
+
+	authorSummaries := s.loadAuthorSummaries(ctx, []ports.TopLevelCommentRecord{record})
+	viewerLiked, err := s.loadViewerLiked(ctx, domain.UserID(query.ViewerUserID), []ports.TopLevelCommentRecord{record})
+	if err != nil {
+		return CommentItem{}, mapGuardError(err)
+	}
+	return s.commentItem(record, authorSummaries[record.Comment.AuthorID], viewerLiked), nil
+}
+
+func (s *Service) ListRepliesByPage(ctx context.Context, query ListRepliesByPageQuery) (CommentPage, error) {
+	normalized, err := normalizeRepliesPageQuery(query)
+	if err != nil {
+		return CommentPage{}, err
+	}
+	postID := domain.PostID(strings.TrimSpace(string(normalized.PostID)))
+	rootID, err := s.ids.Decode(domain.PublicCommentID(strings.TrimSpace(string(normalized.RootCommentID))))
+	if err != nil {
+		return CommentPage{}, ErrInvalidRequest
+	}
+	if _, err := s.contentPosts.CheckPostCommentable(ctx, postID); err != nil {
+		return CommentPage{}, mapGuardError(err)
+	}
+	records, err := s.queries.ListRepliesByPage(ctx, ports.ReplyCommentPageQuery{
+		PostID: postID,
+		RootID: rootID,
+		Page:   normalized.Page,
+		Size:   normalized.Size,
+		Sort:   domainCommentSort(normalized.Sort),
+	})
+	if err != nil {
+		return CommentPage{}, mapDomainValidationError(err)
+	}
+
+	authorSummaries := s.loadAuthorSummaries(ctx, records.Items)
+	viewerLiked, err := s.loadViewerLiked(ctx, domain.UserID(normalized.ViewerUserID), records.Items)
+	if err != nil {
+		return CommentPage{}, mapGuardError(err)
+	}
+	items := make([]CommentItem, 0, len(records.Items))
+	for _, record := range records.Items {
+		items = append(items, s.commentItem(record, authorSummaries[record.Comment.AuthorID], viewerLiked))
+	}
+	return CommentPage{
+		Items: items,
+		Page:  normalized.Page,
+		Size:  normalized.Size,
+		Total: records.Total,
+		Pages: pageCount(records.Total, normalized.Size),
+	}, nil
+}
+
+func (s *Service) GetLikeStatus(ctx context.Context, query GetLikeStatusQuery) (LikeStatusResult, error) {
+	postID := domain.PostID(strings.TrimSpace(string(query.PostID)))
+	commentID, err := s.ids.Decode(domain.PublicCommentID(strings.TrimSpace(string(query.CommentID))))
+	viewerID := domain.UserID(query.ViewerUserID)
+	if postID == "" || viewerID <= 0 || err != nil {
+		return LikeStatusResult{}, ErrInvalidRequest
+	}
+	if _, err := s.queries.GetCommentDetail(ctx, postID, commentID); err != nil {
+		return LikeStatusResult{}, mapCommentLookupError(err)
+	}
+	liked, err := s.queries.BatchGetViewerLiked(ctx, viewerID, []domain.CommentID{commentID})
+	if err != nil {
+		return LikeStatusResult{}, mapGuardError(err)
+	}
+	return LikeStatusResult{PostID: PostID(postID), CommentID: PublicCommentID(s.ids.Encode(commentID)), Liked: liked[commentID]}, nil
+}
+
 func (s *Service) DeleteComment(ctx context.Context, cmd DeleteCommentCommand) (DeleteCommentResult, error) {
 	return s.deleteComment(ctx, deleteCommentInput{
 		actorUserID:   cmd.ActorUserID,
@@ -580,6 +661,29 @@ func normalizeTopLevelPageQuery(query ListTopLevelCommentsQuery) (ListTopLevelCo
 	case CommentSortRecommended, CommentSortHot, CommentSortTime:
 	default:
 		return ListTopLevelCommentsQuery{}, ErrInvalidRequest
+	}
+	return query, nil
+}
+
+func normalizeRepliesPageQuery(query ListRepliesByPageQuery) (ListRepliesByPageQuery, error) {
+	query.PostID = PostID(strings.TrimSpace(string(query.PostID)))
+	query.RootCommentID = PublicCommentID(strings.TrimSpace(string(query.RootCommentID)))
+	if query.Page == 0 {
+		query.Page = 1
+	}
+	if query.Size == 0 {
+		query.Size = 20
+	}
+	if query.Sort == "" {
+		query.Sort = CommentSortHot
+	}
+	if query.PostID == "" || query.RootCommentID == "" || query.Page < 1 || query.Size < 1 || query.Size > 100 {
+		return ListRepliesByPageQuery{}, ErrInvalidRequest
+	}
+	switch query.Sort {
+	case CommentSortHot, CommentSortTime:
+	default:
+		return ListRepliesByPageQuery{}, ErrInvalidRequest
 	}
 	return query, nil
 }
@@ -895,6 +999,12 @@ func mapGuardError(err error) error {
 	switch {
 	case errors.Is(err, ports.ErrDependencyUnavailable):
 		return ErrDependencyUnavailable
+	case errors.Is(err, ports.ErrPostNotFound):
+		return ErrPostNotFound
+	case errors.Is(err, ports.ErrUserUnavailable):
+		return ErrForbidden
+	case errors.Is(err, ports.ErrInteractionBlocked):
+		return ErrInteractionBlocked
 	default:
 		return err
 	}

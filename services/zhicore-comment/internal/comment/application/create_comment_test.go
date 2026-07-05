@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -318,6 +319,7 @@ type fakeCommentStore struct {
 	queryResults       map[domain.CommentSort][]domain.Comment
 	viewerLiked        map[domain.CommentID]bool
 	lastListQuery      ports.TopLevelCommentPageQuery
+	lastReplyQuery     ports.ReplyCommentPageQuery
 	createCalls        int
 	inTx               bool
 	parentLoadedInTx   bool
@@ -556,6 +558,61 @@ func (s *fakeCommentStore) ListTopLevelComments(ctx context.Context, query ports
 		items = append(items, ports.TopLevelCommentRecord{Comment: comment, Stats: s.stats[comment.ID]})
 	}
 	return ports.TopLevelCommentPage{Items: items}, nil
+}
+
+func (s *fakeCommentStore) GetCommentDetail(ctx context.Context, postID domain.PostID, commentID domain.CommentID) (ports.TopLevelCommentRecord, error) {
+	comment, ok := s.comments[commentID]
+	if !ok || comment.PostID != postID || comment.Status != domain.CommentStatusNormal {
+		return ports.TopLevelCommentRecord{}, domain.ErrCommentNotFound
+	}
+	return ports.TopLevelCommentRecord{Comment: comment, Stats: s.stats[comment.ID]}, nil
+}
+
+func (s *fakeCommentStore) ListRepliesByPage(ctx context.Context, query ports.ReplyCommentPageQuery) (ports.ReplyCommentPage, error) {
+	s.lastReplyQuery = query
+	root, ok := s.comments[query.RootID]
+	if !ok || root.PostID != query.PostID || !root.IsTopLevel() || root.Status != domain.CommentStatusNormal {
+		return ports.ReplyCommentPage{}, domain.ErrRootCommentNotFound
+	}
+
+	replies := make([]domain.Comment, 0)
+	for _, comment := range s.comments {
+		if comment.PostID == query.PostID && comment.RootID == query.RootID && comment.IsReply() && comment.Status == domain.CommentStatusNormal {
+			replies = append(replies, comment)
+		}
+	}
+	sort.Slice(replies, func(i, j int) bool {
+		if query.Sort == domain.CommentSortHot {
+			left := s.stats[replies[i].ID].LikeCount
+			right := s.stats[replies[j].ID].LikeCount
+			if left != right {
+				return left > right
+			}
+		}
+		return replies[i].ID < replies[j].ID
+	})
+
+	page := query.Page
+	if page < 1 {
+		page = 1
+	}
+	size := query.Size
+	if size < 1 {
+		size = 20
+	}
+	offset := (page - 1) * size
+	if offset > len(replies) {
+		offset = len(replies)
+	}
+	end := offset + size
+	if end > len(replies) {
+		end = len(replies)
+	}
+	items := make([]ports.TopLevelCommentRecord, 0, end-offset)
+	for _, comment := range replies[offset:end] {
+		items = append(items, ports.TopLevelCommentRecord{Comment: comment, Stats: s.stats[comment.ID]})
+	}
+	return ports.ReplyCommentPage{Items: items, Total: int64(len(replies))}, nil
 }
 
 func (s *fakeCommentStore) BatchGetViewerLiked(ctx context.Context, viewerID domain.UserID, commentIDs []domain.CommentID) (map[domain.CommentID]bool, error) {

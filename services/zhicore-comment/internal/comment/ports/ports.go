@@ -8,7 +8,12 @@ import (
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 )
 
-var ErrDependencyUnavailable = errors.New("dependency unavailable")
+var (
+	ErrDependencyUnavailable = errors.New("dependency unavailable")
+	ErrPostNotFound          = errors.New("post not found")
+	ErrUserUnavailable       = errors.New("user unavailable")
+	ErrInteractionBlocked    = errors.New("interaction blocked")
+)
 
 type CommentablePost struct {
 	PostID            domain.PostID
@@ -86,8 +91,23 @@ type TopLevelCommentRecord struct {
 	Stats   domain.CommentStats
 }
 
+type ReplyCommentPageQuery struct {
+	PostID domain.PostID
+	RootID domain.CommentID
+	Page   int
+	Size   int
+	Sort   domain.CommentSort
+}
+
+type ReplyCommentPage struct {
+	Items []TopLevelCommentRecord
+	Total int64
+}
+
 type CommentQueryRepository interface {
+	GetCommentDetail(ctx context.Context, postID domain.PostID, commentID domain.CommentID) (TopLevelCommentRecord, error)
 	ListTopLevelComments(ctx context.Context, query TopLevelCommentPageQuery) (TopLevelCommentPage, error)
+	ListRepliesByPage(ctx context.Context, query ReplyCommentPageQuery) (ReplyCommentPage, error)
 	BatchGetViewerLiked(ctx context.Context, viewerID domain.UserID, commentIDs []domain.CommentID) (map[domain.CommentID]bool, error)
 }
 
