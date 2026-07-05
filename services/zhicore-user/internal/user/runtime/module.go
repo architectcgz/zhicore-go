@@ -30,6 +30,7 @@ func Build(deps Deps) (*Module, error) {
 	root := http.NewServeMux()
 	root.Handle("GET /health/live", liveHandler)
 	root.Handle("GET /health/ready", readyHandler)
+	root.Handle("/api/v1/internal/users/", userHandler)
 	root.Handle("/api/v1/users/", userHandler)
 
 	return &Module{

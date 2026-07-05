@@ -42,6 +42,31 @@ type Profile struct {
 	UpdatedAt              time.Time
 }
 
+type UserPair struct {
+	ActorID  UserID
+	TargetID UserID
+}
+
+type UserSimple struct {
+	UserID         UserID
+	PublicID       PublicID
+	Nickname       string
+	AvatarFileID   string
+	ProfileVersion int64
+	Status         UserStatus
+}
+
+type BatchUserSimpleResult struct {
+	Items          []UserSimple
+	MissingUserIDs []UserID
+}
+
+type UserAvailability struct {
+	UserID    UserID
+	Available bool
+	Status    UserStatus
+}
+
 type ProfileSeed struct {
 	UserID                 UserID
 	PublicID               PublicID
@@ -126,6 +151,17 @@ func profileFromDomain(profile domain.Profile) Profile {
 		DeactivatedAt:          profile.DeactivatedAt,
 		CreatedAt:              profile.CreatedAt,
 		UpdatedAt:              profile.UpdatedAt,
+	}
+}
+
+func userSimpleFromDomain(profile domain.Profile) UserSimple {
+	return UserSimple{
+		UserID:         UserID(profile.UserID),
+		PublicID:       PublicID(profile.PublicID),
+		Nickname:       profile.Nickname,
+		AvatarFileID:   profile.AvatarFileID,
+		ProfileVersion: profile.ProfileVersion,
+		Status:         UserStatus(profile.Status),
 	}
 }
 

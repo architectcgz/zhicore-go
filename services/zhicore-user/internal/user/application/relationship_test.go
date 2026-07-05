@@ -206,11 +206,11 @@ func TestRelationshipQueriesUseInternalIDsAndCursorPages(t *testing.T) {
 		t.Fatalf("following page = %#v, want targetB", following)
 	}
 
-	checked, err := service.BatchCheckBlocked(context.Background(), []domain.UserPair{{ActorID: actor.UserID, TargetID: targetA.UserID}, {ActorID: targetA.UserID, TargetID: targetB.UserID}})
+	checked, err := service.BatchCheckBlocked(context.Background(), []UserPair{{ActorID: UserID(actor.UserID), TargetID: UserID(targetA.UserID)}, {ActorID: UserID(targetA.UserID), TargetID: UserID(targetB.UserID)}})
 	if err != nil {
 		t.Fatalf("BatchCheckBlocked() error = %v", err)
 	}
-	if !checked[domain.UserPair{ActorID: actor.UserID, TargetID: targetA.UserID}] || checked[domain.UserPair{ActorID: targetA.UserID, TargetID: targetB.UserID}] {
+	if !checked[UserPair{ActorID: UserID(actor.UserID), TargetID: UserID(targetA.UserID)}] || checked[UserPair{ActorID: UserID(targetA.UserID), TargetID: UserID(targetB.UserID)}] {
 		t.Fatalf("BatchCheckBlocked() = %#v", checked)
 	}
 

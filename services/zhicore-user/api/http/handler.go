@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode"
 
+	usercontract "github.com/architectcgz/zhicore-go/libs/contracts/clients/user"
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/application"
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,9 @@ type Service interface {
 	UnfollowUser(ctx context.Context, cmd application.UnfollowUserCommand) error
 	ListFollowers(ctx context.Context, query application.ListFollowersQuery) (application.RelationshipProfilePage, error)
 	ListFollowing(ctx context.Context, query application.ListFollowingQuery) (application.RelationshipProfilePage, error)
+	BatchGetUserSimple(ctx context.Context, userIDs []application.UserID) (application.BatchUserSimpleResult, error)
+	BatchGetUserAvailability(ctx context.Context, userIDs []application.UserID) ([]application.UserAvailability, error)
+	BatchCheckBlocked(ctx context.Context, pairs []application.UserPair) (map[application.UserPair]bool, error)
 }
 
 type AvatarURLResolver interface {
@@ -67,6 +71,9 @@ func (h *Handler) routes() {
 	h.router.DELETE("/api/v1/users/:publicId/follow", h.unfollowUser)
 	h.router.GET("/api/v1/users/:publicId/followers", h.listFollowers)
 	h.router.GET("/api/v1/users/:publicId/following", h.listFollowing)
+	h.router.POST(usercontract.BatchAvailabilityPath, h.batchAvailability)
+	h.router.POST(usercontract.BatchSimplePath, h.batchSimple)
+	h.router.POST(usercontract.BatchCheckBlockedPath, h.batchCheckBlocked)
 }
 
 func (h *Handler) getMe(c *gin.Context) {
@@ -246,6 +253,87 @@ func (h *Handler) listFollowing(c *gin.Context) {
 	sharedhttp.WriteSuccess(c.Writer, h.relationshipPageResponse(c.Request.Context(), page))
 }
 
+func (h *Handler) batchAvailability(c *gin.Context) {
+	if !requireInternalCaller(c, usercontract.OperationCommentCheckUserAvailability) {
+		return
+	}
+	var req usercontract.IDsRequest
+	if !decodeJSONBody(c, &req) {
+		return
+	}
+	items, err := h.service.BatchGetUserAvailability(c.Request.Context(), applicationUserIDs(req.UserIDs))
+	if err != nil {
+		writeMappedError(c, err)
+		return
+	}
+	resp := usercontract.AvailabilityBatchResponse{Items: make([]usercontract.AvailabilityItem, 0, len(items))}
+	for _, item := range items {
+		resp.Items = append(resp.Items, usercontract.AvailabilityItem{
+			UserID:    int64(item.UserID),
+			Available: item.Available,
+			Status:    string(item.Status),
+		})
+	}
+	sharedhttp.WriteSuccess(c.Writer, resp)
+}
+
+func (h *Handler) batchSimple(c *gin.Context) {
+	if !requireInternalCaller(c, usercontract.OperationCommentBatchGetAuthorSummaries) {
+		return
+	}
+	var req usercontract.IDsRequest
+	if !decodeJSONBody(c, &req) {
+		return
+	}
+	result, err := h.service.BatchGetUserSimple(c.Request.Context(), applicationUserIDs(req.UserIDs))
+	if err != nil {
+		writeMappedError(c, err)
+		return
+	}
+	resp := usercontract.SimpleBatchResponse{
+		Items:          make([]usercontract.SimpleUser, 0, len(result.Items)),
+		MissingUserIDs: make([]int64, 0, len(result.MissingUserIDs)),
+	}
+	for _, item := range result.Items {
+		resp.Items = append(resp.Items, h.simpleUserResponse(c.Request.Context(), item))
+	}
+	for _, userID := range result.MissingUserIDs {
+		resp.MissingUserIDs = append(resp.MissingUserIDs, int64(userID))
+	}
+	sharedhttp.WriteSuccess(c.Writer, resp)
+}
+
+func (h *Handler) batchCheckBlocked(c *gin.Context) {
+	if !requireInternalCaller(c, usercontract.OperationCommentBatchCheckBlocked) {
+		return
+	}
+	var req usercontract.BlockPairsRequest
+	if !decodeJSONBody(c, &req) {
+		return
+	}
+	pairs := make([]application.UserPair, 0, len(req.Pairs))
+	for _, pair := range req.Pairs {
+		pairs = append(pairs, application.UserPair{
+			ActorID:  application.UserID(pair.BlockerID),
+			TargetID: application.UserID(pair.BlockedID),
+		})
+	}
+	checked, err := h.service.BatchCheckBlocked(c.Request.Context(), pairs)
+	if err != nil {
+		writeMappedError(c, err)
+		return
+	}
+	resp := usercontract.BlockPairsResponse{Items: make([]usercontract.BlockPairResult, 0, len(pairs))}
+	for _, pair := range pairs {
+		resp.Items = append(resp.Items, usercontract.BlockPairResult{
+			BlockerID: int64(pair.ActorID),
+			BlockedID: int64(pair.TargetID),
+			Blocked:   checked[pair],
+		})
+	}
+	sharedhttp.WriteSuccess(c.Writer, resp)
+}
+
 type userProfileResp struct {
 	PublicID               string `json:"publicId"`
 	Nickname               string `json:"nickname"`
@@ -296,6 +384,43 @@ func (h *Handler) relationshipPageResponse(ctx context.Context, page application
 	}
 }
 
+func (h *Handler) simpleUserResponse(ctx context.Context, item application.UserSimple) usercontract.SimpleUser {
+	resp := usercontract.SimpleUser{
+		UserID:         int64(item.UserID),
+		PublicID:       string(item.PublicID),
+		Nickname:       item.Nickname,
+		AvatarFileID:   item.AvatarFileID,
+		ProfileVersion: item.ProfileVersion,
+		Status:         string(item.Status),
+	}
+	if h.resolver == nil || strings.TrimSpace(item.AvatarFileID) == "" {
+		return resp
+	}
+	url, err := h.resolver.ResolveAvatarURL(ctx, item.AvatarFileID)
+	if err == nil && strings.TrimSpace(url) != "" {
+		resp.AvatarURL = url
+	}
+	return resp
+}
+
+func applicationUserIDs(ids []int64) []application.UserID {
+	result := make([]application.UserID, 0, len(ids))
+	for _, id := range ids {
+		result = append(result, application.UserID(id))
+	}
+	return result
+}
+
+func requireInternalCaller(c *gin.Context, operation string) bool {
+	// Internal endpoints 只接受带调用方身份和目标操作的服务间请求；
+	// 缺失时按依赖不可用处理，避免退化成 public anonymous 行为。
+	if strings.TrimSpace(c.GetHeader("X-Caller-Service")) == "" || c.GetHeader("X-Caller-Operation") != operation {
+		writeMappedError(c, application.ErrDependencyUnavailable)
+		return false
+	}
+	return true
+}
+
 func publicIDFromPath(c *gin.Context) (application.PublicID, bool) {
 	publicID := strings.TrimSpace(c.Param("publicId"))
 	if !isValidPublicID(publicID) {
@@ -342,6 +467,19 @@ func decodeRelationshipPageQuery(c *gin.Context) (string, int, bool) {
 		limit = parsed
 	}
 	return cursor, limit, true
+}
+
+func decodeJSONBody(c *gin.Context, out any) bool {
+	decoder := json.NewDecoder(c.Request.Body)
+	if err := decoder.Decode(out); err != nil {
+		writeValidationError(c)
+		return false
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeValidationError(c)
+		return false
+	}
+	return true
 }
 
 func decodeUpdateProfileBody(c *gin.Context, cmd *application.UpdateProfileCommand) bool {

@@ -220,6 +220,17 @@ func (s *fakeProfileStore) GetByPublicID(ctx context.Context, publicID domain.Pu
 	return profile, nil
 }
 
+func (s *fakeProfileStore) BatchGetByUserIDs(ctx context.Context, userIDs []domain.UserID) ([]domain.Profile, error) {
+	s.traceCall("query.batch_get_by_user_ids")
+	result := make([]domain.Profile, 0, len(userIDs))
+	for _, userID := range userIDs {
+		if profile, ok := s.byUserID[userID]; ok {
+			result = append(result, profile)
+		}
+	}
+	return result, nil
+}
+
 func (s *fakeProfileStore) store(profile domain.Profile) {
 	s.byAccount[profile.AccountID] = profile
 	s.byUserID[profile.UserID] = profile

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	usercontract "github.com/architectcgz/zhicore-go/libs/contracts/clients/user"
 	userhttp "github.com/architectcgz/zhicore-go/services/zhicore-user/api/http"
 	"github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/application"
 )
@@ -49,6 +50,16 @@ func TestBuildReturnsUserAndHealthHandlers(t *testing.T) {
 	module.HTTPHandler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get me status = %d, want 200", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, usercontract.BatchAvailabilityPath, strings.NewReader(`{"userIds":[42]}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Caller-Service", "zhicore-comment")
+	req.Header.Set("X-Caller-Operation", usercontract.OperationCommentCheckUserAvailability)
+	rec = httptest.NewRecorder()
+	module.HTTPHandler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("internal availability status = %d, want 200; body=%s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -94,6 +105,18 @@ func (s stubService) ListFollowers(context.Context, application.ListFollowersQue
 
 func (s stubService) ListFollowing(context.Context, application.ListFollowingQuery) (application.RelationshipProfilePage, error) {
 	return application.RelationshipProfilePage{}, errors.New("not implemented")
+}
+
+func (s stubService) BatchGetUserSimple(context.Context, []application.UserID) (application.BatchUserSimpleResult, error) {
+	return application.BatchUserSimpleResult{}, nil
+}
+
+func (s stubService) BatchGetUserAvailability(context.Context, []application.UserID) ([]application.UserAvailability, error) {
+	return []application.UserAvailability{{UserID: 42, Available: true, Status: application.UserStatusActive}}, nil
+}
+
+func (s stubService) BatchCheckBlocked(context.Context, []application.UserPair) (map[application.UserPair]bool, error) {
+	return map[application.UserPair]bool{}, nil
 }
 
 func testProfile() application.Profile {

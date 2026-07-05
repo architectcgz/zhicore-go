@@ -28,6 +28,7 @@ type ProfileRepository interface {
 type ProfileQueryRepository interface {
 	GetByUserID(ctx context.Context, userID domain.UserID) (domain.Profile, error)
 	GetByPublicID(ctx context.Context, publicID domain.PublicID) (domain.Profile, error)
+	BatchGetByUserIDs(ctx context.Context, userIDs []domain.UserID) ([]domain.Profile, error)
 }
 
 type FileReferenceClient interface {

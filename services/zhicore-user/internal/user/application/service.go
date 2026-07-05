@@ -320,11 +320,80 @@ func (s *Service) ListFollowing(ctx context.Context, query ListFollowingQuery) (
 	})
 }
 
-func (s *Service) BatchCheckBlocked(ctx context.Context, pairs []domain.UserPair) (map[domain.UserPair]bool, error) {
+func (s *Service) BatchCheckBlocked(ctx context.Context, pairs []UserPair) (map[UserPair]bool, error) {
 	if err := s.requireRelationshipRepository(); err != nil {
 		return nil, err
 	}
-	return s.relationships.BatchCheckBlocked(ctx, pairs)
+	domainPairs := make([]domain.UserPair, 0, len(pairs))
+	for _, pair := range pairs {
+		domainPairs = append(domainPairs, domain.UserPair{ActorID: domainUserID(pair.ActorID), TargetID: domainUserID(pair.TargetID)})
+	}
+	checked, err := s.relationships.BatchCheckBlocked(ctx, domainPairs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[UserPair]bool, len(pairs))
+	for _, pair := range pairs {
+		result[pair] = checked[domain.UserPair{ActorID: domainUserID(pair.ActorID), TargetID: domainUserID(pair.TargetID)}]
+	}
+	return result, nil
+}
+
+func (s *Service) BatchGetUserSimple(ctx context.Context, userIDs []UserID) (BatchUserSimpleResult, error) {
+	domainIDs := make([]domain.UserID, 0, len(userIDs))
+	for _, userID := range userIDs {
+		domainIDs = append(domainIDs, domainUserID(userID))
+	}
+	profiles, err := s.queries.BatchGetByUserIDs(ctx, domainIDs)
+	if err != nil {
+		return BatchUserSimpleResult{}, err
+	}
+	byID := make(map[domain.UserID]domain.Profile, len(profiles))
+	for _, profile := range profiles {
+		byID[profile.UserID] = profile
+	}
+	result := BatchUserSimpleResult{Items: make([]UserSimple, 0, len(profiles))}
+	seenMissing := map[UserID]bool{}
+	for _, userID := range userIDs {
+		profile, ok := byID[domainUserID(userID)]
+		if !ok {
+			// provider 响应按调用方请求顺序返回已命中的用户，同时 missing 列表去重，
+			// 方便下游用原请求集合做幂等补偿或降级展示。
+			if !seenMissing[userID] {
+				result.MissingUserIDs = append(result.MissingUserIDs, userID)
+				seenMissing[userID] = true
+			}
+			continue
+		}
+		result.Items = append(result.Items, userSimpleFromDomain(profile))
+	}
+	return result, nil
+}
+
+func (s *Service) BatchGetUserAvailability(ctx context.Context, userIDs []UserID) ([]UserAvailability, error) {
+	simple, err := s.BatchGetUserSimple(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[UserID]UserSimple, len(simple.Items))
+	for _, item := range simple.Items {
+		byID[item.UserID] = item
+	}
+	result := make([]UserAvailability, 0, len(userIDs))
+	for _, userID := range userIDs {
+		item, ok := byID[userID]
+		if !ok {
+			// 缺失用户视为不可用于评论互动，但保留 userId 让调用方能定位被拒绝对象。
+			result = append(result, UserAvailability{UserID: userID})
+			continue
+		}
+		result = append(result, UserAvailability{
+			UserID:    userID,
+			Available: item.Status == UserStatusActive,
+			Status:    item.Status,
+		})
+	}
+	return result, nil
 }
 
 func (s *Service) CheckFollowing(ctx context.Context, followerID, followingID domain.UserID) (bool, error) {

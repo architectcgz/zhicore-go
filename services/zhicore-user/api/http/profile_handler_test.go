@@ -300,6 +300,9 @@ type fakeProfileService struct {
 	listBlockedErr   error
 	listFollowersErr error
 	listFollowingErr error
+	batchSimpleErr   error
+	availabilityErr  error
+	batchBlockedErr  error
 
 	getMyCalls         int
 	getPublicCalls     int
@@ -311,6 +314,9 @@ type fakeProfileService struct {
 	listBlockedCalls   int
 	listFollowersCalls int
 	listFollowingCalls int
+	batchSimpleCalls   int
+	availabilityCalls  int
+	batchBlockedCalls  int
 
 	getMyUserID        application.UserID
 	getPublicID        application.PublicID
@@ -322,6 +328,12 @@ type fakeProfileService struct {
 	listBlockedQuery   application.ListBlockedUsersQuery
 	listFollowersQuery application.ListFollowersQuery
 	listFollowingQuery application.ListFollowingQuery
+	batchSimpleIDs     []application.UserID
+	availabilityIDs    []application.UserID
+	batchBlockedPairs  []application.UserPair
+	batchSimpleResult  application.BatchUserSimpleResult
+	availabilityItems  []application.UserAvailability
+	batchBlockedResult map[application.UserPair]bool
 }
 
 func (f *fakeProfileService) GetMyProfile(_ context.Context, userID application.UserID) (application.Profile, error) {
@@ -400,6 +412,33 @@ func (f *fakeProfileService) ListFollowing(_ context.Context, query application.
 		return application.RelationshipProfilePage{}, f.listFollowingErr
 	}
 	return f.relationshipPage, nil
+}
+
+func (f *fakeProfileService) BatchGetUserSimple(_ context.Context, userIDs []application.UserID) (application.BatchUserSimpleResult, error) {
+	f.batchSimpleCalls++
+	f.batchSimpleIDs = append([]application.UserID(nil), userIDs...)
+	if f.batchSimpleErr != nil {
+		return application.BatchUserSimpleResult{}, f.batchSimpleErr
+	}
+	return f.batchSimpleResult, nil
+}
+
+func (f *fakeProfileService) BatchGetUserAvailability(_ context.Context, userIDs []application.UserID) ([]application.UserAvailability, error) {
+	f.availabilityCalls++
+	f.availabilityIDs = append([]application.UserID(nil), userIDs...)
+	if f.availabilityErr != nil {
+		return nil, f.availabilityErr
+	}
+	return f.availabilityItems, nil
+}
+
+func (f *fakeProfileService) BatchCheckBlocked(_ context.Context, pairs []application.UserPair) (map[application.UserPair]bool, error) {
+	f.batchBlockedCalls++
+	f.batchBlockedPairs = append([]application.UserPair(nil), pairs...)
+	if f.batchBlockedErr != nil {
+		return nil, f.batchBlockedErr
+	}
+	return f.batchBlockedResult, nil
 }
 
 type fakeAvatarURLResolver struct {

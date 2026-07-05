@@ -3,9 +3,12 @@ module github.com/architectcgz/zhicore-go/services/zhicore-user
 go 1.26.0
 
 require (
+	github.com/architectcgz/zhicore-go/libs/contracts v0.0.0
 	github.com/architectcgz/zhicore-go/libs/kit v0.0.0
 	github.com/gin-gonic/gin v1.12.0
 )
+
+replace github.com/architectcgz/zhicore-go/libs/contracts => ../../libs/contracts
 
 replace github.com/architectcgz/zhicore-go/libs/kit => ../../libs/kit
 
