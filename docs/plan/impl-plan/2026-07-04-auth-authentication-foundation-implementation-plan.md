@@ -119,11 +119,11 @@
 
   `cmd/server/main.go` 只负责进程入口和运行时装配；业务 wiring 放 `internal/auth/runtime/module.go`。
 
-- [ ] **步骤 3：验证 migration**
+- [x] **步骤 3：验证 migration**
 
   有本地数据库时验证 `up` 和最近一条 `down 1`。无数据库时记录未运行原因，不声称通过。
 
-  未运行：本机已安装 `migrate` CLI，但当前环境缺少 `ZHICORE_AUTH_POSTGRES_DSN`，因此没有执行 `up` / `down 1`。
+  已验证：使用隔离临时 PostgreSQL 容器 `postgres:16.14-alpine` 和 `migrate/migrate:v4.18.3` 执行真实 `up -> down 1 -> up`。最终 `schema_migrations` 为 `20260704090000 dirty=false`，关键表 `auth_accounts`、`auth_password_credentials`、`auth_account_roles`、`auth_refresh_sessions`、`auth_used_refresh_tokens`、`auth_security_operations`、`auth_audit_logs`、`auth_outbox_events` 和关键唯一索引已确认存在。
 
 - [x] **步骤 4：运行收口测试**
 
