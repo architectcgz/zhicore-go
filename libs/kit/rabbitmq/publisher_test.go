@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func TestTopicPublisherPublishesPersistentJSONMessage(t *testing.T) {
-	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: true}}}
+	channel := &fakeChannel{deferred: &fakeDeferredConfirmation{ack: true}}
 	publisher := NewTopicPublisher(channel, "zhicore.events")
 	timestamp := time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC)
 
@@ -47,7 +48,7 @@ func TestTopicPublisherPublishesPersistentJSONMessage(t *testing.T) {
 }
 
 func TestTopicPublisherPropagatesPublishError(t *testing.T) {
-	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: true}}, err: errors.New("broker closed")}
+	channel := &fakeChannel{err: errors.New("broker closed")}
 	publisher := NewTopicPublisher(channel, "zhicore.events")
 
 	err := publisher.PublishJSON(context.Background(), Message{
@@ -63,7 +64,7 @@ func TestTopicPublisherPropagatesPublishError(t *testing.T) {
 }
 
 func TestTopicPublisherReturnsErrorWhenBrokerNacksPublish(t *testing.T) {
-	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: false}}}
+	channel := &fakeChannel{deferred: &fakeDeferredConfirmation{ack: false}}
 	publisher := NewTopicPublisher(channel, "zhicore.events")
 
 	err := publisher.PublishJSON(context.Background(), Message{
@@ -79,12 +80,10 @@ func TestTopicPublisherReturnsErrorWhenBrokerNacksPublish(t *testing.T) {
 }
 
 func TestTopicPublisherReturnsErrorWhenConfirmWaitExpires(t *testing.T) {
-	channel := &fakeChannel{}
+	channel := &fakeChannel{deferred: &fakeDeferredConfirmation{waitForContext: true}}
 	publisher := NewTopicPublisher(channel, "zhicore.events", WithPublishConfirmTimeout(time.Nanosecond))
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
-	defer cancel()
 
-	err := publisher.PublishJSON(ctx, Message{
+	err := publisher.PublishJSON(context.Background(), Message{
 		RoutingKey: "comment.created",
 		MessageID:  "evt_1",
 		Type:       "comment.created",
@@ -102,9 +101,8 @@ type fakeChannel struct {
 	publishing    amqp.Publishing
 	err           error
 	confirmCalled bool
-	confirms      []amqp.Confirmation
 	confirmErr    error
-	notify        chan amqp.Confirmation
+	deferred      DeferredConfirmation
 }
 
 func (f *fakeChannel) Confirm(noWait bool) error {
@@ -112,17 +110,33 @@ func (f *fakeChannel) Confirm(noWait bool) error {
 	return f.confirmErr
 }
 
-func (f *fakeChannel) NotifyPublish(confirm chan amqp.Confirmation) chan amqp.Confirmation {
-	f.notify = confirm
-	return confirm
-}
-
-func (f *fakeChannel) PublishWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
+func (f *fakeChannel) PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg amqp.Publishing) (DeferredConfirmation, error) {
 	f.exchange = exchange
 	f.routingKey = key
 	f.publishing = msg
-	for _, confirmation := range f.confirms {
-		f.notify <- confirmation
+	if f.err != nil {
+		return nil, f.err
 	}
-	return f.err
+	if f.deferred == nil {
+		f.deferred = &fakeDeferredConfirmation{ack: true}
+	}
+	return f.deferred, nil
+}
+
+type fakeDeferredConfirmation struct {
+	ack            bool
+	waitForContext bool
+	waitCalls      int
+	mu             sync.Mutex
+}
+
+func (f *fakeDeferredConfirmation) WaitContext(ctx context.Context) (bool, error) {
+	f.mu.Lock()
+	f.waitCalls++
+	f.mu.Unlock()
+	if f.waitForContext {
+		<-ctx.Done()
+		return false, ctx.Err()
+	}
+	return f.ack, nil
 }

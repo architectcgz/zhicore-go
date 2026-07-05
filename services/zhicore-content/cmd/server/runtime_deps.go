@@ -72,7 +72,7 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 	readiness := newReadinessSwitch()
 	rabbitmq := rabbitMQHealthChecker{connection: rabbitConn, channel: rabbitChannel}
 	topicPublisher := kitrabbitmq.NewTopicPublisher(
-		rabbitChannel,
+		kitrabbitmq.NewAMQPChannel(rabbitChannel),
 		cfg.RabbitMQ.Exchange,
 		kitrabbitmq.WithPublishConfirmTimeout(cfg.RabbitMQ.PublishConfirmTimeout),
 	)

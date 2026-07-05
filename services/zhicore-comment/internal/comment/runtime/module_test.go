@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	kitrabbitmq "github.com/architectcgz/zhicore-go/libs/kit/rabbitmq"
 	commenthttp "github.com/architectcgz/zhicore-go/services/zhicore-comment/api/http"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/application"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -120,13 +121,13 @@ func (*stubAMQPChannel) Confirm(bool) error {
 	return nil
 }
 
-func (*stubAMQPChannel) NotifyPublish(confirm chan amqp.Confirmation) chan amqp.Confirmation {
-	return confirm
+func (*stubAMQPChannel) PublishWithDeferredConfirmWithContext(context.Context, string, string, bool, bool, amqp.Publishing) (kitrabbitmq.DeferredConfirmation, error) {
+	return stubDeferredConfirmation{}, nil
 }
 
-func (*stubAMQPChannel) PublishWithContext(context.Context, string, string, bool, bool, amqp.Publishing) error {
-	return nil
-}
+type stubDeferredConfirmation struct{}
+
+func (stubDeferredConfirmation) WaitContext(context.Context) (bool, error) { return true, nil }
 
 type fixedClock struct {
 	now time.Time
