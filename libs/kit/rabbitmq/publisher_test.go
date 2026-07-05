@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func TestTopicPublisherPublishesPersistentJSONMessage(t *testing.T) {
-	channel := &fakeChannel{}
+	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: true}}}
 	publisher := NewTopicPublisher(channel, "zhicore.events")
 	timestamp := time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC)
 
@@ -28,6 +29,9 @@ func TestTopicPublisherPublishesPersistentJSONMessage(t *testing.T) {
 	if channel.exchange != "zhicore.events" || channel.routingKey != "comment.liked" {
 		t.Fatalf("publish target = %q/%q", channel.exchange, channel.routingKey)
 	}
+	if !channel.confirmCalled {
+		t.Fatal("Confirm() was not called before publishing")
+	}
 	if channel.publishing.DeliveryMode != amqp.Persistent {
 		t.Fatalf("delivery mode = %d, want persistent", channel.publishing.DeliveryMode)
 	}
@@ -43,7 +47,7 @@ func TestTopicPublisherPublishesPersistentJSONMessage(t *testing.T) {
 }
 
 func TestTopicPublisherPropagatesPublishError(t *testing.T) {
-	channel := &fakeChannel{err: errors.New("broker closed")}
+	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: true}}, err: errors.New("broker closed")}
 	publisher := NewTopicPublisher(channel, "zhicore.events")
 
 	err := publisher.PublishJSON(context.Background(), Message{
@@ -58,16 +62,67 @@ func TestTopicPublisherPropagatesPublishError(t *testing.T) {
 	}
 }
 
+func TestTopicPublisherReturnsErrorWhenBrokerNacksPublish(t *testing.T) {
+	channel := &fakeChannel{confirms: []amqp.Confirmation{{Ack: false}}}
+	publisher := NewTopicPublisher(channel, "zhicore.events")
+
+	err := publisher.PublishJSON(context.Background(), Message{
+		RoutingKey: "comment.created",
+		MessageID:  "evt_1",
+		Type:       "comment.created",
+		Timestamp:  time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
+		Body:       []byte(`{}`),
+	})
+	if err == nil || !strings.Contains(err.Error(), "not acknowledged") {
+		t.Fatalf("PublishJSON() error = %v, want nack error", err)
+	}
+}
+
+func TestTopicPublisherReturnsErrorWhenConfirmWaitExpires(t *testing.T) {
+	channel := &fakeChannel{}
+	publisher := NewTopicPublisher(channel, "zhicore.events", WithPublishConfirmTimeout(time.Nanosecond))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	err := publisher.PublishJSON(ctx, Message{
+		RoutingKey: "comment.created",
+		MessageID:  "evt_1",
+		Type:       "comment.created",
+		Timestamp:  time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
+		Body:       []byte(`{}`),
+	})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("PublishJSON() error = %v, want context deadline exceeded", err)
+	}
+}
+
 type fakeChannel struct {
-	exchange   string
-	routingKey string
-	publishing amqp.Publishing
-	err        error
+	exchange      string
+	routingKey    string
+	publishing    amqp.Publishing
+	err           error
+	confirmCalled bool
+	confirms      []amqp.Confirmation
+	confirmErr    error
+	notify        chan amqp.Confirmation
+}
+
+func (f *fakeChannel) Confirm(noWait bool) error {
+	f.confirmCalled = true
+	return f.confirmErr
+}
+
+func (f *fakeChannel) NotifyPublish(confirm chan amqp.Confirmation) chan amqp.Confirmation {
+	f.notify = confirm
+	return confirm
 }
 
 func (f *fakeChannel) PublishWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
 	f.exchange = exchange
 	f.routingKey = key
 	f.publishing = msg
+	for _, confirmation := range f.confirms {
+		f.notify <- confirmation
+	}
 	return f.err
 }

@@ -116,6 +116,14 @@ func (stubWorker) Run(context.Context) error { return nil }
 
 type stubAMQPChannel struct{}
 
+func (*stubAMQPChannel) Confirm(bool) error {
+	return nil
+}
+
+func (*stubAMQPChannel) NotifyPublish(confirm chan amqp.Confirmation) chan amqp.Confirmation {
+	return confirm
+}
+
 func (*stubAMQPChannel) PublishWithContext(context.Context, string, string, bool, bool, amqp.Publishing) error {
 	return nil
 }
