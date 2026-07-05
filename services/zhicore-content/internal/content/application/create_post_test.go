@@ -254,26 +254,28 @@ func TestCreatePost(t *testing.T) {
 }
 
 type createPostDeps struct {
-	posts   *fakePostRepository
-	bodies  *fakeBodyStore
-	cleanup *fakeCleanupTaskStore
-	repair  *fakeRepairTaskStore
-	outbox  *fakeOutboxPublisher
-	users   *fakeUserProfileClient
-	files   *fakeFileResourceClient
-	tx      *fakeTxRunner
-	parser  *fakeBodyParser
-	clock   fakeClock
+	posts       *fakePostRepository
+	bodies      *fakeBodyStore
+	cleanup     *fakeCleanupTaskStore
+	repair      *fakeRepairTaskStore
+	outbox      *fakeOutboxPublisher
+	outboxAdmin *fakeOutboxAdminRepository
+	users       *fakeUserProfileClient
+	files       *fakeFileResourceClient
+	tx          *fakeTxRunner
+	parser      *fakeBodyParser
+	clock       fakeClock
 }
 
 func newCreatePostDeps() createPostDeps {
 	return createPostDeps{
-		posts:   &fakePostRepository{},
-		bodies:  &fakeBodyStore{},
-		cleanup: &fakeCleanupTaskStore{},
-		repair:  &fakeRepairTaskStore{},
-		outbox:  &fakeOutboxPublisher{},
-		files:   &fakeFileResourceClient{},
+		posts:       &fakePostRepository{},
+		bodies:      &fakeBodyStore{},
+		cleanup:     &fakeCleanupTaskStore{},
+		repair:      &fakeRepairTaskStore{},
+		outbox:      &fakeOutboxPublisher{},
+		outboxAdmin: &fakeOutboxAdminRepository{},
+		files:       &fakeFileResourceClient{},
 		users: &fakeUserProfileClient{snapshot: ports.OwnerSnapshot{
 			DisplayName:    "architect",
 			AvatarFileID:   "file_avatar",
@@ -293,6 +295,7 @@ func (d createPostDeps) asDeps() Deps {
 		Cleanup: d.cleanup,
 		Repair:  d.repair,
 		Outbox:  d.outbox,
+		Admin:   d.outboxAdmin,
 		Users:   d.users,
 		Files:   d.files,
 		Tx:      d.tx,

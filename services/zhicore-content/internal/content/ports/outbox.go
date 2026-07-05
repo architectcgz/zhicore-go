@@ -13,6 +13,11 @@ type IntegrationEventPublisher interface {
 	PublishIntegrationEvent(ctx context.Context, event OutboxEvent) error
 }
 
+type OutboxAdminRepository interface {
+	ListOutboxEvents(ctx context.Context, query OutboxEventQuery) (OutboxEventPage, error)
+	RetryOutboxEvent(ctx context.Context, command OutboxRetryCommand) (OutboxRetryResult, error)
+}
+
 type OutboxEvent struct {
 	ID               int64
 	EventID          string
@@ -53,4 +58,46 @@ type OutboxDispatchRepository interface {
 	ClaimPendingOutbox(ctx context.Context, options OutboxClaimOptions) ([]OutboxEvent, error)
 	MarkOutboxPublished(ctx context.Context, published OutboxPublished) error
 	MarkOutboxFailed(ctx context.Context, failure OutboxFailure) error
+}
+
+type OutboxEventQuery struct {
+	Status    string
+	EventType string
+	Page      int
+	Size      int
+}
+
+type OutboxEventRecord struct {
+	EventID          string
+	EventType        string
+	AggregateType    string
+	AggregateID      string
+	AggregateVersion int64
+	Status           string
+	AttemptCount     int
+	LastError        string
+	OccurredAt       time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type OutboxEventPage struct {
+	Items []OutboxEventRecord
+	Page  int
+	Size  int
+	Total int64
+}
+
+type OutboxRetryCommand struct {
+	EventID     string
+	AdminUserID int64
+	Reason      string
+	RetriedAt   time.Time
+}
+
+type OutboxRetryResult struct {
+	EventID    string
+	Status     string
+	RetryCount int
+	RetriedAt  time.Time
 }

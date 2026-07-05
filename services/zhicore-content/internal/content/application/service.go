@@ -15,6 +15,7 @@ var (
 	ErrLoginRequired             = errors.New("login required")
 	ErrInvalidArgument           = errors.New("invalid argument")
 	ErrDependencyUnavailable     = errors.New("dependency unavailable")
+	ErrRoleRequired              = errors.New("role required")
 	ErrBodySchemaUnsupported     = errors.New("body schema unsupported")
 	ErrTaxonomyReferenceNotFound = ports.ErrTaxonomyReferenceNotFound
 	ErrMediaRefInvalid           = ports.ErrMediaRefInvalid
@@ -34,6 +35,7 @@ var (
 
 type Actor struct {
 	UserID int64
+	Roles  []string
 }
 
 // Application exposes body DTO aliases for inbound adapters so HTTP handlers
@@ -118,6 +120,7 @@ type Service struct {
 	cleanup ports.BodyCleanupTaskStore
 	repair  ports.BodyRepairTaskStore
 	outbox  ports.OutboxPublisher
+	admin   ports.OutboxAdminRepository
 	users   ports.UserProfileClient
 	files   ports.FileResourceClient
 	tx      ports.TransactionRunner
@@ -132,6 +135,7 @@ type Deps struct {
 	Cleanup ports.BodyCleanupTaskStore
 	Repair  ports.BodyRepairTaskStore
 	Outbox  ports.OutboxPublisher
+	Admin   ports.OutboxAdminRepository
 	Users   ports.UserProfileClient
 	Files   ports.FileResourceClient
 	Tx      ports.TransactionRunner
@@ -147,6 +151,7 @@ func NewService(deps Deps) *Service {
 		cleanup: deps.Cleanup,
 		repair:  deps.Repair,
 		outbox:  deps.Outbox,
+		admin:   deps.Admin,
 		users:   deps.Users,
 		files:   deps.Files,
 		tx:      deps.Tx,
