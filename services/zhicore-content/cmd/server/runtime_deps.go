@@ -68,11 +68,12 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 			Mongo:     mongoPingChecker{client: mongoClient},
 			RabbitMQ:  rabbitmq,
 		},
-		Parser: contentbody.NewV1BodyParser(contentbody.DefaultBodyValidationPolicy()),
-		Outbox: unavailableOutboxPublisher{},
-		Clock:  systemClock{},
-		Users:  unavailableUserProfileClient{},
-		Files:  unavailableFileResourceClient{},
+		Parser:            contentbody.NewV1BodyParser(contentbody.DefaultBodyValidationPolicy()),
+		Outbox:            unavailableOutboxPublisher{},
+		IntegrationEvents: unavailableIntegrationEventPublisher{},
+		Clock:             systemClock{},
+		Users:             unavailableUserProfileClient{},
+		Files:             unavailableFileResourceClient{},
 	})
 	if err != nil {
 		closeNamedClosers(closers)
@@ -217,6 +218,12 @@ func (systemClock) Now() time.Time {
 type unavailableOutboxPublisher struct{}
 
 func (unavailableOutboxPublisher) Append(context.Context, ports.Tx, ports.OutboxEvent) error {
+	return application.ErrDependencyUnavailable
+}
+
+type unavailableIntegrationEventPublisher struct{}
+
+func (unavailableIntegrationEventPublisher) PublishIntegrationEvent(context.Context, ports.OutboxEvent) error {
 	return application.ErrDependencyUnavailable
 }
 

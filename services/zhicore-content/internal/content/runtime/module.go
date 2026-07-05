@@ -42,16 +42,17 @@ type HealthCheckers struct {
 }
 
 type Deps struct {
-	Config         *Config
-	PostgresDB     *sql.DB
-	BodyCollection *drivermongo.Collection
-	Health         HealthCheckers
-	Workers        []WorkerDescriptor
-	Parser         ports.BodyParserRegistry
-	Outbox         ports.OutboxPublisher
-	Clock          ports.Clock
-	Users          ports.UserProfileClient
-	Files          ports.FileResourceClient
+	Config            *Config
+	PostgresDB        *sql.DB
+	BodyCollection    *drivermongo.Collection
+	Health            HealthCheckers
+	Workers           []WorkerDescriptor
+	Parser            ports.BodyParserRegistry
+	Outbox            ports.OutboxPublisher
+	IntegrationEvents ports.IntegrationEventPublisher
+	Clock             ports.Clock
+	Users             ports.UserProfileClient
+	Files             ports.FileResourceClient
 }
 
 type Module struct {
@@ -89,6 +90,7 @@ func Build(deps Deps) (*Module, error) {
 	bodyStore := contentmongo.NewBodyStore(deps.BodyCollection, nil)
 	cleanupStore := contentpostgres.NewCleanupTaskStore(store)
 	repairStore := contentpostgres.NewRepairTaskStore(store)
+	outboxDispatch := contentpostgres.NewOutboxDispatchRepository(deps.PostgresDB)
 	service := application.NewService(application.Deps{
 		Posts:   store,
 		Queries: store,
@@ -103,7 +105,7 @@ func Build(deps Deps) (*Module, error) {
 		Clock:   deps.Clock,
 	})
 
-	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, bodyStore, store, deps.Clock)
+	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock)
 	health := HealthDetails{
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
@@ -147,6 +149,9 @@ func validateDeps(deps Deps) error {
 	if deps.Outbox == nil {
 		return fmt.Errorf("content runtime Outbox dependency is required")
 	}
+	if deps.Config.Workers.OutboxEnabled && deps.IntegrationEvents == nil {
+		return fmt.Errorf("content runtime IntegrationEvents dependency is required when outbox worker is enabled")
+	}
 	if deps.Clock == nil {
 		return fmt.Errorf("content runtime Clock dependency is required")
 	}
@@ -171,11 +176,13 @@ func configuredWorkerDescriptors(
 	config WorkerConfig,
 	cleanupStore ports.BodyCleanupTaskStore,
 	repairStore ports.BodyRepairTaskStore,
+	outboxDispatch ports.OutboxDispatchRepository,
+	integrationEvents ports.IntegrationEventPublisher,
 	bodyStore ports.PostContentStore,
 	references ports.BodyReferenceChecker,
 	clock ports.Clock,
 ) []WorkerDescriptor {
-	workers := configuredContentWorkers(config, cleanupStore, repairStore, bodyStore, references, clock)
+	workers := configuredContentWorkers(config, cleanupStore, repairStore, outboxDispatch, integrationEvents, bodyStore, references, clock)
 	if len(extra) == 0 {
 		return workers
 	}
@@ -189,6 +196,8 @@ func configuredContentWorkers(
 	config WorkerConfig,
 	cleanupStore ports.BodyCleanupTaskStore,
 	repairStore ports.BodyRepairTaskStore,
+	outboxDispatch ports.OutboxDispatchRepository,
+	integrationEvents ports.IntegrationEventPublisher,
 	bodyStore ports.PostContentStore,
 	references ports.BodyReferenceChecker,
 	clock ports.Clock,
@@ -231,7 +240,18 @@ func configuredContentWorkers(
 		workers[1] = enabledWorkerDescriptor("content-body-repair", pollingWorker{name: "content-body-repair", interval: interval, runUntilIdle: repair.RunUntilIdle})
 	}
 	if config.OutboxEnabled {
-		workers[2] = disabledWorkerDescriptor("content-outbox-dispatcher", "enabled in configuration but outbox dispatcher is implemented in Task 4")
+		outbox := application.NewOutboxDispatcher(application.OutboxDispatcherDeps{
+			Repository: outboxDispatch,
+			Publisher:  integrationEvents,
+			Clock:      clock,
+		}, application.OutboxDispatcherConfig{
+			DispatcherID:    "content-outbox-dispatcher",
+			BatchSize:       50,
+			StaleClaimAfter: 5 * time.Minute,
+			RetryBackoff:    time.Minute,
+			DeadThreshold:   5,
+		})
+		workers[2] = enabledWorkerDescriptor("content-outbox-dispatcher", pollingWorker{name: "content-outbox-dispatcher", interval: interval, runUntilIdle: outbox.RunUntilIdle})
 	}
 	return workers
 }

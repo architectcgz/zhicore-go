@@ -6,10 +6,11 @@ import (
 	"testing"
 )
 
-func TestContentWorkersReturnsEnabledCleanupAndRepairDescriptors(t *testing.T) {
+func TestContentWorkersReturnsEnabledDescriptors(t *testing.T) {
 	deps := validDeps(t)
 	deps.Config.Workers.CleanupEnabled = true
 	deps.Config.Workers.RepairEnabled = true
+	deps.Config.Workers.OutboxEnabled = true
 
 	module, err := Build(deps)
 	if err != nil {
@@ -25,8 +26,8 @@ func TestContentWorkersReturnsEnabledCleanupAndRepairDescriptors(t *testing.T) {
 		t.Fatalf("repair worker = %#v, want enabled descriptor with checker and runner", repair)
 	}
 	outbox := findWorkerDescriptor(module.Workers, "content-outbox-dispatcher")
-	if outbox == nil || outbox.Enabled || outbox.DisabledReason == "" || outbox.Runner != nil {
-		t.Fatalf("outbox worker = %#v, want disabled until Task 4", outbox)
+	if outbox == nil || !outbox.Enabled || outbox.DisabledReason != "" || outbox.Checker == nil || outbox.Runner == nil {
+		t.Fatalf("outbox worker = %#v, want enabled descriptor with checker and runner", outbox)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -36,6 +37,9 @@ func TestContentWorkersReturnsEnabledCleanupAndRepairDescriptors(t *testing.T) {
 	}
 	if err := repair.Runner.Run(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("repair Run(canceled) error = %v, want context.Canceled", err)
+	}
+	if err := outbox.Runner.Run(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("outbox Run(canceled) error = %v, want context.Canceled", err)
 	}
 }
 

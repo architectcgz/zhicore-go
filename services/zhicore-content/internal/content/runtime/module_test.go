@@ -93,11 +93,12 @@ func validDeps(t *testing.T) Deps {
 			Mongo:    healthyCheck("mongo"),
 			RabbitMQ: healthyCheck("rabbitmq"),
 		},
-		Parser: stubBodyParser{},
-		Outbox: store,
-		Clock:  fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
-		Users:  stubUsers{},
-		Files:  stubFiles{},
+		Parser:            stubBodyParser{},
+		Outbox:            store,
+		IntegrationEvents: stubIntegrationEvents{},
+		Clock:             fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
+		Users:             stubUsers{},
+		Files:             stubFiles{},
 	}
 }
 
@@ -110,6 +111,12 @@ func (stubBodyParser) Parse(context.Context, ports.PostBodyWriteInput) (ports.No
 type stubOutbox struct{}
 
 func (stubOutbox) Append(context.Context, ports.Tx, ports.OutboxEvent) error { return nil }
+
+type stubIntegrationEvents struct{}
+
+func (stubIntegrationEvents) PublishIntegrationEvent(context.Context, ports.OutboxEvent) error {
+	return nil
+}
 
 type stubUsers struct{}
 
@@ -132,5 +139,6 @@ func (c fixedClock) Now() time.Time { return c.now }
 var _ ports.Clock = fixedClock{}
 var _ ports.BodyParserRegistry = stubBodyParser{}
 var _ ports.OutboxPublisher = stubOutbox{}
+var _ ports.IntegrationEventPublisher = stubIntegrationEvents{}
 var _ ports.UserProfileClient = stubUsers{}
 var _ ports.FileResourceClient = stubFiles{}
