@@ -3,9 +3,11 @@ package runtime
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	contenthttp "github.com/architectcgz/zhicore-go/services/zhicore-content/api/http"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/application"
@@ -18,6 +20,14 @@ import (
 
 type Config struct {
 	ServiceName string
+	Workers     WorkerConfig
+}
+
+type WorkerConfig struct {
+	CleanupEnabled bool
+	RepairEnabled  bool
+	OutboxEnabled  bool
+	PollInterval   time.Duration
 }
 
 type HealthChecker interface {
@@ -50,11 +60,16 @@ type Module struct {
 	HealthDetails HealthDetails
 }
 
+type Worker interface {
+	Run(context.Context) error
+}
+
 type WorkerDescriptor struct {
 	Name           string        `json:"name"`
 	Enabled        bool          `json:"enabled"`
 	DisabledReason string        `json:"disabledReason,omitempty"`
 	Checker        HealthChecker `json:"-"`
+	Runner         Worker        `json:"-"`
 }
 
 type HealthDetails struct {
@@ -88,7 +103,7 @@ func Build(deps Deps) (*Module, error) {
 		Clock:   deps.Clock,
 	})
 
-	workers := configuredWorkerDescriptors(deps.Workers)
+	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, bodyStore, store, deps.Clock)
 	health := HealthDetails{
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
@@ -151,22 +166,120 @@ func serviceName(config *Config) string {
 	return strings.TrimSpace(config.ServiceName)
 }
 
-func configuredWorkerDescriptors(workers []WorkerDescriptor) []WorkerDescriptor {
-	if len(workers) == 0 {
-		return disabledWorkerDescriptors()
+func configuredWorkerDescriptors(
+	extra []WorkerDescriptor,
+	config WorkerConfig,
+	cleanupStore ports.BodyCleanupTaskStore,
+	repairStore ports.BodyRepairTaskStore,
+	bodyStore ports.PostContentStore,
+	references ports.BodyReferenceChecker,
+	clock ports.Clock,
+) []WorkerDescriptor {
+	workers := configuredContentWorkers(config, cleanupStore, repairStore, bodyStore, references, clock)
+	if len(extra) == 0 {
+		return workers
 	}
-	copied := make([]WorkerDescriptor, len(workers))
-	copy(copied, workers)
+	copied := make([]WorkerDescriptor, 0, len(workers)+len(extra))
+	copied = append(copied, workers...)
+	copied = append(copied, extra...)
 	return copied
 }
 
-func disabledWorkerDescriptors() []WorkerDescriptor {
-	reason := "disabled until dedicated worker runtime is implemented"
-	return []WorkerDescriptor{
-		{Name: "content-body-cleanup", Enabled: false, DisabledReason: reason},
-		{Name: "content-body-repair", Enabled: false, DisabledReason: reason},
-		{Name: "content-outbox-dispatcher", Enabled: false, DisabledReason: reason},
+func configuredContentWorkers(
+	config WorkerConfig,
+	cleanupStore ports.BodyCleanupTaskStore,
+	repairStore ports.BodyRepairTaskStore,
+	bodyStore ports.PostContentStore,
+	references ports.BodyReferenceChecker,
+	clock ports.Clock,
+) []WorkerDescriptor {
+	workers := []WorkerDescriptor{
+		disabledWorkerDescriptor("content-body-cleanup", "disabled by configuration"),
+		disabledWorkerDescriptor("content-body-repair", "disabled by configuration"),
+		disabledWorkerDescriptor("content-outbox-dispatcher", "disabled until outbox dispatcher is implemented"),
 	}
+	interval := config.PollInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	if config.CleanupEnabled {
+		cleanup := application.NewBodyCleanupWorker(application.BodyCleanupWorkerDeps{
+			Tasks:      cleanupStore,
+			Bodies:     bodyStore,
+			References: references,
+			Clock:      clock,
+		}, application.BodyCleanupWorkerConfig{
+			WorkerID:        "content-body-cleanup",
+			BatchSize:       100,
+			StaleClaimAfter: 5 * time.Minute,
+			RetryBackoff:    time.Minute,
+			DeadThreshold:   3,
+		})
+		workers[0] = enabledWorkerDescriptor("content-body-cleanup", pollingWorker{name: "content-body-cleanup", interval: interval, runUntilIdle: cleanup.RunUntilIdle})
+	}
+	if config.RepairEnabled {
+		repair := application.NewBodyRepairWorker(application.BodyRepairWorkerDeps{
+			Tasks: repairStore,
+			Clock: clock,
+		}, application.BodyRepairWorkerConfig{
+			WorkerID:        "content-body-repair",
+			BatchSize:       100,
+			StaleClaimAfter: 5 * time.Minute,
+			RetryBackoff:    time.Minute,
+			DeadThreshold:   1,
+		})
+		workers[1] = enabledWorkerDescriptor("content-body-repair", pollingWorker{name: "content-body-repair", interval: interval, runUntilIdle: repair.RunUntilIdle})
+	}
+	if config.OutboxEnabled {
+		workers[2] = disabledWorkerDescriptor("content-outbox-dispatcher", "enabled in configuration but outbox dispatcher is implemented in Task 4")
+	}
+	return workers
+}
+
+func disabledWorkerDescriptor(name, reason string) WorkerDescriptor {
+	return WorkerDescriptor{Name: name, Enabled: false, DisabledReason: reason}
+}
+
+func enabledWorkerDescriptor(name string, runner Worker) WorkerDescriptor {
+	return WorkerDescriptor{Name: name, Enabled: true, Checker: healthyWorkerChecker{}, Runner: runner}
+}
+
+type pollingWorker struct {
+	name         string
+	interval     time.Duration
+	runUntilIdle func(context.Context) error
+}
+
+func (w pollingWorker) Run(ctx context.Context) error {
+	if w.interval <= 0 {
+		w.interval = time.Minute
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := w.runUntilIdle(ctx); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
+			}
+			return fmt.Errorf("run %s: %w", w.name, err)
+		}
+		timer := time.NewTimer(w.interval)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+type healthyWorkerChecker struct{}
+
+func (healthyWorkerChecker) Check(context.Context) error {
+	return nil
 }
 
 func healthHandler(details HealthDetails) gin.HandlerFunc {

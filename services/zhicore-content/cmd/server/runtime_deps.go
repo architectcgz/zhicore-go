@@ -54,6 +54,11 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 	module, err := contentruntime.Build(contentruntime.Deps{
 		Config: &contentruntime.Config{
 			ServiceName: cfg.ServiceName,
+			Workers: contentruntime.WorkerConfig{
+				CleanupEnabled: cfg.Workers.CleanupEnabled,
+				RepairEnabled:  cfg.Workers.RepairEnabled,
+				OutboxEnabled:  cfg.Workers.OutboxEnabled,
+			},
 		},
 		PostgresDB:     postgresDB,
 		BodyCollection: mongoClient.Database(cfg.Mongo.Database).Collection(cfg.Mongo.BodyCollection),
@@ -77,7 +82,7 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 	return openedContentRuntime{
 		Module:    module,
 		Readiness: readiness,
-		Workers:   noopWorkerLifecycle{},
+		Workers:   newContentWorkerLifecycle(module.Workers),
 		Closers:   closers,
 	}, nil
 }
@@ -135,9 +140,73 @@ func (c unavailableHealthChecker) Check(context.Context) error {
 
 type noopWorkerLifecycle struct{}
 
+func (noopWorkerLifecycle) Start(context.Context) error { return nil }
+
 func (noopWorkerLifecycle) StopAcceptingNewWork() {}
 
 func (noopWorkerLifecycle) Wait(context.Context) error { return nil }
+
+type contentWorkerLifecycle struct {
+	runners []contentruntime.Worker
+	cancel  context.CancelFunc
+	done    chan error
+}
+
+func newContentWorkerLifecycle(descriptors []contentruntime.WorkerDescriptor) WorkerLifecycle {
+	runners := make([]contentruntime.Worker, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		if descriptor.Enabled && descriptor.Runner != nil {
+			runners = append(runners, descriptor.Runner)
+		}
+	}
+	if len(runners) == 0 {
+		return noopWorkerLifecycle{}
+	}
+	return &contentWorkerLifecycle{runners: runners}
+}
+
+func (l *contentWorkerLifecycle) Start(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if l.done != nil {
+		return nil
+	}
+	workerCtx, cancel := context.WithCancel(ctx)
+	l.cancel = cancel
+	l.done = make(chan error, len(l.runners))
+	for _, runner := range l.runners {
+		runner := runner
+		go func() {
+			l.done <- runner.Run(workerCtx)
+		}()
+	}
+	return nil
+}
+
+func (l *contentWorkerLifecycle) StopAcceptingNewWork() {
+	if l.cancel != nil {
+		l.cancel()
+	}
+}
+
+func (l *contentWorkerLifecycle) Wait(ctx context.Context) error {
+	if l.done == nil {
+		return nil
+	}
+	var errs []error
+	for range l.runners {
+		select {
+		case err := <-l.done:
+			if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				errs = append(errs, err)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return errors.Join(errs...)
+}
 
 type systemClock struct{}
 

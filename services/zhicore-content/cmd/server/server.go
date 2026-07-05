@@ -16,6 +16,7 @@ type ReadinessController interface {
 }
 
 type WorkerLifecycle interface {
+	Start(context.Context) error
 	StopAcceptingNewWork()
 	Wait(context.Context) error
 }
@@ -62,6 +63,15 @@ func runContentServer(ctx context.Context, cfg ContentServerConfig, listener net
 	server := newContentHTTPServer(cfg, runtime.Handler)
 	if runtime.Readiness != nil {
 		runtime.Readiness.MarkReady()
+	}
+	if runtime.Workers != nil {
+		if err := runtime.Workers.Start(ctx); err != nil {
+			if runtime.Readiness != nil {
+				runtime.Readiness.MarkNotReady()
+			}
+			closeNamedClosers(runtime.Closers)
+			return fmt.Errorf("start workers: %w", err)
+		}
 	}
 
 	serveErr := make(chan error, 1)

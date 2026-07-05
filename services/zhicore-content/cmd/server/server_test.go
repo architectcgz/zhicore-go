@@ -78,7 +78,7 @@ func TestContentServerLifecycleHandlesTerminationSignal(t *testing.T) {
 		t.Fatal("runContentServer() did not stop after SIGTERM")
 	}
 
-	wantOrder := []string{"readiness:ready", "readiness:not-ready", "workers:stop", "workers:wait", "close:postgres", "close:mongo"}
+	wantOrder := []string{"readiness:ready", "workers:start", "readiness:not-ready", "workers:stop", "workers:wait", "close:postgres", "close:mongo"}
 	orderMu.Lock()
 	gotOrder := append([]string(nil), order...)
 	orderMu.Unlock()
@@ -103,7 +103,8 @@ func TestContentServerLifecycleUsesShutdownTimeoutAfterParentContextCancel(t *te
 		}),
 		Readiness: &recordingReadiness{ready: true},
 		Workers: workerLifecycleFunc{
-			stop: func() {},
+			start: func(context.Context) error { return nil },
+			stop:  func() {},
 			wait: func(ctx context.Context) error {
 				if err := ctx.Err(); err != nil {
 					return err
@@ -166,14 +167,27 @@ func (w *recordingWorkers) StopAcceptingNewWork() {
 	w.record("workers:stop")
 }
 
+func (w *recordingWorkers) Start(context.Context) error {
+	w.record("workers:start")
+	return nil
+}
+
 func (w *recordingWorkers) Wait(context.Context) error {
 	w.record("workers:wait")
 	return nil
 }
 
 type workerLifecycleFunc struct {
-	stop func()
-	wait func(context.Context) error
+	start func(context.Context) error
+	stop  func()
+	wait  func(context.Context) error
+}
+
+func (w workerLifecycleFunc) Start(ctx context.Context) error {
+	if w.start == nil {
+		return nil
+	}
+	return w.start(ctx)
 }
 
 func (w workerLifecycleFunc) StopAcceptingNewWork() {
