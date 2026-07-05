@@ -267,7 +267,7 @@ func TestOutboxPublisherInsertsEventWithGeneratedID(t *testing.T) {
 	publisher := NewOutboxPublisher(db, fixedEventIDGenerator("evt_comment_1"))
 	now := time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC)
 
-	mock.ExpectExec(regexp.QuoteMeta(insertOutboxEventSQL)).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO outbox_events")).
 		WithArgs(
 			"evt_comment_1",
 			"comment.created",

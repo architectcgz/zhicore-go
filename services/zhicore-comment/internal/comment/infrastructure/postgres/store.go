@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	kitoutbox "github.com/architectcgz/zhicore-go/libs/kit/postgres/outbox"
 	"github.com/lib/pq"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
@@ -730,48 +731,32 @@ func (RandomEventIDGenerator) NewEventID() (string, error) {
 }
 
 type OutboxPublisher struct {
-	db  *sql.DB
-	ids EventIDGenerator
+	db        *sql.DB
+	publisher *kitoutbox.InsertPublisher
 }
 
 func NewOutboxPublisher(db *sql.DB, ids EventIDGenerator) *OutboxPublisher {
 	if ids == nil {
 		ids = RandomEventIDGenerator{}
 	}
-	return &OutboxPublisher{db: db, ids: ids}
+	return &OutboxPublisher{
+		db:        db,
+		publisher: kitoutbox.NewInsertPublisher(kitoutbox.Config{Table: "outbox_events"}, ids),
+	}
 }
 
-const insertOutboxEventSQL = `
-INSERT INTO outbox_events (
-    event_id,
-    event_type,
-    payload_version,
-    aggregate_type,
-    aggregate_id,
-    payload_json,
-    status,
-    occurred_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7)`
-
 func (p *OutboxPublisher) Publish(ctx context.Context, message ports.OutboxMessage) error {
-	eventID, err := p.ids.NewEventID()
-	if err != nil {
-		return err
-	}
 	execer := sqlExecutor(p.db)
 	if tx, ok := ctx.Value(txContextKey{}).(*sql.Tx); ok && tx != nil {
 		execer = tx
 	}
-	if _, err := execer.ExecContext(ctx, insertOutboxEventSQL,
-		eventID,
-		message.EventType,
-		1,
-		message.AggregateType,
-		message.AggregateID,
-		message.Payload,
-		message.OccurredAt,
-	); err != nil {
+	if err := p.publisher.Publish(ctx, execer, kitoutbox.Message{
+		EventType:     message.EventType,
+		AggregateType: message.AggregateType,
+		AggregateID:   message.AggregateID,
+		Payload:       message.Payload,
+		OccurredAt:    message.OccurredAt,
+	}); err != nil {
 		return fmt.Errorf("insert comment outbox event: %w", err)
 	}
 	return nil

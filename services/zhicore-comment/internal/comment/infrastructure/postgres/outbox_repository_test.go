@@ -20,7 +20,7 @@ func TestOutboxDispatchRepositoryClaimPendingOutboxUsesAtomicSkipLockedClaim(t *
 	occurredAt := now.Add(-time.Minute)
 	payload := []byte(`{"commentId":"c1"}`)
 
-	mock.ExpectQuery(regexp.QuoteMeta(claimPendingOutboxSQL)).
+	mock.ExpectQuery("WITH picked AS").
 		WithArgs(now, now.Add(-30*time.Second), "zhicore-comment:outbox-dispatcher:test", 10).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id",
@@ -70,7 +70,7 @@ func TestOutboxDispatchRepositoryMarkOutboxPublishedRequiresClaimOwner(t *testin
 	repo := NewOutboxDispatchRepository(db)
 	publishedAt := time.Date(2026, 7, 5, 10, 1, 0, 0, time.UTC)
 
-	mock.ExpectExec(regexp.QuoteMeta(markOutboxPublishedSQL)).
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE outbox_events")).
 		WithArgs(publishedAt, int64(42), "zhicore-comment:outbox-dispatcher:test").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -89,7 +89,7 @@ func TestOutboxDispatchRepositoryMarkOutboxPublishedDetectsLostClaim(t *testing.
 	db, mock := newMockDB(t)
 	repo := NewOutboxDispatchRepository(db)
 
-	mock.ExpectExec(regexp.QuoteMeta(markOutboxPublishedSQL)).
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE outbox_events")).
 		WithArgs(sqlmock.AnyArg(), int64(42), "zhicore-comment:outbox-dispatcher:test").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -110,7 +110,7 @@ func TestOutboxDispatchRepositoryMarkOutboxFailedRequiresClaimOwner(t *testing.T
 	failedAt := time.Date(2026, 7, 5, 10, 2, 0, 0, time.UTC)
 	nextRetryAt := failedAt.Add(time.Minute)
 
-	mock.ExpectExec(regexp.QuoteMeta(markOutboxFailedSQL)).
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE outbox_events")).
 		WithArgs("FAILED", 3, nextRetryAt, "rabbitmq unavailable", failedAt, int64(42), "zhicore-comment:outbox-dispatcher:test").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -133,7 +133,7 @@ func TestOutboxDispatchRepositoryMarkOutboxFailedCanDeadLetter(t *testing.T) {
 	repo := NewOutboxDispatchRepository(db)
 	failedAt := time.Date(2026, 7, 5, 10, 2, 0, 0, time.UTC)
 
-	mock.ExpectExec(regexp.QuoteMeta(markOutboxFailedSQL)).
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE outbox_events")).
 		WithArgs("DEAD", 5, nil, "confirm nack", failedAt, int64(42), "zhicore-comment:outbox-dispatcher:test").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
