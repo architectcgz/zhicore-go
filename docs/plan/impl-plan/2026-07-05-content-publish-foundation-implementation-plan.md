@@ -299,7 +299,7 @@
 
 **测试立场：** TDD - runtime 装配、fail fast、worker 生命周期和配置校验属于 R4。
 
-- [ ] **步骤 1：编写 runtime module 失败测试**
+- [x] **步骤 1：编写 runtime module 失败测试**
 
   覆盖缺 PostgreSQL / MongoDB / body parser / outbox / clock / config 时 fail fast；构造成功时返回 HTTP handler、cleanup / repair / outbox worker 描述和 health details。
 
@@ -307,35 +307,37 @@
 
   预期：失败。
 
-- [ ] **步骤 2：实现 runtime module**
+- [x] **步骤 2：实现 runtime module**
 
   `runtime.Build` 只做依赖装配和配置校验，不执行 migration，不写业务逻辑。cleanup / repair / outbox worker 可以先暴露为可启动组件；如真实 worker 未在本切片闭合，必须 fail fast 或明确返回 disabled 状态，不能伪装生产可运行。
 
-- [ ] **步骤 3：补 `cmd/server` 最小入口**
+- [x] **步骤 3：补 `cmd/server` 最小入口**
 
-  `cmd/server/main.go` 只调用 runtime 装配、启动 HTTP server 和处理 shutdown；不直接 new repository、写 handler 业务逻辑或执行 migration。
+  `cmd/server/main.go` 只调用 runtime 装配；真实配置加载、依赖打开、HTTP server 启动和 shutdown 尚未在本切片闭合时必须 fail fast，不直接 new repository、写 handler 业务逻辑或执行 migration。
 
-- [ ] **步骤 4：运行服务内测试**
+- [x] **步骤 4：运行服务内测试**
 
   运行：`cd services/zhicore-content && go test ./...`
 
   预期：通过。
 
-- [ ] **步骤 5：运行测试规模检查**
+- [x] **步骤 5：运行测试规模检查**
 
   运行：`python3 scripts/check-test-size.py --files services/zhicore-content`
 
   预期：通过。
 
-- [ ] **步骤 6：运行结构检查**
+- [x] **步骤 6：运行结构检查**
 
   运行：`bash scripts/check-structure.sh`
 
   预期：`structure ok`。
 
-- [ ] **步骤 7：按完成标准准备 review 证据**
+- [x] **步骤 7：按完成标准准备 review 证据**
 
   记录实际执行过的 `go test`、migration 验证、`check-test-size` 和 `check-structure` 输出摘要。若没有真实 PostgreSQL / MongoDB DSN，明确列为残余风险，不写成已验证。
+
+  已记录：`docs/reviews/backend/2026-07-05-content-publish-foundation.md`。
 
 ## 架构适配评估
 
