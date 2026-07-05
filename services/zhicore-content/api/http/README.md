@@ -57,10 +57,10 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/posts` | 匿名 | 公开文章列表；支持作者、标签、分类过滤。 |
-| `GET` | `/api/v1/posts/{postId}` | 匿名 | 文章详情元数据和可展示正文。 |
+| `GET` | `/api/v1/posts` | 匿名 | 公开文章列表；字段级 schema 见 [endpoints/list-posts.md](endpoints/list-posts.md)。 |
+| `GET` | `/api/v1/posts/{postId}` | 匿名 | 文章详情元数据和可展示正文；字段级 schema 见 [endpoints/get-post-detail.md](endpoints/get-post-detail.md)。 |
 | `GET` | `/api/v1/posts/{postId}/body` | 匿名 / 服务间 | 读取 published body，供详情页和 Search 使用。字段级 schema 见 [endpoints/get-post-body.md](endpoints/get-post-body.md)。 |
-| `POST` | `/api/v1/posts/batch-get` | 匿名 / 服务间 | 批量获取文章摘要。 |
+| `POST` | `/api/v1/posts/batch-get` | 匿名 / 服务间 | 批量获取文章摘要；字段级 schema 见 [endpoints/batch-get-posts.md](endpoints/batch-get-posts.md)。 |
 | `GET` | `/api/v1/posts/{postId}/tags` | 匿名 | 文章标签列表。 |
 
 ### 作者工作台
@@ -68,12 +68,12 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/posts` | 登录用户 | 创建文章草稿。字段级 schema 见 [endpoints/create-post.md](endpoints/create-post.md)。 |
-| `GET` | `/api/v1/me/posts` | 登录用户 | 我的文章列表，含 draft / published / scheduled / deleted。 |
-| `GET` | `/api/v1/me/drafts` | 登录用户 | 我的草稿列表。 |
-| `GET` | `/api/v1/posts/{postId}/draft` | 作者 | 读取当前草稿。 |
-| `PATCH` | `/api/v1/posts/{postId}/draft/meta` | 作者 | 更新草稿元数据。 |
+| `GET` | `/api/v1/me/posts` | 登录用户 | 我的文章列表，含 draft / published / scheduled / deleted；字段级 schema 见 [endpoints/list-my-posts.md](endpoints/list-my-posts.md)。 |
+| `GET` | `/api/v1/me/drafts` | 登录用户 | 我的草稿列表；字段级 schema 见 [endpoints/list-my-drafts.md](endpoints/list-my-drafts.md)。 |
+| `GET` | `/api/v1/posts/{postId}/draft` | 作者 | 读取当前草稿；字段级 schema 见 [endpoints/get-post-draft.md](endpoints/get-post-draft.md)。 |
+| `PATCH` | `/api/v1/posts/{postId}/draft/meta` | 作者 | 更新草稿元数据；字段级 schema 见 [endpoints/update-draft-meta.md](endpoints/update-draft-meta.md)。 |
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | 作者 | 保存草稿正文 blocks。字段级 schema 见 [endpoints/save-draft-body.md](endpoints/save-draft-body.md)。 |
-| `DELETE` | `/api/v1/posts/{postId}/draft` | 作者 | 删除草稿指针并创建正文清理任务。 |
+| `DELETE` | `/api/v1/posts/{postId}/draft` | 作者 | 删除草稿指针并创建正文清理任务；字段级 schema 见 [endpoints/delete-post-draft.md](endpoints/delete-post-draft.md)。 |
 | `POST` | `/api/v1/posts/{postId}/publish` | 作者 | 发布草稿。字段级 schema 见 [endpoints/publish-post.md](endpoints/publish-post.md)。 |
 | `POST` | `/api/v1/posts/{postId}/unpublish` | 作者 | 撤回已发布文章。 |
 | `POST` | `/api/v1/posts/{postId}/schedule` | 作者 | 创建或更新定时发布。 |
@@ -123,6 +123,9 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | 方法 | 路径 | 文档 | Handler contract test | 状态 |
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/posts` | [endpoints/create-post.md](endpoints/create-post.md) | `services/zhicore-content/api/http/create_post_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/posts` | [endpoints/list-posts.md](endpoints/list-posts.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/posts/{postId}` | [endpoints/get-post-detail.md](endpoints/get-post-detail.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/posts/batch-get` | [endpoints/batch-get-posts.md](endpoints/batch-get-posts.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/admin/content/outbox-events` | [endpoints/list-admin-outbox-events.md](endpoints/list-admin-outbox-events.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | [endpoints/retry-admin-outbox-event.md](endpoints/retry-admin-outbox-event.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | [endpoints/save-draft-body.md](endpoints/save-draft-body.md) | `services/zhicore-content/api/http/save_draft_body_handler_test.go` | 已验证 |

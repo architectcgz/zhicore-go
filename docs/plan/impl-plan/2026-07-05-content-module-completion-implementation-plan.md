@@ -455,7 +455,7 @@
 
 **测试立场：** TDD - pagination、可见性、作者权限、draft/published 分离和 cursor 稳定性属于 R4。
 
-- [ ] **步骤 1：拆 endpoint contract**
+- [x] **步骤 1：拆 endpoint contract**
 
   从 `content-api.md` 拆出或更新：
   - `GET /api/v1/posts`
@@ -466,6 +466,8 @@
   - `GET /api/v1/posts/{postId}/draft`
   - `PATCH /api/v1/posts/{postId}/draft/meta`
   - `DELETE /api/v1/posts/{postId}/draft`
+
+  公开查询 endpoint 已在本任务第一组提交中实现并标为已验证；作者工作台 endpoint 已拆为草案，待下一组实现后更新测试状态。
 
 - [ ] **步骤 2：编写 application 查询测试**
 
