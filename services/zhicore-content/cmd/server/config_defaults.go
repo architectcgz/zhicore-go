@@ -18,5 +18,9 @@ func DefaultContentServerConfig() ContentServerConfig {
 			Database:       "zhicore_content",
 			BodyCollection: "post_bodies",
 		},
+		RabbitMQ: ContentRabbitMQConfig{
+			Exchange:              "zhicore.events",
+			PublishConfirmTimeout: 3 * time.Second,
+		},
 	}
 }

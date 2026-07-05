@@ -26,19 +26,21 @@ func TestLoadContentServerConfigRequiresRuntimeDependencies(t *testing.T) {
 
 func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 	cfg, err := LoadContentServerConfig(mapLookup(map[string]string{
-		"ZHICORE_CONTENT_POSTGRES_DSN":             "postgres://content:secret@127.0.0.1:5432/content",
-		"ZHICORE_CONTENT_MONGO_URI":                "mongodb://content:secret@127.0.0.1:27017",
-		"ZHICORE_CONTENT_RABBITMQ_URL":             "amqp://content:secret@127.0.0.1:5672/",
-		"ZHICORE_CONTENT_USER_SERVICE_BASE_URL":    "http://127.0.0.1:18081",
-		"ZHICORE_CONTENT_FILE_SERVICE_BASE_URL":    "http://127.0.0.1:18082",
-		"ZHICORE_CONTENT_HTTP_ADDR":                ":19080",
-		"ZHICORE_CONTENT_HTTP_READ_HEADER_TIMEOUT": "3s",
-		"ZHICORE_CONTENT_HTTP_READ_TIMEOUT":        "7s",
-		"ZHICORE_CONTENT_HTTP_WRITE_TIMEOUT":       "9s",
-		"ZHICORE_CONTENT_HTTP_IDLE_TIMEOUT":        "11s",
-		"ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT":    "22s",
-		"ZHICORE_CONTENT_HTTP_MAX_JSON_BODY":       "1MiB",
-		"ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED":  "true",
+		"ZHICORE_CONTENT_POSTGRES_DSN":                     "postgres://content:secret@127.0.0.1:5432/content",
+		"ZHICORE_CONTENT_MONGO_URI":                        "mongodb://content:secret@127.0.0.1:27017",
+		"ZHICORE_CONTENT_RABBITMQ_URL":                     "amqp://content:secret@127.0.0.1:5672/",
+		"ZHICORE_CONTENT_RABBITMQ_EXCHANGE":                "zhicore.content.events",
+		"ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT": "4s",
+		"ZHICORE_CONTENT_USER_SERVICE_BASE_URL":            "http://127.0.0.1:18081",
+		"ZHICORE_CONTENT_FILE_SERVICE_BASE_URL":            "http://127.0.0.1:18082",
+		"ZHICORE_CONTENT_HTTP_ADDR":                        ":19080",
+		"ZHICORE_CONTENT_HTTP_READ_HEADER_TIMEOUT":         "3s",
+		"ZHICORE_CONTENT_HTTP_READ_TIMEOUT":                "7s",
+		"ZHICORE_CONTENT_HTTP_WRITE_TIMEOUT":               "9s",
+		"ZHICORE_CONTENT_HTTP_IDLE_TIMEOUT":                "11s",
+		"ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT":            "22s",
+		"ZHICORE_CONTENT_HTTP_MAX_JSON_BODY":               "1MiB",
+		"ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED":          "true",
 	}))
 	if err != nil {
 		t.Fatalf("LoadContentServerConfig() error = %v", err)
@@ -69,6 +71,9 @@ func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 	}
 	if cfg.Mongo.Database != "zhicore_content" || cfg.Mongo.BodyCollection != "post_bodies" {
 		t.Fatalf("mongo defaults = (%q, %q), want zhicore_content/post_bodies", cfg.Mongo.Database, cfg.Mongo.BodyCollection)
+	}
+	if cfg.RabbitMQ.Exchange != "zhicore.content.events" || cfg.RabbitMQ.PublishConfirmTimeout != 4*time.Second {
+		t.Fatalf("rabbitmq config = %#v, want overridden exchange and confirm timeout", cfg.RabbitMQ)
 	}
 }
 
@@ -102,6 +107,8 @@ func TestLoadContentServerConfigRejectsNonPositiveDuration(t *testing.T) {
 		{name: "idle timeout negative", envName: "ZHICORE_CONTENT_HTTP_IDLE_TIMEOUT", value: "-1s"},
 		{name: "shutdown timeout zero", envName: "ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT", value: "0s"},
 		{name: "shutdown timeout negative", envName: "ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT", value: "-1s"},
+		{name: "rabbitmq publish confirm timeout zero", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT", value: "0s"},
+		{name: "rabbitmq publish confirm timeout negative", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT", value: "-1s"},
 	}
 
 	for _, tc := range testCases {
@@ -169,6 +176,8 @@ func TestLoadContentServerConfigRejectsPresentButEmptyEnv(t *testing.T) {
 		{name: "postgres dsn", envName: "ZHICORE_CONTENT_POSTGRES_DSN"},
 		{name: "mongo uri", envName: "ZHICORE_CONTENT_MONGO_URI"},
 		{name: "rabbitmq url", envName: "ZHICORE_CONTENT_RABBITMQ_URL"},
+		{name: "rabbitmq exchange", envName: "ZHICORE_CONTENT_RABBITMQ_EXCHANGE"},
+		{name: "rabbitmq publish confirm timeout", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT"},
 		{name: "user service base url", envName: "ZHICORE_CONTENT_USER_SERVICE_BASE_URL"},
 		{name: "file service base url", envName: "ZHICORE_CONTENT_FILE_SERVICE_BASE_URL"},
 	}
@@ -304,6 +313,9 @@ func TestLoadContentServerConfigAppliesHTTPTimeoutDefaults(t *testing.T) {
 	}
 	if cfg.HTTP.MaxJSONBodyBytes != 1<<20 {
 		t.Fatalf("MaxJSONBodyBytes = %d, want 1MiB", cfg.HTTP.MaxJSONBodyBytes)
+	}
+	if cfg.RabbitMQ.Exchange != "zhicore.events" || cfg.RabbitMQ.PublishConfirmTimeout != 3*time.Second {
+		t.Fatalf("rabbitmq defaults = %#v, want zhicore.events/3s", cfg.RabbitMQ)
 	}
 }
 

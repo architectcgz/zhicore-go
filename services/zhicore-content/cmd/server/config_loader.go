@@ -1,21 +1,23 @@
 package main
 
 const (
-	envPostgresDSN           = "ZHICORE_CONTENT_POSTGRES_DSN"
-	envMongoURI              = "ZHICORE_CONTENT_MONGO_URI"
-	envRabbitMQURL           = "ZHICORE_CONTENT_RABBITMQ_URL"
-	envUserServiceBaseURL    = "ZHICORE_CONTENT_USER_SERVICE_BASE_URL"
-	envFileServiceBaseURL    = "ZHICORE_CONTENT_FILE_SERVICE_BASE_URL"
-	envHTTPAddr              = "ZHICORE_CONTENT_HTTP_ADDR"
-	envHTTPReadHeaderTimeout = "ZHICORE_CONTENT_HTTP_READ_HEADER_TIMEOUT"
-	envHTTPReadTimeout       = "ZHICORE_CONTENT_HTTP_READ_TIMEOUT"
-	envHTTPWriteTimeout      = "ZHICORE_CONTENT_HTTP_WRITE_TIMEOUT"
-	envHTTPIdleTimeout       = "ZHICORE_CONTENT_HTTP_IDLE_TIMEOUT"
-	envHTTPShutdownTimeout   = "ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT"
-	envHTTPMaxJSONBody       = "ZHICORE_CONTENT_HTTP_MAX_JSON_BODY"
-	envCleanupEnabled        = "ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED"
-	envRepairEnabled         = "ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED"
-	envOutboxEnabled         = "ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"
+	envPostgresDSN            = "ZHICORE_CONTENT_POSTGRES_DSN"
+	envMongoURI               = "ZHICORE_CONTENT_MONGO_URI"
+	envRabbitMQURL            = "ZHICORE_CONTENT_RABBITMQ_URL"
+	envRabbitMQExchange       = "ZHICORE_CONTENT_RABBITMQ_EXCHANGE"
+	envRabbitMQConfirmTimeout = "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT"
+	envUserServiceBaseURL     = "ZHICORE_CONTENT_USER_SERVICE_BASE_URL"
+	envFileServiceBaseURL     = "ZHICORE_CONTENT_FILE_SERVICE_BASE_URL"
+	envHTTPAddr               = "ZHICORE_CONTENT_HTTP_ADDR"
+	envHTTPReadHeaderTimeout  = "ZHICORE_CONTENT_HTTP_READ_HEADER_TIMEOUT"
+	envHTTPReadTimeout        = "ZHICORE_CONTENT_HTTP_READ_TIMEOUT"
+	envHTTPWriteTimeout       = "ZHICORE_CONTENT_HTTP_WRITE_TIMEOUT"
+	envHTTPIdleTimeout        = "ZHICORE_CONTENT_HTTP_IDLE_TIMEOUT"
+	envHTTPShutdownTimeout    = "ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT"
+	envHTTPMaxJSONBody        = "ZHICORE_CONTENT_HTTP_MAX_JSON_BODY"
+	envCleanupEnabled         = "ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED"
+	envRepairEnabled          = "ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED"
+	envOutboxEnabled          = "ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"
 )
 
 func LoadContentServerConfig(lookup func(string) (string, bool)) (ContentServerConfig, error) {
@@ -56,6 +58,9 @@ func LoadContentServerConfig(lookup func(string) (string, bool)) (ContentServerC
 	}
 
 	if err := overlayHTTPConfig(&cfg, lookup); err != nil {
+		return ContentServerConfig{}, err
+	}
+	if err := overlayRabbitMQConfig(&cfg, lookup); err != nil {
 		return ContentServerConfig{}, err
 	}
 	if err := overlayWorkerConfig(&cfg, lookup); err != nil {
@@ -122,6 +127,24 @@ func overlayHTTPConfig(cfg *ContentServerConfig, lookup func(string) (string, bo
 			return err
 		}
 		cfg.HTTP.MaxJSONBodyBytes = parsed
+	}
+	return nil
+}
+
+func overlayRabbitMQConfig(cfg *ContentServerConfig, lookup func(string) (string, bool)) error {
+	if value, ok, err := lookupOptionalEnv(lookup, envRabbitMQExchange); err != nil {
+		return err
+	} else if ok {
+		cfg.RabbitMQ.Exchange = value
+	}
+	if value, ok, err := lookupOptionalEnv(lookup, envRabbitMQConfirmTimeout); err != nil {
+		return err
+	} else if ok {
+		parsed, err := parseDurationEnv(envRabbitMQConfirmTimeout, value)
+		if err != nil {
+			return err
+		}
+		cfg.RabbitMQ.PublishConfirmTimeout = parsed
 	}
 	return nil
 }

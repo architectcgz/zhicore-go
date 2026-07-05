@@ -8,11 +8,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	kitrabbitmq "github.com/architectcgz/zhicore-go/libs/kit/rabbitmq"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/application"
 	contentbody "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/body"
+	contentpostgres "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/postgres"
+	contentrabbitmq "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/rabbitmq"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	drivermongo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -49,8 +53,30 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		return openedContentRuntime{}, fmt.Errorf("ping mongo dependency: %w", err)
 	}
 
+	rabbitConn, err := amqp.Dial(cfg.RabbitMQ.URL)
+	if err != nil {
+		closeNamedClosers(closers)
+		return openedContentRuntime{}, fmt.Errorf("open rabbitmq dependency: %w", err)
+	}
+	rabbitChannel, err := rabbitConn.Channel()
+	if err != nil {
+		_ = rabbitConn.Close()
+		closeNamedClosers(closers)
+		return openedContentRuntime{}, fmt.Errorf("open rabbitmq channel: %w", err)
+	}
+	closers = append(closers,
+		namedCloser{name: "rabbitmq channel", closer: rabbitChannel},
+		namedCloser{name: "rabbitmq connection", closer: rabbitConn},
+	)
+
 	readiness := newReadinessSwitch()
-	rabbitmq := unavailableHealthChecker{component: "rabbitmq publisher"}
+	rabbitmq := rabbitMQHealthChecker{connection: rabbitConn, channel: rabbitChannel}
+	topicPublisher := kitrabbitmq.NewTopicPublisher(
+		rabbitChannel,
+		cfg.RabbitMQ.Exchange,
+		kitrabbitmq.WithPublishConfirmTimeout(cfg.RabbitMQ.PublishConfirmTimeout),
+	)
+	outboxStore := contentpostgres.NewStore(postgresDB, contentpostgres.StoreConfig{})
 	module, err := contentruntime.Build(contentruntime.Deps{
 		Config: &contentruntime.Config{
 			ServiceName: cfg.ServiceName,
@@ -69,8 +95,8 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 			RabbitMQ:  rabbitmq,
 		},
 		Parser:            contentbody.NewV1BodyParser(contentbody.DefaultBodyValidationPolicy()),
-		Outbox:            unavailableOutboxPublisher{},
-		IntegrationEvents: unavailableIntegrationEventPublisher{},
+		Outbox:            outboxStore,
+		IntegrationEvents: contentrabbitmq.NewIntegrationEventPublisher(topicPublisher),
 		Clock:             systemClock{},
 		Users:             unavailableUserProfileClient{},
 		Files:             unavailableFileResourceClient{},
@@ -131,12 +157,19 @@ func (c mongoPingChecker) Check(ctx context.Context) error {
 	return c.client.Ping(ctx, readpref.Primary())
 }
 
-type unavailableHealthChecker struct {
-	component string
+type rabbitMQHealthChecker struct {
+	connection *amqp.Connection
+	channel    *amqp.Channel
 }
 
-func (c unavailableHealthChecker) Check(context.Context) error {
-	return fmt.Errorf("%s is not implemented", c.component)
+func (c rabbitMQHealthChecker) Check(context.Context) error {
+	if c.connection == nil || c.connection.IsClosed() {
+		return errors.New("rabbitmq connection is closed")
+	}
+	if c.channel == nil || c.channel.IsClosed() {
+		return errors.New("rabbitmq channel is closed")
+	}
+	return nil
 }
 
 type noopWorkerLifecycle struct{}
@@ -213,18 +246,6 @@ type systemClock struct{}
 
 func (systemClock) Now() time.Time {
 	return time.Now().UTC()
-}
-
-type unavailableOutboxPublisher struct{}
-
-func (unavailableOutboxPublisher) Append(context.Context, ports.Tx, ports.OutboxEvent) error {
-	return application.ErrDependencyUnavailable
-}
-
-type unavailableIntegrationEventPublisher struct{}
-
-func (unavailableIntegrationEventPublisher) PublishIntegrationEvent(context.Context, ports.OutboxEvent) error {
-	return application.ErrDependencyUnavailable
 }
 
 type unavailableUserProfileClient struct{}

@@ -39,7 +39,9 @@ type ContentMongoConfig struct {
 }
 
 type ContentRabbitMQConfig struct {
-	URL string
+	URL                   string
+	Exchange              string
+	PublishConfirmTimeout time.Duration
 }
 
 type ContentDependencyConfig struct {
@@ -74,7 +76,7 @@ func (c ContentMongoConfig) GoString() string {
 }
 
 func (c ContentRabbitMQConfig) String() string {
-	return fmt.Sprintf("{URL:%s}", redactedURLSummary(c.URL))
+	return fmt.Sprintf("{URL:%s Exchange:%s PublishConfirmTimeout:%s}", redactedURLSummary(c.URL), c.Exchange, c.PublishConfirmTimeout)
 }
 
 func (c ContentRabbitMQConfig) GoString() string {
@@ -91,7 +93,7 @@ func (c ContentDependencyConfig) GoString() string {
 
 func (c ContentServerConfig) RedactedSummary() string {
 	return fmt.Sprintf(
-		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s rabbitmq.url=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t",
+		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t",
 		c.ServiceName,
 		c.HTTP.Addr,
 		c.HTTP.ReadHeaderTimeout,
@@ -105,6 +107,8 @@ func (c ContentServerConfig) RedactedSummary() string {
 		c.Mongo.Database,
 		c.Mongo.BodyCollection,
 		redactedURLSummary(c.RabbitMQ.URL),
+		c.RabbitMQ.Exchange,
+		c.RabbitMQ.PublishConfirmTimeout,
 		redactedURLSummary(c.UserService.BaseURL),
 		redactedURLSummary(c.FileService.BaseURL),
 		c.Workers.CleanupEnabled,
