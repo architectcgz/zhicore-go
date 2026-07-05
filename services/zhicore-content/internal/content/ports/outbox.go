@@ -9,6 +9,10 @@ type OutboxPublisher interface {
 	Append(ctx context.Context, tx Tx, event OutboxEvent) error
 }
 
+type IntegrationEventPublisher interface {
+	PublishIntegrationEvent(ctx context.Context, event OutboxEvent) error
+}
+
 type OutboxEvent struct {
 	ID               int64
 	EventID          string
