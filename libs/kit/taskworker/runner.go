@@ -54,6 +54,7 @@ type Config struct {
 	StaleClaimAfter time.Duration
 	RetryBackoff    time.Duration
 	DeadThreshold   int
+	MarkTimeout     time.Duration
 }
 
 type Runner[T any] struct {
@@ -98,13 +99,22 @@ func (r *Runner[T]) RunUntilIdle(ctx context.Context) error {
 				if markErr := r.markFailed(ctx, task, err); markErr != nil {
 					return markErr
 				}
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				continue
 			}
-			if err := r.store.MarkSucceeded(ctx, task, Success{
+			markCtx, cancel := r.markContext(ctx)
+			err := r.store.MarkSucceeded(markCtx, task, Success{
 				WorkerID:    r.config.WorkerID,
 				CompletedAt: r.clock.Now(),
-			}); err != nil {
+			})
+			cancel()
+			if err != nil {
 				return fmt.Errorf("mark task succeeded: %w", err)
+			}
+			if err := ctx.Err(); err != nil {
+				return err
 			}
 		}
 	}
@@ -112,7 +122,9 @@ func (r *Runner[T]) RunUntilIdle(ctx context.Context) error {
 
 func (r *Runner[T]) markFailed(ctx context.Context, task T, taskErr error) error {
 	now := r.clock.Now()
-	if err := r.store.MarkFailed(ctx, task, Failure{
+	markCtx, cancel := r.markContext(ctx)
+	defer cancel()
+	if err := r.store.MarkFailed(markCtx, task, Failure{
 		WorkerID:      r.config.WorkerID,
 		Error:         taskErr.Error(),
 		NextRetryAt:   now.Add(r.config.RetryBackoff),
@@ -122,6 +134,13 @@ func (r *Runner[T]) markFailed(ctx context.Context, task T, taskErr error) error
 		return fmt.Errorf("mark task failed: %w", err)
 	}
 	return nil
+}
+
+func (r *Runner[T]) markContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	// Marking a claimed task is recovery state, not more business work. It keeps
+	// request/lifecycle values for observability while ignoring shutdown cancel
+	// long enough to persist success or retry metadata within a bounded budget.
+	return context.WithTimeout(context.WithoutCancel(ctx), r.config.MarkTimeout)
 }
 
 func (r *Runner[T]) validate() error {
@@ -154,6 +173,9 @@ func normalizeConfig(config Config) Config {
 	}
 	if config.DeadThreshold <= 0 {
 		config.DeadThreshold = 3
+	}
+	if config.MarkTimeout <= 0 {
+		config.MarkTimeout = 5 * time.Second
 	}
 	return config
 }

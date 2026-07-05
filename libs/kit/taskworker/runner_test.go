@@ -87,7 +87,7 @@ func TestRunnerStopsBeforeClaimWhenContextCanceled(t *testing.T) {
 }
 
 func TestRunnerStopsBeforeNextClaimAfterContextCancellation(t *testing.T) {
-	store := &fakeStore[int]{claims: [][]int{{1}, {2}}}
+	store := &fakeStore[int]{claims: [][]int{{1}, {2}}, failCanceledSuccessMark: true}
 	ctx, cancel := context.WithCancel(context.Background())
 	runner := NewRunner[int](store, HandlerFunc[int](func(ctx context.Context, task int) error {
 		cancel()
@@ -101,16 +101,41 @@ func TestRunnerStopsBeforeNextClaimAfterContextCancellation(t *testing.T) {
 	if len(store.claimsSeen) != 1 {
 		t.Fatalf("claim calls = %d, want no second claim", len(store.claimsSeen))
 	}
+	if len(store.succeeded) != 1 || len(store.canceledSuccessMarks) != 0 {
+		t.Fatalf("success marks = %+v canceled=%d, want one mark with independent context", store.succeeded, len(store.canceledSuccessMarks))
+	}
+}
+
+func TestRunnerMarksFailedWithIndependentContextAfterCancellation(t *testing.T) {
+	store := &fakeStore[int]{claims: [][]int{{1}}, failCanceledFailureMark: true}
+	ctx, cancel := context.WithCancel(context.Background())
+	processErr := errors.New("publish failed after broker accepted nothing")
+	runner := NewRunner[int](store, HandlerFunc[int](func(ctx context.Context, task int) error {
+		cancel()
+		return processErr
+	}), fixedClock{now: time.Unix(0, 0).UTC()}, Config{WorkerID: "worker-e"})
+
+	err := runner.RunUntilIdle(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("RunUntilIdle() error = %v, want context.Canceled", err)
+	}
+	if len(store.failed) != 1 || len(store.canceledFailureMarks) != 0 {
+		t.Fatalf("failure marks = %+v canceled=%d, want one mark with independent context", store.failed, len(store.canceledFailureMarks))
+	}
 }
 
 type fakeStore[T comparable] struct {
-	claims      [][]T
-	claimsSeen  []ClaimOptions
-	succeeded   []fakeSuccess[T]
-	failed      []fakeFailure[T]
-	claimErr    error
-	succeedErr  error
-	markFailErr error
+	claims                  [][]T
+	claimsSeen              []ClaimOptions
+	succeeded               []fakeSuccess[T]
+	failed                  []fakeFailure[T]
+	canceledSuccessMarks    []T
+	canceledFailureMarks    []T
+	claimErr                error
+	succeedErr              error
+	markFailErr             error
+	failCanceledSuccessMark bool
+	failCanceledFailureMark bool
 }
 
 func (f *fakeStore[T]) Claim(ctx context.Context, options ClaimOptions) ([]T, error) {
@@ -127,11 +152,23 @@ func (f *fakeStore[T]) Claim(ctx context.Context, options ClaimOptions) ([]T, er
 }
 
 func (f *fakeStore[T]) MarkSucceeded(ctx context.Context, task T, success Success) error {
+	if err := ctx.Err(); err != nil {
+		f.canceledSuccessMarks = append(f.canceledSuccessMarks, task)
+		if f.failCanceledSuccessMark {
+			return err
+		}
+	}
 	f.succeeded = append(f.succeeded, fakeSuccess[T]{task: task, success: success})
 	return f.succeedErr
 }
 
 func (f *fakeStore[T]) MarkFailed(ctx context.Context, task T, failure Failure) error {
+	if err := ctx.Err(); err != nil {
+		f.canceledFailureMarks = append(f.canceledFailureMarks, task)
+		if f.failCanceledFailureMark {
+			return err
+		}
+	}
 	f.failed = append(f.failed, fakeFailure[T]{task: task, failure: failure})
 	return f.markFailErr
 }
