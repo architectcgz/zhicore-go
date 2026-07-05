@@ -353,7 +353,7 @@
 
   repair worker 不读取 draft 冒充 published，不直接修改线上指针；能重试、dead-letter、暴露状态给 admin 查询。
 
-- [ ] **步骤 7：接入 runtime worker descriptors**
+- [x] **步骤 7：接入 runtime worker descriptors**
 
   当配置启用 worker 时返回 enabled descriptor，并由 lifecycle owner 启动 / 停止；未启用时仍明确 disabled reason。
 
@@ -361,7 +361,7 @@
 
   预期：通过。
 
-- [ ] **步骤 8：提交 cleanup / repair 切片**
+- [x] **步骤 8：提交 cleanup / repair 切片**
 
   cleanup 和 repair 分别提交；repository 状态机可单独提交。
 
