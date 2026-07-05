@@ -249,7 +249,7 @@
 
 **测试立场：** TDD - path、可信身份 header、request / response DTO、envelope 和公开错误码属于 R3 / R4。
 
-- [ ] **步骤 1：编写 `CreatePost` handler 失败测试**
+- [x] **步骤 1：编写 `CreatePost` handler 失败测试**
 
   覆盖 `POST /api/v1/posts`、缺 `X-User-Id` 返回 `2006`、空草稿、带 body 创建、标题过长、非法 body 和成功 envelope。
 
@@ -257,7 +257,7 @@
 
   预期：失败。
 
-- [ ] **步骤 2：编写 `SaveDraftBody` handler 失败测试**
+- [x] **步骤 2：编写 `SaveDraftBody` handler 失败测试**
 
   覆盖 `PUT /api/v1/posts/{postId}/draft/body`、作者鉴权、版本冲突、body schema 错误、正文过大、request body 超限、context cancel 和成功 envelope。
 
@@ -265,7 +265,7 @@
 
   预期：失败。
 
-- [ ] **步骤 3：编写 `PublishPost` handler 失败测试**
+- [x] **步骤 3：编写 `PublishPost` handler 失败测试**
 
   覆盖 `POST /api/v1/posts/{postId}/publish`、缺登录态、非作者、标题为空、正文为空、草稿冲突、重复发布、发布依赖不可用和成功 envelope。
 
@@ -273,7 +273,7 @@
 
   预期：失败。
 
-- [ ] **步骤 4：编写 `GetPublishedPostBody` handler 失败测试**
+- [x] **步骤 4：编写 `GetPublishedPostBody` handler 失败测试**
 
   覆盖 `GET /api/v1/posts/{postId}/body`、草稿不可见、已删除不可见、body miss、hash 冲突、schema 不可读和成功 envelope。
 
@@ -281,15 +281,15 @@
 
   预期：失败。
 
-- [ ] **步骤 5：实现 Gin handler**
+- [x] **步骤 5：实现 Gin handler**
 
   `api/http` 只做协议绑定、可信 header 映射、请求体大小限制、DTO 转换和错误映射。当前操作者只来自 `X-User-Id`，body 中的 `userId` / `ownerId` / `actor` 字段不得覆盖身份。
 
-- [ ] **步骤 6：更新 endpoint 状态**
+- [x] **步骤 6：更新 endpoint 状态**
 
   将被 handler contract test 覆盖的 `create-post.md`、`save-draft-body.md`、`publish-post.md`、`get-post-body.md` 和 `services/zhicore-content/api/http/README.md` 状态从“草案”更新为“已验证”，并写明测试文件。
 
-- [ ] **步骤 7：运行 HTTP 收口测试**
+- [x] **步骤 7：运行 HTTP 收口测试**
 
   运行：`cd services/zhicore-content && go test ./api/http`
 

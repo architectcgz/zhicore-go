@@ -1,12 +1,14 @@
 # 发布文章
 
-状态：草案。本文固定编辑器发布入口的 Go-first HTTP contract，尚未由 Go handler / contract test 验证。
+状态：已验证。本文固定编辑器发布入口的 Go-first HTTP contract，已由 Go handler contract test 验证本切片指定的路由、身份、DTO、envelope 和核心错误码；媒体 / 封面依赖错误待 application / ports 固定 sentinel 后补测。
 
 ## 来源
 
 - 服务总览：`docs/architecture/services/content/README.md`
 - Body 存储与发布设计：`docs/architecture/services/content/body-storage-and-publishing.md`
 - 当前 API schema：`services/zhicore-content/api/http/README.md`
+- Go handler：`services/zhicore-content/api/http/handler.go`
+- Go contract test：`services/zhicore-content/api/http/publish_post_handler_test.go`
 - 大草案：`services/zhicore-content/api/http/endpoints/content-api.md`
 
 ## 请求
@@ -84,5 +86,6 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖作者鉴权、版本冲突、正文 hash 冲突、标题/正文为空、成功 envelope 和重复提交。
+- Handler contract test：`services/zhicore-content/api/http/publish_post_handler_test.go`，覆盖登录态、作者鉴权、版本冲突、标题/正文为空、成功 envelope、重复提交和发布依赖不可用。
+- 待补 handler contract test：`4021` 媒体引用非法、`4023` 封面不可用；需要 application / ports 先固定可分支语义错误。
 - System HTTP test：待补。

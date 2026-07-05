@@ -23,6 +23,7 @@ Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Ja
 - 响应 envelope：见 `docs/contracts/http.md`。
 - 错误码：见 `docs/contracts/error-codes.md`。
 - 时间、ID、枚举、空值和 JSON 字段：见 `docs/contracts/data-types.md`。
+- JSON request body 上限：`512KB`；超过后由 HTTP 层返回 HTTP `413`、body `code=4015`，不进入 application parser。
 - 分页、排序和过滤：见 `docs/contracts/pagination.md`。
 - 认证和身份 header：见 `docs/contracts/http.md` 与 `docs/architecture/security.md`。
 - 运行期 timeout、retry、熔断、降级和观测：见 `docs/architecture/runtime-operations.md`、`docs/architecture/observability.md` 和 `docs/architecture/services/content/runtime-resilience.md`。
@@ -114,6 +115,25 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `DELETE` | `/api/v1/admin/content/posts/{postId}` | 管理员 | 管理端删除文章。 |
 | `GET` | `/api/v1/admin/content/outbox-events` | 管理员 | 查询 dead / failed outbox 事件。 |
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | 管理员 | 手动重试 outbox 事件。 |
+
+## 已验证 endpoint
+
+本节的“已验证”表示对应 endpoint 的路由、可信身份 header、请求 DTO、基础错误 envelope、成功响应和本切片指定的核心错误码已经由 handler contract test 覆盖。File / Cover 依赖的专用语义错误需要后续在 application / ports 固定 sentinel 后再补 handler 映射测试，当前不能通过匹配下游错误文本实现。
+
+| 方法 | 路径 | 文档 | Handler contract test | 状态 |
+| --- | --- | --- | --- | --- |
+| `POST` | `/api/v1/posts` | [endpoints/create-post.md](endpoints/create-post.md) | `services/zhicore-content/api/http/create_post_handler_test.go` | 已验证 |
+| `PUT` | `/api/v1/posts/{postId}/draft/body` | [endpoints/save-draft-body.md](endpoints/save-draft-body.md) | `services/zhicore-content/api/http/save_draft_body_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/posts/{postId}/publish` | [endpoints/publish-post.md](endpoints/publish-post.md) | `services/zhicore-content/api/http/publish_post_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/posts/{postId}/body` | [endpoints/get-post-body.md](endpoints/get-post-body.md) | `services/zhicore-content/api/http/get_post_body_handler_test.go` | 已验证 |
+
+## 待补错误映射
+
+| code | 场景 | 待补条件 |
+| --- | --- | --- |
+| `4012` | 分类 / 话题 / 标签引用不存在 | application 固定分类、话题或标签专用语义错误后补 handler mapping 和测试。 |
+| `4021` | File 媒体引用非法 | `FileResourceClient` / application 固定媒体引用非法 sentinel 后补 handler mapping 和测试。 |
+| `4023` | 发布封面不可用 | `FileResourceClient` / application 固定封面不可用 sentinel 后补 handler mapping 和测试。 |
 
 ## 服务级公开错误码
 
