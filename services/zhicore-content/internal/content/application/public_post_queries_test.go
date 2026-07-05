@@ -70,6 +70,17 @@ func TestPublicPostQueries(t *testing.T) {
 		}
 	})
 
+	t.Run("maps list repository failure to dependency unavailable", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.posts.listPublishedErr = errors.New("postgres down")
+		service := NewService(deps.asDeps())
+
+		_, err := service.ListPublishedPosts(context.Background(), ListPublishedPostsQuery{})
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("list error = %v, want ErrDependencyUnavailable", err)
+		}
+	})
+
 	t.Run("gets published detail with validated body", func(t *testing.T) {
 		deps := newPublishedBodyDeps()
 		deps.posts.detailResult = ports.PostDetailRecord{
@@ -99,6 +110,26 @@ func TestPublicPostQueries(t *testing.T) {
 		_, err := service.GetPostDetail(context.Background(), GetPostDetailQuery{PostID: "post_missing"})
 		if !errors.Is(err, domain.ErrPostNotFound) {
 			t.Fatalf("detail error = %v, want ErrPostNotFound", err)
+		}
+	})
+
+	t.Run("records detail repair task with internal post id", func(t *testing.T) {
+		deps := newPublishedBodyDeps()
+		deps.posts.detailResult = ports.PostDetailRecord{
+			InternalPostID:  10,
+			Summary:         publishedSummary("post_1", 42, publishedAt),
+			PublishedBodyID: "body_published",
+			PublishedHash:   "sha256:published",
+		}
+		deps.bodies.readErr = domain.ErrBodyUnavailable
+		service := NewService(deps.asDeps())
+
+		_, err := service.GetPostDetail(context.Background(), GetPostDetailQuery{PostID: "post_1"})
+		if !errors.Is(err, domain.ErrBodyUnavailable) {
+			t.Fatalf("GetPostDetail() error = %v, want ErrBodyUnavailable", err)
+		}
+		if len(deps.repair.outsideTasks) != 1 || deps.repair.outsideTasks[0].PostID != 10 {
+			t.Fatalf("repair tasks = %+v, want internal post id 10", deps.repair.outsideTasks)
 		}
 	})
 
@@ -139,6 +170,17 @@ func TestPublicPostQueries(t *testing.T) {
 		}
 		if _, err := service.BatchGetPublishedPosts(context.Background(), BatchGetPublishedPostsQuery{PostIDs: ids}); !errors.Is(err, ErrInvalidArgument) {
 			t.Fatalf("large batch error = %v, want ErrInvalidArgument", err)
+		}
+	})
+
+	t.Run("maps batch repository failure to dependency unavailable", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.posts.batchErr = errors.New("postgres down")
+		service := NewService(deps.asDeps())
+
+		_, err := service.BatchGetPublishedPosts(context.Background(), BatchGetPublishedPostsQuery{PostIDs: []string{"post_1"}})
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("batch error = %v, want ErrDependencyUnavailable", err)
 		}
 	})
 }

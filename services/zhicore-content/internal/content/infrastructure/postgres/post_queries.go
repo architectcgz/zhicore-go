@@ -109,6 +109,7 @@ func scanPostDetailRecord(row rowScanner) (ports.PostDetailRecord, error) {
 	var authorAvatar, summary, cover sql.NullString
 	var bodyID, bodyHash sql.NullString
 	if err := row.Scan(
+		&detail.InternalPostID,
 		&detail.Summary.PostID,
 		&detail.Summary.AuthorID,
 		&detail.Summary.AuthorName,

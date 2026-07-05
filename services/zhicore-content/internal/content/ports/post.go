@@ -134,6 +134,7 @@ type PostSummaryRecord struct {
 }
 
 type PostDetailRecord struct {
+	InternalPostID  int64
 	Summary         PostSummaryRecord
 	PublishedBodyID string
 	PublishedHash   string

@@ -118,7 +118,7 @@ func (s *Service) ListPublishedPosts(ctx context.Context, query ListPublishedPos
 		Limit:    limit + 1,
 	})
 	if err != nil {
-		return ListPublishedPostsResult{}, fmt.Errorf("list published posts: %w", err)
+		return ListPublishedPostsResult{}, fmt.Errorf("%w: list published posts", ErrDependencyUnavailable)
 	}
 
 	hasMore := len(records) > limit
@@ -148,7 +148,7 @@ func (s *Service) GetPostDetail(ctx context.Context, query GetPostDetailQuery) (
 		}
 		return GetPostDetailResult{}, fmt.Errorf("%w: get post detail", ErrDependencyUnavailable)
 	}
-	body, err := s.readPublishedBody(ctx, detail.Summary.AuthorID, detail.PublishedBodyID, detail.PublishedHash)
+	body, err := s.readPublishedBody(ctx, detail.InternalPostID, detail.PublishedBodyID, detail.PublishedHash)
 	if err != nil {
 		return GetPostDetailResult{}, err
 	}
@@ -165,7 +165,7 @@ func (s *Service) BatchGetPublishedPosts(ctx context.Context, query BatchGetPubl
 	}
 	records, err := s.queries.BatchGetPublishedPostSummaries(ctx, ids)
 	if err != nil {
-		return BatchGetPublishedPostsResult{}, fmt.Errorf("batch get published posts: %w", err)
+		return BatchGetPublishedPostsResult{}, fmt.Errorf("%w: batch get published posts", ErrDependencyUnavailable)
 	}
 	byID := make(map[string]ports.PostSummaryRecord, len(records))
 	for _, record := range records {

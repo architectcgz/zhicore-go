@@ -50,7 +50,7 @@ func TestStoreGetPublishedPostDetail(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPostDetailSQL)).
 		WithArgs("post_1").
 		WillReturnRows(postDetailRows().AddRow(
-			"post_1", int64(42), "architect", "file_avatar", "Published", "summary", "file_cover",
+			int64(10), "post_1", int64(42), "architect", "file_avatar", "Published", "summary", "file_cover",
 			"PUBLISHED", int64(3), publishedAt, publishedAt.Add(-time.Hour), publishedAt,
 			int64(10), int64(2), int64(1), int64(4), "body_1", "sha256:body",
 		))
@@ -59,7 +59,7 @@ func TestStoreGetPublishedPostDetail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPublishedPostDetail() error = %v", err)
 	}
-	if got.Summary.PostID != "post_1" || got.PublishedBodyID != "body_1" || got.PublishedHash != "sha256:body" {
+	if got.InternalPostID != 10 || got.Summary.PostID != "post_1" || got.PublishedBodyID != "body_1" || got.PublishedHash != "sha256:body" {
 		t.Fatalf("detail = %+v", got)
 	}
 	assertExpectations(t, mock)
@@ -93,7 +93,7 @@ func postSummaryRows() *sqlmock.Rows {
 }
 
 func postDetailRows() *sqlmock.Rows {
-	return sqlmock.NewRows(append(postSummaryColumnNames(), "published_body_id", "published_body_hash"))
+	return sqlmock.NewRows(append([]string{"id"}, append(postSummaryColumnNames(), "published_body_id", "published_body_hash")...))
 }
 
 func postSummaryColumnNames() []string {

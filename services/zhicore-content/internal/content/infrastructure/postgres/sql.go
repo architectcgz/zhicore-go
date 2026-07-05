@@ -142,7 +142,8 @@ ORDER BY p.published_at DESC, p.public_id DESC
 LIMIT $4`
 
 const getPublishedPostDetailSQL = `
-SELECT` + postSummaryColumns + `,
+SELECT
+    p.id,` + postSummaryColumns + `,
     p.published_body_id,
     p.published_body_hash
 FROM posts AS p
