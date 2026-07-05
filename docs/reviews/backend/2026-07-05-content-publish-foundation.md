@@ -10,7 +10,7 @@
   - `POST /api/v1/posts/{postId}/publish`
   - `GET /api/v1/posts/{postId}/body`
   - Content runtime module 和 `cmd/server` 最小入口。
-- 实施计划：`docs/plan/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
+- 实施计划：`docs/plan/archive/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
 - 独立 reviewer：
   - 预实现风险审查：`code-reviewer` subagent `019f318f-60e5-73d0-b6e5-6a5d94229a96`。
   - Task 5 代码复核：`code-reviewer` subagent `019f3198-62a6-7551-b5fa-9dee55ac2e6f`。

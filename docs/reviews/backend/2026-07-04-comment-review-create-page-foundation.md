@@ -4,12 +4,12 @@
 
 - `zhicore-comment` 创建根评论 / 回复 application、HTTP handler 和核心 migration。
 - 顶级评论传统分页 application 和 HTTP handler。
-- 实施计划：`docs/plan/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`。
+- 实施计划：`docs/plan/archive/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`。
 
 ## Review 对象
 
 - diff source：当前 worktree `task/2026-07-04-comment-create-page-foundation`。
-- 实施计划：`docs/plan/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`。
+- 实施计划：`docs/plan/archive/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`。
 - 风险分类：公开 HTTP contract、事件 payload、transaction / outbox 和 migration，属于高风险 backend 切片。
 
 ## Gate Verdict
@@ -52,7 +52,7 @@
 - `make test-size`：通过。
 - `make check`：通过。
 - `git diff --check`：通过。
-- `rg '^- \[ \]' docs/plan/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`：无未完成 checklist。
+- `rg '^- \[ \]' docs/plan/archive/impl-plan/2026-07-04-comment-create-page-foundation-implementation-plan.md`：无未完成 checklist。
 
 ## Required Re-Validation
 

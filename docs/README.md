@@ -49,6 +49,7 @@
 - `docs/plan/`：跨服务或跨仓实施计划。
   - `docs/plan/README.md`：实施计划索引。
   - `docs/plan/impl-plan/`：需要按任务执行、review 和验证的正式实现计划。
+  - `docs/plan/archive/`：已完成、已替代或不再作为当前执行入口的计划归档。
 
 ## 部署说明
 

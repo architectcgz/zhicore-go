@@ -60,5 +60,5 @@ make check
 
 ## 后续计划
 
-- 发布闭环 foundation 计划：`docs/plan/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
+- 发布闭环 foundation 计划：`docs/plan/archive/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
 - 模块补全计划：`docs/plan/impl-plan/2026-07-05-content-module-completion-implementation-plan.md`

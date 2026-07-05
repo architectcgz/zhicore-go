@@ -12,7 +12,7 @@
   - `services/zhicore-comment/internal/comment/runtime/module.go`
   - `services/zhicore-file/api/http/handler.go`
   - 相关 runtime 测试
-  - `docs/plan/impl-plan/2026-07-05-gin-http-migration-implementation-plan.md`
+  - `docs/plan/archive/impl-plan/2026-07-05-gin-http-migration-implementation-plan.md`
 - 独立 reviewer：`code-reviewer` subagent `019f30c4-d54d-7581-bd89-3f69c979f688`。
 
 ## 分类判断

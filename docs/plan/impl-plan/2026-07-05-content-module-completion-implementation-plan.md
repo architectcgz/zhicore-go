@@ -12,7 +12,7 @@
 
 ## 背景依据
 
-- `docs/plan/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
+- `docs/plan/archive/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md`
 - `docs/reviews/backend/2026-07-05-content-publish-foundation.md`
 - `docs/architecture/services/content/README.md`
 - `docs/architecture/services/content/body-storage-and-publishing.md`
