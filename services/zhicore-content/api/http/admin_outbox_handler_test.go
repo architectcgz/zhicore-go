@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,6 +21,39 @@ func TestAdminOutboxRequiresAdminRole(t *testing.T) {
 	assertErrorEnvelope(t, rr, http.StatusForbidden, 2007)
 	if service.listOutboxCalls != 0 {
 		t.Fatalf("listOutboxCalls = %d, want 0", service.listOutboxCalls)
+	}
+}
+
+func TestAdminOutboxRequiresLoginBeforeAdminRole(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   *bytes.Buffer
+	}{
+		{name: "list", method: http.MethodGet, path: "/api/v1/admin/content/outbox-events?status=failed"},
+		{name: "retry", method: http.MethodPost, path: "/api/v1/admin/content/outbox-events/evt_1/retry", body: bytes.NewBufferString(`{"reason":"manual replay"}`)},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			service := &fakeContentService{}
+			rr := httptest.NewRecorder()
+			var body io.Reader
+			if tc.body != nil {
+				body = bytes.NewBuffer(tc.body.Bytes())
+			}
+			req := withRoles(httptest.NewRequest(tc.method, tc.path, body), "admin")
+			if tc.method == http.MethodPost {
+				req = withJSON(req)
+			}
+
+			NewHandler(service).ServeHTTP(rr, req)
+
+			assertErrorEnvelope(t, rr, http.StatusUnauthorized, 2006)
+			if service.listOutboxCalls != 0 || service.retryOutboxCalls != 0 {
+				t.Fatalf("service calls list=%d retry=%d, want none", service.listOutboxCalls, service.retryOutboxCalls)
+			}
+		})
 	}
 }
 

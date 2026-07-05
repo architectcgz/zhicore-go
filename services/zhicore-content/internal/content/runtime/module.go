@@ -245,7 +245,7 @@ func configuredContentWorkers(
 			Publisher:  integrationEvents,
 			Clock:      clock,
 		}, application.OutboxDispatcherConfig{
-			DispatcherID:    "content-outbox-dispatcher",
+			DispatcherID:    "zhicore-content:outbox-dispatcher",
 			BatchSize:       50,
 			StaleClaimAfter: 5 * time.Minute,
 			RetryBackoff:    time.Minute,

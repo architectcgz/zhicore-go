@@ -124,6 +124,24 @@ func TestOutboxDispatcher(t *testing.T) {
 			t.Fatalf("claim calls = %d, want none after pre-canceled context", deps.repository.claimCalls)
 		}
 	})
+
+	t.Run("uses contract dispatcher identity by default", func(t *testing.T) {
+		deps := newOutboxDispatcherDeps()
+		deps.repository.claimResults = [][]ports.OutboxEvent{}
+		worker := NewOutboxDispatcher(OutboxDispatcherDeps{
+			Repository: deps.repository,
+			Publisher:  deps.publisher,
+			Clock:      deps.clock,
+		}, OutboxDispatcherConfig{})
+
+		err := worker.RunUntilIdle(context.Background())
+		if err != nil {
+			t.Fatalf("RunUntilIdle() error = %v", err)
+		}
+		if deps.repository.claimRequests[0].DispatcherID != "zhicore-content:outbox-dispatcher" {
+			t.Fatalf("dispatcher id = %q, want contract identity", deps.repository.claimRequests[0].DispatcherID)
+		}
+	})
 }
 
 type outboxDispatcherDeps struct {

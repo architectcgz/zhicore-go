@@ -215,9 +215,9 @@ func (h *Handler) getPostBody(c *gin.Context) {
 
 func (h *Handler) listAdminOutboxEvents(c *gin.Context) {
 	w, r := c.Writer, c.Request
-	actor, ok := adminActorFromRequest(r)
-	if !ok {
-		writeMappedError(w, application.ErrRoleRequired)
+	actor, err := requireAdminActorFromRequest(r)
+	if err != nil {
+		writeMappedError(w, err)
 		return
 	}
 	page, ok := optionalPositiveIntQuery(w, c, "page")
@@ -267,9 +267,9 @@ func (h *Handler) listAdminOutboxEvents(c *gin.Context) {
 
 func (h *Handler) retryAdminOutboxEvent(c *gin.Context) {
 	w, r := c.Writer, c.Request
-	actor, ok := adminActorFromRequest(r)
-	if !ok {
-		writeMappedError(w, application.ErrRoleRequired)
+	actor, err := requireAdminActorFromRequest(r)
+	if err != nil {
+		writeMappedError(w, err)
 		return
 	}
 	eventID := strings.TrimSpace(c.Param("eventId"))
@@ -409,12 +409,15 @@ func actorFromRequest(r *http.Request) (*application.Actor, bool) {
 	return &application.Actor{UserID: userID, Roles: rolesFromRequest(r)}, true
 }
 
-func adminActorFromRequest(r *http.Request) (*application.Actor, bool) {
+func requireAdminActorFromRequest(r *http.Request) (*application.Actor, error) {
 	actor, ok := actorFromRequest(r)
 	if !ok {
-		return nil, false
+		return nil, errLoginRequired
 	}
-	return actor, actor.HasRole("admin") || actor.HasRole("role_admin")
+	if !actor.HasRole("admin") && !actor.HasRole("role_admin") {
+		return nil, application.ErrRoleRequired
+	}
+	return actor, nil
 }
 
 func rolesFromRequest(r *http.Request) []string {

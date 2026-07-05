@@ -60,7 +60,7 @@ func (d *OutboxDispatcher) publish(ctx context.Context, event ports.OutboxEvent)
 
 func normalizeOutboxDispatcherConfig(config OutboxDispatcherConfig) OutboxDispatcherConfig {
 	if strings.TrimSpace(config.DispatcherID) == "" {
-		config.DispatcherID = "content-outbox-dispatcher"
+		config.DispatcherID = "zhicore-content:outbox-dispatcher"
 	} else {
 		config.DispatcherID = strings.TrimSpace(config.DispatcherID)
 	}
