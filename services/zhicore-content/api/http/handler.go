@@ -12,8 +12,6 @@ import (
 
 	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/application"
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 	"github.com/gin-gonic/gin"
 )
 
@@ -221,17 +219,17 @@ type createPostReq struct {
 }
 
 type postBodyReq struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	Blocks        ports.Blocks `json:"blocks"`
+	SchemaVersion int                `json:"schemaVersion"`
+	Blocks        application.Blocks `json:"blocks"`
 }
 
 type saveDraftBodyReq struct {
-	BasePostVersion   int64        `json:"basePostVersion"`
-	BaseDraftBodyID   string       `json:"baseDraftBodyId"`
-	BaseDraftBodyHash string       `json:"baseDraftBodyHash"`
-	SchemaVersion     int          `json:"schemaVersion"`
-	Blocks            ports.Blocks `json:"blocks"`
-	ClientSavedAt     string       `json:"clientSavedAt"`
+	BasePostVersion   int64              `json:"basePostVersion"`
+	BaseDraftBodyID   string             `json:"baseDraftBodyId"`
+	BaseDraftBodyHash string             `json:"baseDraftBodyHash"`
+	SchemaVersion     int                `json:"schemaVersion"`
+	Blocks            application.Blocks `json:"blocks"`
+	ClientSavedAt     string             `json:"clientSavedAt"`
 }
 
 type publishPostReq struct {
@@ -346,7 +344,7 @@ func writeMappedError(w http.ResponseWriter, err error, operation ...errorOperat
 }
 
 func errorMapping(err error, operation errorOperation) (int, int, string, []sharedhttp.ErrorDetail) {
-	var validationErr *ports.BodyValidationError
+	var validationErr *application.BodyValidationError
 	if errors.As(err, &validationErr) {
 		status, code, message := bodyValidationMapping(validationErr)
 		return status, code, message, validationDetails(validationErr.Details)
@@ -366,27 +364,27 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusInternalServerError, 4024, "Body schema unsupported", nil
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return http.StatusServiceUnavailable, 1004, "Service unavailable", nil
-	case errors.Is(err, domain.ErrPostNotFound):
+	case errors.Is(err, application.ErrPostNotFound):
 		return http.StatusNotFound, 4001, "Post not found", nil
-	case errors.Is(err, domain.ErrForbidden):
+	case errors.Is(err, application.ErrForbidden):
 		return http.StatusForbidden, 2008, "Forbidden", nil
-	case errors.Is(err, domain.ErrPostAlreadyPublished):
+	case errors.Is(err, application.ErrPostAlreadyPublished):
 		return http.StatusConflict, 4002, "Post already published", nil
-	case errors.Is(err, domain.ErrPostDeleted):
+	case errors.Is(err, application.ErrPostDeleted):
 		return http.StatusConflict, 4004, "Post deleted", nil
-	case errors.Is(err, domain.ErrTitleRequired):
+	case errors.Is(err, application.ErrTitleRequired):
 		return http.StatusBadRequest, 4005, "Post title is required", nil
-	case errors.Is(err, domain.ErrBodyRequired):
+	case errors.Is(err, application.ErrBodyRequired):
 		return http.StatusBadRequest, 4006, "Post body is required", nil
-	case errors.Is(err, domain.ErrTitleTooLong):
+	case errors.Is(err, application.ErrTitleTooLong):
 		return http.StatusBadRequest, 4007, "Post title is too long", nil
-	case errors.Is(err, domain.ErrBodyTooShort):
+	case errors.Is(err, application.ErrBodyTooShort):
 		return http.StatusBadRequest, 4016, "Post body text is too short", nil
-	case errors.Is(err, domain.ErrDraftConflict):
+	case errors.Is(err, application.ErrDraftConflict):
 		return http.StatusConflict, 4017, "Draft conflict", nil
-	case errors.Is(err, domain.ErrBodyUnavailable):
+	case errors.Is(err, application.ErrBodyUnavailable):
 		return http.StatusInternalServerError, 4018, "Body unavailable", nil
-	case errors.Is(err, domain.ErrBodyInconsistent):
+	case errors.Is(err, application.ErrBodyInconsistent):
 		return http.StatusConflict, 4019, "Body inconsistent", nil
 	default:
 		return http.StatusInternalServerError, 1000, "Internal server error", nil
@@ -406,7 +404,7 @@ func extractCanonicalBlocks(canonicalJSON []byte) (json.RawMessage, bool) {
 	return body.Blocks, true
 }
 
-func bodyValidationMapping(err *ports.BodyValidationError) (int, int, string) {
+func bodyValidationMapping(err *application.BodyValidationError) (int, int, string) {
 	if err.Truncated {
 		return http.StatusBadRequest, 4022, "Too many validation errors"
 	}
@@ -427,7 +425,7 @@ func bodyValidationMapping(err *ports.BodyValidationError) (int, int, string) {
 	return http.StatusBadRequest, 4013, "Body schema invalid"
 }
 
-func validationDetails(details []ports.ValidationDetail) []sharedhttp.ErrorDetail {
+func validationDetails(details []application.ValidationDetail) []sharedhttp.ErrorDetail {
 	if len(details) == 0 {
 		return nil
 	}

@@ -16,15 +16,34 @@ var (
 	ErrInvalidArgument       = errors.New("invalid argument")
 	ErrDependencyUnavailable = errors.New("dependency unavailable")
 	ErrBodySchemaUnsupported = errors.New("body schema unsupported")
+	ErrPostNotFound          = domain.ErrPostNotFound
+	ErrForbidden             = domain.ErrForbidden
+	ErrPostAlreadyPublished  = domain.ErrPostAlreadyPublished
+	ErrPostDeleted           = domain.ErrPostDeleted
+	ErrTitleRequired         = domain.ErrTitleRequired
+	ErrTitleTooLong          = domain.ErrTitleTooLong
+	ErrBodyRequired          = domain.ErrBodyRequired
+	ErrBodyTooShort          = domain.ErrBodyTooShort
+	ErrDraftConflict         = domain.ErrDraftConflict
+	ErrBodyUnavailable       = domain.ErrBodyUnavailable
+	ErrBodyInconsistent      = domain.ErrBodyInconsistent
 )
 
 type Actor struct {
 	UserID int64
 }
 
+// Application exposes body DTO aliases for inbound adapters so HTTP handlers
+// do not depend on internal ports while preserving the parser-owned schema.
+type Blocks = ports.Blocks
+
+type BodyValidationError = ports.BodyValidationError
+
+type ValidationDetail = ports.ValidationDetail
+
 type PostBodyInput struct {
 	SchemaVersion int
-	Blocks        ports.Blocks
+	Blocks        Blocks
 }
 
 type CreatePostCommand struct {
