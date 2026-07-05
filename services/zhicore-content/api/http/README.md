@@ -123,6 +123,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | 方法 | 路径 | 文档 | Handler contract test | 状态 |
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/posts` | [endpoints/create-post.md](endpoints/create-post.md) | `services/zhicore-content/api/http/create_post_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/admin/content/outbox-events` | [endpoints/list-admin-outbox-events.md](endpoints/list-admin-outbox-events.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | [endpoints/retry-admin-outbox-event.md](endpoints/retry-admin-outbox-event.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | [endpoints/save-draft-body.md](endpoints/save-draft-body.md) | `services/zhicore-content/api/http/save_draft_body_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/posts/{postId}/publish` | [endpoints/publish-post.md](endpoints/publish-post.md) | `services/zhicore-content/api/http/publish_post_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/posts/{postId}/body` | [endpoints/get-post-body.md](endpoints/get-post-body.md) | `services/zhicore-content/api/http/get_post_body_handler_test.go` | 已验证 |

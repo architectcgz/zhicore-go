@@ -405,7 +405,7 @@
 
   publish RabbitMQ 不在持有 DB 行锁的事务中执行；每个事件结果必须落库。
 
-- [ ] **步骤 7：补 admin outbox retry contract 和 handler**
+- [x] **步骤 7：补 admin outbox retry contract 和 handler**
 
   拆 `GET /api/v1/admin/content/outbox-events`、`POST /api/v1/admin/content/outbox-events/{eventId}/retry` endpoint 文档、handler contract test 和 application 查询/重试 use case。
 
