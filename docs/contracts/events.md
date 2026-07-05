@@ -332,6 +332,8 @@ queue = <consumer>.<event-family>.p<partition>
 Consumer 要求：
 
 - 消费时以 JSON `eventId` 作为幂等键；落库到 inbox、ledger 或业务唯一约束时使用 `event_id`。
+- 不强制每个 consumer 都建立独立 inbox 表，但每条消费链路必须声明自己的幂等边界。幂等边界可以是 inbox、业务 ledger、`source_event_id` 唯一约束、状态版本号或覆盖写；只要能证明重复投递不会制造重复副作用即可。
+- 如果事件处理包含多个副作用，必须保证这些副作用在同一个幂等边界下提交，或分别有稳定幂等键保护；不能只让其中一步幂等，却让计数、通知、缓存刷新或外部调用在重复投递时重复生效。
 - 容忍重复消息。
 - 容忍乱序和迟到消息。
 - 不直接修改 provider 写模型。
