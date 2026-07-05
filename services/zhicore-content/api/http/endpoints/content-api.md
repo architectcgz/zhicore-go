@@ -341,7 +341,6 @@ Body：
 | `basePostVersion` | int | 是 | 发布确认时看到的版本。 |
 | `draftBodyId` | string | 是 | 要发布的草稿 body。 |
 | `draftBodyHash` | string | 是 | 要发布的草稿 hash。 |
-| `idempotencyKey` | string | 否 | 可选；推荐调用方同时传 `Idempotency-Key` header。 |
 
 响应 `data`：
 

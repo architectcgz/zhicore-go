@@ -1,12 +1,14 @@
 # 读取文章正文
 
-状态：草案。本文固定公开 published body 读取入口的 Go-first HTTP contract，尚未由 Go handler / contract test 验证。
+状态：已验证。本文固定公开 published body 读取入口的 Go-first HTTP contract，已由 Go handler contract test 验证。
 
 ## 来源
 
 - 服务总览：`docs/architecture/services/content/README.md`
 - Body 存储与发布设计：`docs/architecture/services/content/body-storage-and-publishing.md`
 - 当前 API schema：`services/zhicore-content/api/http/README.md`
+- Go handler：`services/zhicore-content/api/http/handler.go`
+- Go contract test：`services/zhicore-content/api/http/get_post_body_handler_test.go`
 - 大草案：`services/zhicore-content/api/http/endpoints/content-api.md`
 
 ## 请求
@@ -77,5 +79,5 @@
 
 ## 测试要求
 
-- Handler contract test：待补，覆盖公开可见、草稿不可见、已删除不可见、body miss 和成功 envelope。
+- Handler contract test：`services/zhicore-content/api/http/get_post_body_handler_test.go`，覆盖公开可见、草稿不可见、已删除不可见、body miss、hash 冲突、schema 不可读、malformed canonical body 防静默空正文和成功 envelope。
 - System HTTP test：待补。

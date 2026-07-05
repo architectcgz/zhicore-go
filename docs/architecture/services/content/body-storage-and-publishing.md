@@ -109,17 +109,18 @@ MongoDB 正文写入失败
 ```text
 MongoDB write snapshot success
 -> PostgreSQL transaction fail / rollback
--> application 立即 best-effort 删除 new_snapshot_body_id
--> 删除失败且 PostgreSQL 可用时，用独立短事务写 content_body_cleanup_tasks(orphan_snapshot)
--> PostgreSQL 也不可用时，记录结构化错误、metric 和 orphan body 元数据，由周期 orphan scanner 兜底
+-> application 只登记 content_body_cleanup_tasks(orphan_snapshot)
+-> cleanup worker 删除前确认 posts.published_body_id / posts.draft_body_id 都未引用该 body
+-> cleanup worker 删除失败或登记失败时，记录结构化错误、metric 和 orphan body 元数据，由周期 scanner / 人工修复兜底
 ```
 
 规则：
 
-- 事务外 cleanup 只能按 `body_id` 精确删除，删除前仍要确认 `posts.published_body_id` / `posts.draft_body_id` 没有引用该 body。
+- application 不直接删除 MongoDB snapshot。原因是 PostgreSQL commit 结果可能不明确，直接删 body 有误删已经被事务引用正文的风险。
+- cleanup worker 只能按 `body_id` 精确删除，删除前必须确认 `posts.published_body_id` / `posts.draft_body_id` 没有引用该 body。
 - 独立写入 cleanup task 不能改变发布结果；发布仍然返回失败，线上正文保持旧指针。
 - orphan scanner 只处理超过安全年龄阈值的 MongoDB body，例如 `created_at < now - cleanupSafetyWindow`，避免误删刚写入但事务仍在推进的候选 body。
-- 这个路径必须有 application 测试：模拟 MongoDB snapshot 写入成功、PG transaction 失败、MongoDB 删除失败时，能登记 orphan cleanup task；PG 也不可用时至少产生可观测告警并由 scanner 后续发现。
+- 这个路径必须有 application 测试：模拟 MongoDB snapshot 写入成功、PG transaction 失败时，能登记 orphan cleanup task；worker 删除与 scanner 兜底在后续任务实现。
 
 ## published / draft 元数据分离
 

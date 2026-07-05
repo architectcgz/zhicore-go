@@ -1,12 +1,14 @@
 # 保存草稿正文
 
-状态：草案。本文固定编辑器服务端保存正文的 Go-first HTTP contract，尚未由 Go handler / contract test 验证。
+状态：已验证。本文固定编辑器服务端保存正文的 Go-first HTTP contract，已由 Go handler contract test 验证本切片指定的路由、身份、DTO、request body limit、envelope 和核心错误码；媒体依赖错误待 application / ports 固定 sentinel 后补测。
 
 ## 来源
 
 - 服务总览：`docs/architecture/services/content/README.md`
 - Body 存储与发布设计：`docs/architecture/services/content/body-storage-and-publishing.md`
 - 当前 API schema：`services/zhicore-content/api/http/README.md`
+- Go handler：`services/zhicore-content/api/http/handler.go`
+- Go contract test：`services/zhicore-content/api/http/save_draft_body_handler_test.go`
 - 大草案：`services/zhicore-content/api/http/endpoints/content-api.md`
 
 ## 请求
@@ -63,6 +65,7 @@
 | `4013` | `400` | 正文 schema 非法 | blocks schema 不合法。 |
 | `4014` | `400` | 正文类型不允许 | block 类型不允许发布或保存。 |
 | `4015` | `400` | 正文过大 | canonical JSON 超过限制。 |
+| `4015` | `413` | 请求体过大 | HTTP request body 超过 `512KB`，在进入 application parser 前拒绝。 |
 | `4017` | `409` | 草稿冲突 | `basePostVersion`、`baseDraftBodyId` 或 `baseDraftBodyHash` 与服务端当前草稿不一致。 |
 | `4019` | `409` | 正文 hash 冲突 | 服务端读取到的 body hash 与 PostgreSQL 指针记录不一致。 |
 | `1001` | `400` | 参数校验失败 | `clientSavedAt` 格式非法或普通字段校验失败。 |
@@ -94,6 +97,7 @@
 
 - Parser unit test：待补，覆盖 `V1BodyParser` 正文 schema、未启用 block、外链 scheme、external embed provider、媒体引用提取、容器深度、表格尺寸、字段长度、canonical JSON 大小和错误数量截断。
 - Parser benchmark：待补，覆盖 `small`、`medium`、`near_limit`、`many_blocks`、`large_table`、`many_links`、`large_code`、`reject_oversize`、`reject_many_errors`，用于确定正文阈值；基准命令为 `go test -bench=BenchmarkV1BodyParser -benchmem ./services/zhicore-content/...`。
-- Handler contract test：待补，覆盖作者鉴权、`basePostVersion`、`baseDraftBodyId`、`baseDraftBodyHash`、正文 schema、正文过大、媒体引用、external embed URL / provider、超大请求体拒绝、request context cancel 和成功 envelope。
+- Handler contract test：`services/zhicore-content/api/http/save_draft_body_handler_test.go`，覆盖作者鉴权、`basePostVersion`、正文 schema、正文过大、超大请求体拒绝、request context cancel 和成功 envelope。
+- 待补 handler contract test：`4021` 媒体引用非法；需要 application / ports 先固定可分支语义错误。
 - System HTTP test：待补。
 - Autosave load test：待补，模拟 10 / 50 / 100 个作者并发保存，正文分布使用 `70% small`、`25% medium`、`5% near_limit`，记录 p95 / p99、错误码分布、CPU、GC、MongoDB 写入耗时和限流命中率。
