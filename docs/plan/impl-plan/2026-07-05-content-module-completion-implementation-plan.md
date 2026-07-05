@@ -369,7 +369,7 @@
 
 **测试立场：** TDD - outbox claim、publish confirm、retry、dead-letter、admin retry 和事件 envelope 属于 R4。
 
-- [ ] **步骤 1：编写 outbox dispatch repository 测试**
+- [x] **步骤 1：编写 outbox dispatch repository 测试**
 
   覆盖 `PENDING / FAILED -> CLAIMING -> PUBLISHED / FAILED / DEAD`、stale claim 重领、`next_retry_at`、claim lost 和多实例不重复 claim。
 
@@ -377,7 +377,7 @@
 
   预期：失败。
 
-- [ ] **步骤 2：实现 outbox dispatch repository**
+- [x] **步骤 2：实现 outbox dispatch repository**
 
   优先复用 `libs/kit/postgres/outbox`；如 Content schema 缺少 dispatch columns，先补 migration，不能用内存状态假装 dispatcher。
 
