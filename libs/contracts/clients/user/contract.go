@@ -9,6 +9,7 @@ const (
 	OperationCommentCheckUserAvailability   = "comment.check_user_availability"
 	OperationCommentBatchGetAuthorSummaries = "comment.batch_get_author_summaries"
 	OperationCommentBatchCheckBlocked       = "comment.batch_check_blocked"
+	OperationContentGetOwnerSnapshot        = "content.get_owner_snapshot"
 )
 
 type IDsRequest struct {
