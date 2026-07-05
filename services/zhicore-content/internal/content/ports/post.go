@@ -22,6 +22,9 @@ type PostRepository interface {
 
 type PostQueryRepository interface {
 	GetPublishedBodyPointer(ctx context.Context, publicID string) (PublishedBodyPointer, error)
+	ListPublishedPosts(ctx context.Context, query PostListQuery) ([]PostSummaryRecord, error)
+	GetPublishedPostDetail(ctx context.Context, publicID string) (PostDetailRecord, error)
+	BatchGetPublishedPostSummaries(ctx context.Context, publicIDs []string) ([]PostSummaryRecord, error)
 }
 
 type BodyReferenceChecker interface {
@@ -98,4 +101,40 @@ type PublishedBodyPointer struct {
 	PublishedBodyID       string
 	PublishedBodyHash     string
 	PublishedPlainTextLen int
+}
+
+type PublishedPostCursor struct {
+	PublishedAt time.Time
+	PublicID    string
+}
+
+type PostListQuery struct {
+	AuthorID int64
+	Cursor   PublishedPostCursor
+	Limit    int
+}
+
+type PostSummaryRecord struct {
+	PostID             string
+	AuthorID           int64
+	AuthorName         string
+	AuthorAvatarFileID string
+	Title              string
+	Summary            string
+	CoverFileID        string
+	Status             domain.PostStatus
+	PostVersion        int64
+	PublishedAt        time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	ViewCount          int64
+	LikeCount          int64
+	FavoriteCount      int64
+	CommentCount       int64
+}
+
+type PostDetailRecord struct {
+	Summary         PostSummaryRecord
+	PublishedBodyID string
+	PublishedHash   string
 }

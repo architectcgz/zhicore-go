@@ -594,71 +594,18 @@ func (s *Service) GetPublishedPostBody(ctx context.Context, query GetPublishedPo
 		return GetPublishedPostBodyResult{}, domain.ErrPostNotFound
 	}
 
-	body, err := s.bodies.ReadBody(ctx, pointer.PublishedBodyID)
+	body, err := s.readPublishedBody(ctx, pointer.PostID, pointer.PublishedBodyID, pointer.PublishedBodyHash)
 	if err != nil {
-		taskType := "mongo_read_error_after_pg_published"
-		if errors.Is(err, domain.ErrBodyUnavailable) {
-			taskType = "published_body_missing"
-		}
-		s.appendRepairTask(ctx, ports.BodyRepairTask{
-			PostID:       pointer.PostID,
-			BodyID:       pointer.PublishedBodyID,
-			TaskType:     taskType,
-			ExpectedHash: pointer.PublishedBodyHash,
-			CreatedAt:    s.clock.Now(),
-		})
-		if errors.Is(err, domain.ErrBodyUnavailable) {
-			return GetPublishedPostBodyResult{}, err
-		}
-		return GetPublishedPostBodyResult{}, fmt.Errorf("%w: read published body", ErrDependencyUnavailable)
-	}
-
-	if body.ContentHash != pointer.PublishedBodyHash {
-		s.appendRepairTask(ctx, ports.BodyRepairTask{
-			PostID:       pointer.PostID,
-			BodyID:       pointer.PublishedBodyID,
-			TaskType:     "body_hash_mismatch",
-			ExpectedHash: pointer.PublishedBodyHash,
-			ObservedHash: body.ContentHash,
-			CreatedAt:    s.clock.Now(),
-		})
-		return GetPublishedPostBodyResult{}, domain.ErrBodyInconsistent
-	}
-	normalized, err := s.validateStoredBody(ctx, body)
-	if err != nil {
-		taskType := "mongo_read_error_after_pg_published"
-		if errors.Is(err, domain.ErrBodyInconsistent) {
-			taskType = "body_hash_mismatch"
-		}
-		s.appendRepairTask(ctx, ports.BodyRepairTask{
-			PostID:       pointer.PostID,
-			BodyID:       pointer.PublishedBodyID,
-			TaskType:     taskType,
-			ExpectedHash: pointer.PublishedBodyHash,
-			ObservedHash: body.ContentHash,
-			CreatedAt:    s.clock.Now(),
-		})
 		return GetPublishedPostBodyResult{}, err
-	}
-	if normalized.ContentHash != pointer.PublishedBodyHash {
-		s.appendRepairTask(ctx, ports.BodyRepairTask{
-			PostID:       pointer.PostID,
-			BodyID:       pointer.PublishedBodyID,
-			TaskType:     "body_hash_mismatch",
-			ExpectedHash: pointer.PublishedBodyHash,
-			ObservedHash: normalized.ContentHash,
-			CreatedAt:    s.clock.Now(),
-		})
-		return GetPublishedPostBodyResult{}, domain.ErrBodyInconsistent
 	}
 
 	return GetPublishedPostBodyResult{
-		BodyID:        body.ID,
+		BodyID:        body.BodyID,
 		SchemaVersion: body.SchemaVersion,
-		CanonicalJSON: append([]byte(nil), normalized.CanonicalJSON...),
-		PlainText:     normalized.PlainText,
-		ContentHash:   normalized.ContentHash,
-		SizeBytes:     normalized.SizeBytes,
+		CanonicalJSON: append([]byte(nil), body.CanonicalJSON...),
+		PlainText:     body.PlainText,
+		ContentHash:   body.ContentHash,
+		SizeBytes:     body.SizeBytes,
 		CreatedAt:     body.CreatedAt,
 	}, nil
 }

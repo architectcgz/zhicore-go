@@ -305,30 +305,42 @@ func (d createPostDeps) asDeps() Deps {
 }
 
 type fakePostRepository struct {
-	createCalls       int
-	createInput       ports.CreateDraftPost
-	createResult      ports.PostRecord
-	createErr         error
-	getCalls          int
-	getPublicID       string
-	getResult         ports.PostRecord
-	getErr            error
-	saveCalls         int
-	saveInput         ports.SaveDraftBodyUpdate
-	saveResult        ports.PostRecord
-	saveErr           error
-	publishCalls      int
-	publishInput      ports.PublishPostUpdate
-	publishResult     ports.PostRecord
-	publishErr        error
-	bodyPointerCalls  int
-	bodyPointerPublic string
-	bodyPointerResult ports.PublishedBodyPointer
-	bodyPointerErr    error
-	referenceChecks   int
-	referenceBodyID   string
-	bodyReferenced    bool
-	bodyReferenceErr  error
+	createCalls         int
+	createInput         ports.CreateDraftPost
+	createResult        ports.PostRecord
+	createErr           error
+	getCalls            int
+	getPublicID         string
+	getResult           ports.PostRecord
+	getErr              error
+	saveCalls           int
+	saveInput           ports.SaveDraftBodyUpdate
+	saveResult          ports.PostRecord
+	saveErr             error
+	publishCalls        int
+	publishInput        ports.PublishPostUpdate
+	publishResult       ports.PostRecord
+	publishErr          error
+	bodyPointerCalls    int
+	bodyPointerPublic   string
+	bodyPointerResult   ports.PublishedBodyPointer
+	bodyPointerErr      error
+	listPublishedCalls  int
+	listPublishedQuery  ports.PostListQuery
+	listPublishedResult []ports.PostSummaryRecord
+	listPublishedErr    error
+	detailCalls         int
+	detailPublicID      string
+	detailResult        ports.PostDetailRecord
+	detailErr           error
+	batchCalls          int
+	batchIDs            []string
+	batchResult         []ports.PostSummaryRecord
+	batchErr            error
+	referenceChecks     int
+	referenceBodyID     string
+	bodyReferenced      bool
+	bodyReferenceErr    error
 }
 
 func (f *fakePostRepository) CreateDraft(ctx context.Context, tx ports.Tx, input ports.CreateDraftPost) (ports.PostRecord, error) {
@@ -374,6 +386,33 @@ func (f *fakePostRepository) GetPublishedBodyPointer(ctx context.Context, public
 		return ports.PublishedBodyPointer{}, f.bodyPointerErr
 	}
 	return f.bodyPointerResult, nil
+}
+
+func (f *fakePostRepository) ListPublishedPosts(ctx context.Context, query ports.PostListQuery) ([]ports.PostSummaryRecord, error) {
+	f.listPublishedCalls++
+	f.listPublishedQuery = query
+	if f.listPublishedErr != nil {
+		return nil, f.listPublishedErr
+	}
+	return append([]ports.PostSummaryRecord(nil), f.listPublishedResult...), nil
+}
+
+func (f *fakePostRepository) GetPublishedPostDetail(ctx context.Context, publicID string) (ports.PostDetailRecord, error) {
+	f.detailCalls++
+	f.detailPublicID = publicID
+	if f.detailErr != nil {
+		return ports.PostDetailRecord{}, f.detailErr
+	}
+	return f.detailResult, nil
+}
+
+func (f *fakePostRepository) BatchGetPublishedPostSummaries(ctx context.Context, publicIDs []string) ([]ports.PostSummaryRecord, error) {
+	f.batchCalls++
+	f.batchIDs = append([]string(nil), publicIDs...)
+	if f.batchErr != nil {
+		return nil, f.batchErr
+	}
+	return append([]ports.PostSummaryRecord(nil), f.batchResult...), nil
 }
 
 func (f *fakePostRepository) IsBodyReferenced(ctx context.Context, bodyID string) (bool, error) {
