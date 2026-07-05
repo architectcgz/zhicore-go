@@ -103,7 +103,17 @@ func TestAdminOutboxListMapsQueryAndResponse(t *testing.T) {
 		t.Fatalf("status=%d body=%#v raw=%s", rr.Code, body, rr.Body.String())
 	}
 	item := body.Data.Items[0]
-	if item.EventID != "evt_post_published_1" || item.AggregateVersion != 6 || item.RetryCount != 2 || item.UpdatedAt != formatTime(updatedAt) {
+	if item.EventID != "evt_post_published_1" ||
+		item.EventType != "content.post.published" ||
+		item.AggregateType != "post" ||
+		item.AggregateID != "post_1" ||
+		item.AggregateVersion != 6 ||
+		item.Status != "FAILED" ||
+		item.RetryCount != 2 ||
+		item.LastError != "rabbitmq publish failed" ||
+		item.OccurredAt != formatTime(occurredAt) ||
+		item.CreatedAt != formatTime(occurredAt) ||
+		item.UpdatedAt != formatTime(updatedAt) {
 		t.Fatalf("item = %+v", item)
 	}
 }

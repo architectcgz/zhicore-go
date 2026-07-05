@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,7 +14,10 @@ const (
 	defaultAdminOutboxPage = 1
 	defaultAdminOutboxSize = 20
 	maxAdminOutboxSize     = 100
+	maxAdminOutboxErrorLen = 512
 )
+
+var adminOutboxSensitiveURLPattern = regexp.MustCompile(`(?i)\b(?:amqps?|https?|postgres|mongodb(?:\+srv)?)://[^\s]+`)
 
 type ListAdminOutboxEventsQuery struct {
 	Actor     *Actor
@@ -88,7 +92,7 @@ func (s *Service) ListAdminOutboxEvents(ctx context.Context, query ListAdminOutb
 			AggregateVersion: item.AggregateVersion,
 			Status:           item.Status,
 			RetryCount:       item.AttemptCount,
-			LastError:        item.LastError,
+			LastError:        sanitizeAdminOutboxLastError(item.LastError),
 			OccurredAt:       item.OccurredAt,
 			CreatedAt:        item.CreatedAt,
 			UpdatedAt:        item.UpdatedAt,
@@ -179,4 +183,16 @@ func normalizeAdminOutboxPage(page, size int) (int, int) {
 		size = maxAdminOutboxSize
 	}
 	return page, size
+}
+
+func sanitizeAdminOutboxLastError(raw string) string {
+	sanitized := strings.Join(strings.Fields(strings.TrimSpace(raw)), " ")
+	if sanitized == "" {
+		return ""
+	}
+	sanitized = adminOutboxSensitiveURLPattern.ReplaceAllString(sanitized, "<redacted-url>")
+	if len(sanitized) <= maxAdminOutboxErrorLen {
+		return sanitized
+	}
+	return sanitized[:maxAdminOutboxErrorLen] + "...truncated"
 }

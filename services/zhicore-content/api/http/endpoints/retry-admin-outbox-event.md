@@ -1,6 +1,6 @@
 # 重试 outbox 事件
 
-状态：已验证。本文从 `content-api.md` 拆出管理端 outbox retry 入口，已由 Go application / handler contract test 验证管理员角色、reason 校验、事件 ID 映射、审计上下文和成功响应。
+状态：已验证。本文从 `content-api.md` 拆出管理端 outbox retry 入口，已由 Go application / handler / repository / runtime test 验证管理员角色、reason 校验、事件 ID 映射、审计上下文、成功响应和真实仓储接线。
 
 ## 来源
 
@@ -10,6 +10,8 @@
 - Go handler：`services/zhicore-content/api/http/handler.go`
 - Go contract test：`services/zhicore-content/api/http/admin_outbox_handler_test.go`
 - Application test：`services/zhicore-content/internal/content/application/admin_outbox_test.go`
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/outbox_admin_test.go`
+- Runtime test：`services/zhicore-content/internal/content/runtime/module_test.go`
 - 大草案：`services/zhicore-content/api/http/endpoints/content-api.md`
 
 ## 请求
@@ -80,4 +82,4 @@
 
 - Handler contract test：`services/zhicore-content/api/http/admin_outbox_handler_test.go`。
 - Application test：`services/zhicore-content/internal/content/application/admin_outbox_test.go`。
-- Repository test：待 PostgreSQL admin outbox retry 实现时补充状态条件和审计写入。
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/outbox_admin_test.go`。

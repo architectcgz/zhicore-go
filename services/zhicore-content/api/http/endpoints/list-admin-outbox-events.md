@@ -1,6 +1,6 @@
 # 查询 outbox 事件
 
-状态：已验证。本文从 `content-api.md` 拆出管理端 outbox 查询入口，已由 Go application / handler contract test 验证管理员角色、query DTO、分页响应、事件字段和核心错误码。
+状态：已验证。本文从 `content-api.md` 拆出管理端 outbox 查询入口，已由 Go application / handler / repository / runtime test 验证管理员角色、query DTO、分页响应、事件字段、核心错误码和真实仓储接线。
 
 ## 来源
 
@@ -10,6 +10,8 @@
 - Go handler：`services/zhicore-content/api/http/handler.go`
 - Go contract test：`services/zhicore-content/api/http/admin_outbox_handler_test.go`
 - Application test：`services/zhicore-content/internal/content/application/admin_outbox_test.go`
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/outbox_admin_test.go`
+- Runtime test：`services/zhicore-content/internal/content/runtime/module_test.go`
 - 大草案：`services/zhicore-content/api/http/endpoints/content-api.md`
 
 ## 请求
@@ -72,7 +74,7 @@
 ## 权限和可见性
 
 - 只允许管理员查看 outbox 发布状态和最近失败原因。
-- `lastError` 必须由下层写入前脱敏；HTTP 层不得暴露 RabbitMQ URL、账号、主机或底层 SQL。
+- `lastError` 必须在 application 返回管理端 DTO 前脱敏和截断；HTTP 层不得暴露 RabbitMQ URL、账号、主机或底层 SQL。
 
 ## 排序、分页和过滤
 
@@ -93,4 +95,4 @@
 
 - Handler contract test：`services/zhicore-content/api/http/admin_outbox_handler_test.go`。
 - Application test：`services/zhicore-content/internal/content/application/admin_outbox_test.go`。
-- Repository test：待 PostgreSQL admin outbox 查询实现时补充。
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/outbox_admin_test.go`。

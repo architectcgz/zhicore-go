@@ -22,7 +22,7 @@ func TestAdminOutboxUseCases(t *testing.T) {
 					AggregateVersion: 6,
 					Status:           "FAILED",
 					AttemptCount:     2,
-					LastError:        "rabbitmq publish failed",
+					LastError:        "amqp://content:secret@mq.internal:5672 closed while publishing",
 					OccurredAt:       time.Date(2026, 7, 5, 15, 0, 0, 0, time.UTC),
 					CreatedAt:        time.Date(2026, 7, 5, 15, 0, 1, 0, time.UTC),
 					UpdatedAt:        time.Date(2026, 7, 5, 15, 1, 0, 0, time.UTC),
@@ -49,6 +49,9 @@ func TestAdminOutboxUseCases(t *testing.T) {
 		}
 		if result.Total != 21 || len(result.Items) != 1 || result.Items[0].RetryCount != 2 || result.Items[0].AggregateVersion != 6 {
 			t.Fatalf("result = %+v", result)
+		}
+		if result.Items[0].LastError != "<redacted-url> closed while publishing" {
+			t.Fatalf("last error = %q, want URL redacted", result.Items[0].LastError)
 		}
 	})
 
