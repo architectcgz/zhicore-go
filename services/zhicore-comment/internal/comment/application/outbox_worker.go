@@ -112,7 +112,11 @@ func (d *OutboxDispatcher) DispatchOnce(ctx context.Context) (OutboxDispatchResu
 			}
 			continue
 		}
-		if err := d.repository.MarkOutboxPublished(ctx, event.ID, d.clock.Now()); err != nil {
+		if err := d.repository.MarkOutboxPublished(ctx, ports.OutboxPublished{
+			ID:           event.ID,
+			DispatcherID: d.dispatcherID,
+			PublishedAt:  d.clock.Now(),
+		}); err != nil {
 			return result, fmt.Errorf("mark comment outbox published: %w", err)
 		}
 		result.Published++
@@ -147,6 +151,7 @@ func (d *OutboxDispatcher) failure(event ports.OutboxEvent, publishErr error, fa
 	attempts := event.AttemptCount + 1
 	failure := ports.OutboxFailure{
 		ID:           event.ID,
+		DispatcherID: d.dispatcherID,
 		AttemptCount: attempts,
 		Dead:         attempts >= d.maxAttempts,
 		LastError:    publishErr.Error(),

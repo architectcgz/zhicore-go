@@ -172,14 +172,15 @@ type OutboxPublisher interface {
 }
 
 type OutboxEvent struct {
-	ID            int64
-	EventID       string
-	EventType     string
-	AggregateType string
-	AggregateID   string
-	Payload       []byte
-	OccurredAt    time.Time
-	AttemptCount  int
+	ID             int64
+	EventID        string
+	EventType      string
+	PayloadVersion int
+	AggregateType  string
+	AggregateID    string
+	Payload        []byte
+	OccurredAt     time.Time
+	AttemptCount   int
 }
 
 type OutboxClaimOptions struct {
@@ -191,6 +192,7 @@ type OutboxClaimOptions struct {
 
 type OutboxFailure struct {
 	ID           int64
+	DispatcherID string
 	AttemptCount int
 	NextRetryAt  *time.Time
 	Dead         bool
@@ -198,9 +200,15 @@ type OutboxFailure struct {
 	FailedAt     time.Time
 }
 
+type OutboxPublished struct {
+	ID           int64
+	DispatcherID string
+	PublishedAt  time.Time
+}
+
 type OutboxDispatchRepository interface {
 	ClaimPendingOutbox(ctx context.Context, options OutboxClaimOptions) ([]OutboxEvent, error)
-	MarkOutboxPublished(ctx context.Context, eventID int64, publishedAt time.Time) error
+	MarkOutboxPublished(ctx context.Context, published OutboxPublished) error
 	MarkOutboxFailed(ctx context.Context, failure OutboxFailure) error
 }
 

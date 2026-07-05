@@ -2,14 +2,18 @@ package runtime
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	commenthttp "github.com/architectcgz/zhicore-go/services/zhicore-comment/api/http"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/application"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func TestBuildRejectsMissingServiceDependency(t *testing.T) {
@@ -41,9 +45,96 @@ func TestBuildReturnsCommentHealthHandlersAndWorkers(t *testing.T) {
 	}
 }
 
+func TestBuildRejectsIncompleteOutboxRuntimeDependencies(t *testing.T) {
+	_, err := Build(Deps{
+		Service: stubService{},
+		Outbox:  OutboxConfig{Enabled: true, DispatcherID: "zhicore-comment:outbox-dispatcher:test"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "PostgresDB") {
+		t.Fatalf("Build() error = %v, want mention PostgresDB", err)
+	}
+
+	db, _ := newMockDB(t)
+	_, err = Build(Deps{
+		Service:    stubService{},
+		PostgresDB: db,
+		Outbox:     OutboxConfig{Enabled: true, DispatcherID: "zhicore-comment:outbox-dispatcher:test"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "RabbitMQChannel") {
+		t.Fatalf("Build() error = %v, want mention RabbitMQChannel", err)
+	}
+
+	_, err = Build(Deps{
+		Service:         stubService{},
+		PostgresDB:      db,
+		RabbitMQChannel: &stubAMQPChannel{},
+		Outbox:          OutboxConfig{Enabled: true},
+	})
+	if err == nil || !strings.Contains(err.Error(), "DispatcherID") {
+		t.Fatalf("Build() error = %v, want mention DispatcherID", err)
+	}
+}
+
+func TestBuildWiresOutboxDispatcherWorker(t *testing.T) {
+	db, mock := newMockDB(t)
+	module, err := Build(Deps{
+		Service:         stubService{},
+		PostgresDB:      db,
+		RabbitMQChannel: &stubAMQPChannel{},
+		Clock:           fixedClock{now: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC)},
+		Outbox: OutboxConfig{
+			Enabled:      true,
+			DispatcherID: "zhicore-comment:outbox-dispatcher:test",
+			BatchSize:    10,
+			PollInterval: time.Hour,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if len(module.Workers) != 1 {
+		t.Fatalf("workers = %d, want outbox worker", len(module.Workers))
+	}
+
+	mock.ExpectQuery("WITH picked AS").WillReturnRows(sqlmock.NewRows([]string{
+		"id", "event_id", "event_type", "payload_version", "aggregate_type", "aggregate_id", "payload_json", "occurred_at", "attempt_count",
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	err = module.Workers[0].Run(ctx)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("outbox worker Run() error = %v, want context deadline exceeded", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sql expectations: %v", err)
+	}
+}
+
 type stubWorker struct{}
 
 func (stubWorker) Run(context.Context) error { return nil }
+
+type stubAMQPChannel struct{}
+
+func (*stubAMQPChannel) PublishWithContext(context.Context, string, string, bool, bool, amqp.Publishing) error {
+	return nil
+}
+
+type fixedClock struct {
+	now time.Time
+}
+
+func (c fixedClock) Now() time.Time { return c.now }
+
+func newMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New() error = %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db, mock
+}
 
 type stubService struct{}
 

@@ -48,8 +48,11 @@ func TestOutboxDispatcherPublishesClaimedEventsAndMarksPublished(t *testing.T) {
 	if len(publisher.published) != 1 || publisher.published[0].EventID != "evt_10" {
 		t.Fatalf("published events = %#v", publisher.published)
 	}
-	if len(repo.publishedIDs) != 1 || repo.publishedIDs[0] != 10 {
-		t.Fatalf("published ids = %#v", repo.publishedIDs)
+	if len(repo.published) != 1 || repo.published[0].ID != 10 {
+		t.Fatalf("published records = %#v", repo.published)
+	}
+	if repo.published[0].DispatcherID != "zhicore-comment:outbox-dispatcher:test" {
+		t.Fatalf("published dispatcher = %q", repo.published[0].DispatcherID)
 	}
 	if repo.lastClaim.DispatcherID != "zhicore-comment:outbox-dispatcher:test" || repo.lastClaim.BatchSize != 10 {
 		t.Fatalf("claim options = %#v", repo.lastClaim)
@@ -99,6 +102,9 @@ func TestOutboxDispatcherMarksRetryAndDeadOnPublishFailure(t *testing.T) {
 	if !strings.Contains(repo.failures[0].LastError, "rabbitmq unavailable") {
 		t.Fatalf("last error = %q", repo.failures[0].LastError)
 	}
+	if repo.failures[0].DispatcherID != "zhicore-comment:outbox-dispatcher:test" || repo.failures[1].DispatcherID != "zhicore-comment:outbox-dispatcher:test" {
+		t.Fatalf("failure dispatchers = %#v", repo.failures)
+	}
 }
 
 func TestOutboxDispatcherRunStopsBeforeClaimWhenContextCanceled(t *testing.T) {
@@ -128,11 +134,11 @@ func TestOutboxDispatcherRunStopsBeforeClaimWhenContextCanceled(t *testing.T) {
 }
 
 type fakeOutboxDispatchRepository struct {
-	events       []ports.OutboxEvent
-	lastClaim    ports.OutboxClaimOptions
-	publishedIDs []int64
-	failures     []ports.OutboxFailure
-	claimCalls   int
+	events     []ports.OutboxEvent
+	lastClaim  ports.OutboxClaimOptions
+	published  []ports.OutboxPublished
+	failures   []ports.OutboxFailure
+	claimCalls int
 }
 
 func (f *fakeOutboxDispatchRepository) ClaimPendingOutbox(ctx context.Context, options ports.OutboxClaimOptions) ([]ports.OutboxEvent, error) {
@@ -141,8 +147,8 @@ func (f *fakeOutboxDispatchRepository) ClaimPendingOutbox(ctx context.Context, o
 	return append([]ports.OutboxEvent(nil), f.events...), nil
 }
 
-func (f *fakeOutboxDispatchRepository) MarkOutboxPublished(ctx context.Context, eventID int64, publishedAt time.Time) error {
-	f.publishedIDs = append(f.publishedIDs, eventID)
+func (f *fakeOutboxDispatchRepository) MarkOutboxPublished(ctx context.Context, published ports.OutboxPublished) error {
+	f.published = append(f.published, published)
 	return nil
 }
 

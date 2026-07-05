@@ -14,8 +14,8 @@ func main() {
 }
 
 func buildModule() error {
-	// 当前切片只建立进程根和 runtime 边界。生产 repository、RabbitMQ
-	// dispatcher、下游 client 和配置加载落地前，启动必须 fail fast。
+	// 当前切片只建立进程根和 runtime 边界。Comment 主服务的 PostgreSQL
+	// command/query repository、下游 client 和配置加载落地前，启动必须 fail fast。
 	if _, err := commentruntime.Build(commentruntime.Deps{}); err != nil {
 		return fmt.Errorf("build comment runtime module: %w", err)
 	}
