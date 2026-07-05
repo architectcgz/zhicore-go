@@ -322,6 +322,10 @@ type fakePostRepository struct {
 	bodyPointerPublic string
 	bodyPointerResult ports.PublishedBodyPointer
 	bodyPointerErr    error
+	referenceChecks   int
+	referenceBodyID   string
+	bodyReferenced    bool
+	bodyReferenceErr  error
 }
 
 func (f *fakePostRepository) CreateDraft(ctx context.Context, tx ports.Tx, input ports.CreateDraftPost) (ports.PostRecord, error) {
@@ -369,6 +373,12 @@ func (f *fakePostRepository) GetPublishedBodyPointer(ctx context.Context, public
 	return f.bodyPointerResult, nil
 }
 
+func (f *fakePostRepository) IsBodyReferenced(ctx context.Context, bodyID string) (bool, error) {
+	f.referenceChecks++
+	f.referenceBodyID = bodyID
+	return f.bodyReferenced, f.bodyReferenceErr
+}
+
 type fakeBodyStore struct {
 	writeDraftCalls    int
 	writeInput         ports.WriteBodyInput
@@ -384,6 +394,7 @@ type fakeBodyStore struct {
 	writeDraftErr      error
 	writeSnapshotErr   error
 	readErr            error
+	afterDelete        func()
 }
 
 func (f *fakeBodyStore) WriteDraftBody(ctx context.Context, input ports.WriteBodyInput) (ports.StoredBody, error) {
@@ -416,6 +427,9 @@ func (f *fakeBodyStore) ReadBody(ctx context.Context, bodyID string) (ports.Stor
 func (f *fakeBodyStore) DeleteBody(ctx context.Context, bodyID string) error {
 	f.deleteCalls++
 	f.deleteBodyID = bodyID
+	if f.afterDelete != nil {
+		f.afterDelete()
+	}
 	return f.deleteErr
 }
 
@@ -451,6 +465,11 @@ type fakeCleanupTaskStore struct {
 	appendOutsideCalls int
 	tasks              []ports.BodyCleanupTask
 	outsideTasks       []ports.BodyCleanupTask
+	claimCalls         int
+	claimRequests      []ports.TaskClaimRequest
+	claimResults       [][]ports.BodyCleanupTaskClaim
+	succeeded          []fakeTaskSuccess
+	failed             []ports.TaskFailure
 	err                error
 }
 
@@ -511,15 +530,37 @@ func (f *fakeCleanupTaskStore) AppendOutsideTx(ctx context.Context, task ports.B
 }
 
 func (f *fakeCleanupTaskStore) Claim(ctx context.Context, request ports.TaskClaimRequest) ([]ports.BodyCleanupTaskClaim, error) {
-	return nil, f.err
+	f.claimCalls++
+	f.claimRequests = append(f.claimRequests, request)
+	if f.err != nil {
+		return nil, f.err
+	}
+	if len(f.claimResults) == 0 {
+		return nil, nil
+	}
+	tasks := f.claimResults[0]
+	f.claimResults = f.claimResults[1:]
+	return tasks, nil
 }
 
 func (f *fakeCleanupTaskStore) MarkSucceeded(ctx context.Context, taskID int64, workerID string, completedAt time.Time) error {
+	f.succeeded = append(f.succeeded, fakeTaskSuccess{
+		taskID: taskID,
+		worker: workerID,
+		at:     completedAt,
+	})
 	return f.err
 }
 
 func (f *fakeCleanupTaskStore) MarkFailed(ctx context.Context, failure ports.TaskFailure) error {
+	f.failed = append(f.failed, failure)
 	return f.err
+}
+
+type fakeTaskSuccess struct {
+	taskID int64
+	worker string
+	at     time.Time
 }
 
 func (f *fakeUserProfileClient) GetOwnerSnapshot(ctx context.Context, userID int64) (ports.OwnerSnapshot, error) {

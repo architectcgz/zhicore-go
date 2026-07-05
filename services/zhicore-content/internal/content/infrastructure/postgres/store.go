@@ -212,6 +212,14 @@ func (s *Store) GetPublishedBodyPointer(ctx context.Context, publicID string) (p
 	return pointer, nil
 }
 
+func (s *Store) IsBodyReferenced(ctx context.Context, bodyID string) (bool, error) {
+	var referenced bool
+	if err := s.db.QueryRowContext(ctx, selectBodyReferencedSQL, bodyID).Scan(&referenced); err != nil {
+		return false, fmt.Errorf("check content body reference: %w", err)
+	}
+	return referenced, nil
+}
+
 func (s *Store) Append(ctx context.Context, tx ports.Tx, event ports.OutboxEvent) error {
 	execer, err := s.execer(tx)
 	if err != nil {
@@ -412,5 +420,6 @@ func (g randomIDGenerator) NewID() (string, error) {
 
 var _ ports.PostRepository = (*Store)(nil)
 var _ ports.PostQueryRepository = (*Store)(nil)
+var _ ports.BodyReferenceChecker = (*Store)(nil)
 var _ ports.TransactionRunner = (*TransactionRunner)(nil)
 var _ ports.OutboxPublisher = (*Store)(nil)

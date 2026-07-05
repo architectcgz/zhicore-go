@@ -317,6 +317,24 @@ func TestStoreGetPublishedBodyPointerReturnsPointer(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestStoreIsBodyReferencedChecksPublishedAndDraftPointers(t *testing.T) {
+	db, mock := newMockDB(t)
+	store := NewStore(db, StoreConfig{})
+
+	mock.ExpectQuery(regexp.QuoteMeta(selectBodyReferencedSQL)).
+		WithArgs("body_live").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	referenced, err := store.IsBodyReferenced(context.Background(), "body_live")
+	if err != nil {
+		t.Fatalf("IsBodyReferenced() error = %v", err)
+	}
+	if !referenced {
+		t.Fatalf("referenced = false, want true")
+	}
+	assertExpectations(t, mock)
+}
+
 func postRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id",

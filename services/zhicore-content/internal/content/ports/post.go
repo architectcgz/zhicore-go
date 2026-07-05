@@ -24,6 +24,10 @@ type PostQueryRepository interface {
 	GetPublishedBodyPointer(ctx context.Context, publicID string) (PublishedBodyPointer, error)
 }
 
+type BodyReferenceChecker interface {
+	IsBodyReferenced(ctx context.Context, bodyID string) (bool, error)
+}
+
 type CreateDraftPost struct {
 	OwnerID              int64
 	OwnerDisplayName     string
