@@ -87,6 +87,29 @@ func TestCreatePostMapsTitleTooLong(t *testing.T) {
 	assertErrorEnvelope(t, rr, http.StatusBadRequest, 4007)
 }
 
+func TestCreatePostMapsReferenceErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		wantStatus int
+		wantCode   int
+	}{
+		{name: "taxonomy reference missing", err: application.ErrTaxonomyReferenceNotFound, wantStatus: http.StatusNotFound, wantCode: 4012},
+		{name: "media reference invalid", err: application.ErrMediaRefInvalid, wantStatus: http.StatusBadRequest, wantCode: 4021},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			service := &fakeContentService{createErr: tc.err}
+			rr := httptest.NewRecorder()
+			req := withUserID(withJSON(httptest.NewRequest(http.MethodPost, "/api/v1/posts", bytes.NewBufferString(`{"title":"draft"}`))), "42")
+
+			NewHandler(service).ServeHTTP(rr, req)
+
+			assertErrorEnvelope(t, rr, tc.wantStatus, tc.wantCode)
+		})
+	}
+}
+
 func TestCreatePostMapsInvalidBodyDetails(t *testing.T) {
 	service := &fakeContentService{createErr: &ports.BodyValidationError{Details: []ports.ValidationDetail{{Path: "blocks[0]", Code: "BODY_SCHEMA_INVALID"}}}}
 	rr := httptest.NewRecorder()

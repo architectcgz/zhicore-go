@@ -49,6 +49,16 @@ func TestSaveDraftBodyMapsVersionConflict(t *testing.T) {
 	assertErrorEnvelope(t, rr, http.StatusConflict, 4017)
 }
 
+func TestSaveDraftBodyMapsMediaReferenceInvalid(t *testing.T) {
+	service := &fakeContentService{saveErr: application.ErrMediaRefInvalid}
+	rr := httptest.NewRecorder()
+	req := withUserID(withJSON(httptest.NewRequest(http.MethodPut, "/api/v1/posts/post_pub_1/draft/body", bytes.NewBufferString(validSaveDraftBodyJSON()))), "42")
+
+	NewHandler(service).ServeHTTP(rr, req)
+
+	assertErrorEnvelope(t, rr, http.StatusBadRequest, 4021)
+}
+
 func TestSaveDraftBodyMapsBodySchemaErrorAndTooLarge(t *testing.T) {
 	testCases := []struct {
 		name       string

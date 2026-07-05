@@ -47,6 +47,8 @@ func TestPublishPostMapsBusinessErrors(t *testing.T) {
 		{name: "empty body", err: domain.ErrBodyRequired, wantStatus: http.StatusBadRequest, wantCode: 4006},
 		{name: "draft conflict", err: domain.ErrDraftConflict, wantStatus: http.StatusConflict, wantCode: 4017},
 		{name: "duplicate publish", err: domain.ErrPostAlreadyPublished, wantStatus: http.StatusConflict, wantCode: 4002},
+		{name: "media reference invalid", err: application.ErrMediaRefInvalid, wantStatus: http.StatusBadRequest, wantCode: 4021},
+		{name: "cover unavailable", err: application.ErrCoverUnavailable, wantStatus: http.StatusBadRequest, wantCode: 4023},
 		{name: "dependency unavailable", err: application.ErrDependencyUnavailable, wantStatus: http.StatusServiceUnavailable, wantCode: 1004},
 	}
 

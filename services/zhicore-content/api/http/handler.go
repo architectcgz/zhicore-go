@@ -355,6 +355,12 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusUnauthorized, 2006, "Authentication required", nil
 	case errors.Is(err, application.ErrInvalidArgument):
 		return http.StatusBadRequest, 1001, "Invalid request", nil
+	case errors.Is(err, application.ErrTaxonomyReferenceNotFound):
+		return http.StatusNotFound, 4012, "Category not found", nil
+	case errors.Is(err, application.ErrMediaRefInvalid):
+		return http.StatusBadRequest, 4021, "Media reference invalid", nil
+	case errors.Is(err, application.ErrCoverUnavailable):
+		return http.StatusBadRequest, 4023, "Cover unavailable", nil
 	case errors.Is(err, application.ErrDependencyUnavailable):
 		return http.StatusServiceUnavailable, 1004, "Service unavailable", nil
 	case errors.Is(err, application.ErrBodySchemaUnsupported):

@@ -118,7 +118,7 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 ## 已验证 endpoint
 
-本节的“已验证”表示对应 endpoint 的路由、可信身份 header、请求 DTO、基础错误 envelope、成功响应和本切片指定的核心错误码已经由 handler contract test 覆盖。File / Cover 依赖的专用语义错误需要后续在 application / ports 固定 sentinel 后再补 handler 映射测试，当前不能通过匹配下游错误文本实现。
+本节的“已验证”表示对应 endpoint 的路由、可信身份 header、请求 DTO、基础错误 envelope、成功响应和本切片指定的核心错误码已经由 handler contract test 覆盖。File / Cover 依赖的专用语义错误已经通过 application / ports sentinel 固定，不通过匹配下游错误文本实现。
 
 | 方法 | 路径 | 文档 | Handler contract test | 状态 |
 | --- | --- | --- | --- | --- |
@@ -127,13 +127,13 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `POST` | `/api/v1/posts/{postId}/publish` | [endpoints/publish-post.md](endpoints/publish-post.md) | `services/zhicore-content/api/http/publish_post_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/posts/{postId}/body` | [endpoints/get-post-body.md](endpoints/get-post-body.md) | `services/zhicore-content/api/http/get_post_body_handler_test.go` | 已验证 |
 
-## 待补错误映射
+## 已验证依赖语义错误映射
 
-| code | 场景 | 待补条件 |
+| code | 场景 | 验证 |
 | --- | --- | --- |
-| `4012` | 分类 / 话题 / 标签引用不存在 | application 固定分类、话题或标签专用语义错误后补 handler mapping 和测试。 |
-| `4021` | File 媒体引用非法 | `FileResourceClient` / application 固定媒体引用非法 sentinel 后补 handler mapping 和测试。 |
-| `4023` | 发布封面不可用 | `FileResourceClient` / application 固定封面不可用 sentinel 后补 handler mapping 和测试。 |
+| `4012` | 分类 / 话题 / 标签引用不存在 | `application.ErrTaxonomyReferenceNotFound` -> HTTP `404` / code `4012`，由 `create_post_handler_test.go` 覆盖。 |
+| `4021` | File 媒体引用非法 | `application.ErrMediaRefInvalid` -> HTTP `400` / code `4021`，由 create / save draft / publish handler test 覆盖。 |
+| `4023` | 发布封面不可用 | `application.ErrCoverUnavailable` -> HTTP `400` / code `4023`，由 `publish_post_handler_test.go` 覆盖。 |
 
 ## 服务级公开错误码
 
