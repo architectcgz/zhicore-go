@@ -28,6 +28,9 @@ type Service interface {
 	SaveDraftBody(ctx context.Context, cmd application.SaveDraftBodyCommand) (application.SaveDraftBodyResult, error)
 	PublishPost(ctx context.Context, cmd application.PublishPostCommand) (application.PublishPostResult, error)
 	GetPublishedPostBody(ctx context.Context, query application.GetPublishedPostBodyQuery) (application.GetPublishedPostBodyResult, error)
+	ListPublishedPosts(ctx context.Context, query application.ListPublishedPostsQuery) (application.ListPublishedPostsResult, error)
+	GetPostDetail(ctx context.Context, query application.GetPostDetailQuery) (application.GetPostDetailResult, error)
+	BatchGetPublishedPosts(ctx context.Context, query application.BatchGetPublishedPostsQuery) (application.BatchGetPublishedPostsResult, error)
 	ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error)
 	RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error)
 }
@@ -45,11 +48,89 @@ func NewHandler(service Service) *gin.Engine {
 
 func (h *Handler) routes() {
 	h.router.POST("/api/v1/posts", h.createPost)
+	h.router.GET("/api/v1/posts", h.listPublishedPosts)
+	h.router.POST("/api/v1/posts/batch-get", h.batchGetPublishedPosts)
+	h.router.GET("/api/v1/posts/:postId", h.getPostDetail)
 	h.router.PUT("/api/v1/posts/:postId/draft/body", h.saveDraftBody)
 	h.router.POST("/api/v1/posts/:postId/publish", h.publishPost)
 	h.router.GET("/api/v1/posts/:postId/body", h.getPostBody)
 	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
 	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
+}
+
+func (h *Handler) listPublishedPosts(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	limit, ok := optionalPositiveIntQuery(w, c, "limit")
+	if !ok {
+		return
+	}
+	result, err := h.service.ListPublishedPosts(r.Context(), application.ListPublishedPostsQuery{
+		AuthorID:   c.Query("authorId"),
+		Tag:        c.Query("tag"),
+		CategoryID: c.Query("categoryId"),
+		Cursor:     c.Query("cursor"),
+		Limit:      limit,
+		Sort:       c.Query("sort"),
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPublicPostQuery)
+		return
+	}
+	sharedhttp.WriteSuccess(w, cursorPageResp[postSummaryResp]{
+		Items:      mapPostSummaryResponses(result.Items),
+		NextCursor: result.NextCursor,
+		HasMore:    result.HasMore,
+		Limit:      result.Limit,
+	})
+}
+
+func (h *Handler) getPostDetail(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	result, err := h.service.GetPostDetail(r.Context(), application.GetPostDetailQuery{PostID: postID})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPublicPostQuery)
+		return
+	}
+	resp := postDetailResp{Post: mapPostSummaryResponse(result.Post)}
+	if result.Body != nil {
+		body, ok := mapPostBodyResponse(*result.Body)
+		if !ok {
+			writeMappedError(w, application.ErrBodySchemaUnsupported, errorOperationPublicPostQuery)
+			return
+		}
+		resp.Body = &body
+	}
+	sharedhttp.WriteSuccess(w, resp)
+}
+
+func (h *Handler) batchGetPublishedPosts(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	var req batchGetPostsReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if len(req.PostIDs) == 0 || len(req.PostIDs) > 100 {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.BatchGetPublishedPosts(r.Context(), application.BatchGetPublishedPostsQuery{
+		PostIDs: append([]string(nil), req.PostIDs...),
+		// includeDeleted is intentionally ignored for anonymous public reads:
+		// invisible, deleted and missing posts must collapse into missingPostIds.
+		IncludeDeleted: false,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPublicPostQuery)
+		return
+	}
+	sharedhttp.WriteSuccess(w, batchGetPostsResp{
+		Items:          mapPostSummaryResponses(result.Items),
+		MissingPostIDs: append([]string(nil), result.MissingPostIDs...),
+	})
 }
 
 func (h *Handler) createPost(c *gin.Context) {
@@ -334,6 +415,11 @@ type publishPostReq struct {
 	DraftBodyHash   string `json:"draftBodyHash"`
 }
 
+type batchGetPostsReq struct {
+	PostIDs        []string `json:"postIds"`
+	IncludeDeleted bool     `json:"includeDeleted"`
+}
+
 type createPostResp struct {
 	PostID      string `json:"postId"`
 	PostVersion int64  `json:"postVersion"`
@@ -363,6 +449,46 @@ type postBodyResp struct {
 	ContentHash   string          `json:"contentHash"`
 	SizeBytes     int             `json:"sizeBytes"`
 	CreatedAt     string          `json:"createdAt"`
+}
+
+type cursorPageResp[T any] struct {
+	Items      []T    `json:"items"`
+	NextCursor string `json:"nextCursor,omitempty"`
+	HasMore    bool   `json:"hasMore"`
+	Limit      int    `json:"limit"`
+}
+
+type postDetailResp struct {
+	Post postSummaryResp `json:"post"`
+	Body *postBodyResp   `json:"body,omitempty"`
+}
+
+type postSummaryResp struct {
+	PostID             string        `json:"postId"`
+	AuthorID           string        `json:"authorId"`
+	AuthorName         string        `json:"authorName,omitempty"`
+	AuthorAvatarFileID string        `json:"authorAvatarFileId,omitempty"`
+	Title              string        `json:"title"`
+	Summary            string        `json:"summary,omitempty"`
+	CoverFileID        string        `json:"coverFileId,omitempty"`
+	Status             string        `json:"status"`
+	PostVersion        int64         `json:"postVersion"`
+	PublishedAt        string        `json:"publishedAt,omitempty"`
+	CreatedAt          string        `json:"createdAt"`
+	UpdatedAt          string        `json:"updatedAt"`
+	Stats              postStatsResp `json:"stats"`
+}
+
+type postStatsResp struct {
+	ViewCount     int64 `json:"viewCount"`
+	LikeCount     int64 `json:"likeCount"`
+	FavoriteCount int64 `json:"favoriteCount"`
+	CommentCount  int64 `json:"commentCount"`
+}
+
+type batchGetPostsResp struct {
+	Items          []postSummaryResp `json:"items"`
+	MissingPostIDs []string          `json:"missingPostIds"`
 }
 
 type adminOutboxRetryReq struct {
@@ -491,11 +617,12 @@ func writeValidationError(w http.ResponseWriter) {
 type errorOperation string
 
 const (
-	errorOperationCreatePost    errorOperation = "createPost"
-	errorOperationSaveDraftBody errorOperation = "saveDraftBody"
-	errorOperationPublishPost   errorOperation = "publishPost"
-	errorOperationGetPostBody   errorOperation = "getPostBody"
-	errorOperationAdminOutbox   errorOperation = "adminOutbox"
+	errorOperationCreatePost      errorOperation = "createPost"
+	errorOperationSaveDraftBody   errorOperation = "saveDraftBody"
+	errorOperationPublishPost     errorOperation = "publishPost"
+	errorOperationGetPostBody     errorOperation = "getPostBody"
+	errorOperationPublicPostQuery errorOperation = "publicPostQuery"
+	errorOperationAdminOutbox     errorOperation = "adminOutbox"
 )
 
 func writeMappedError(w http.ResponseWriter, err error, operation ...errorOperation) {
@@ -580,6 +707,54 @@ func extractCanonicalBlocks(canonicalJSON []byte) (json.RawMessage, bool) {
 		return nil, false
 	}
 	return body.Blocks, true
+}
+
+func mapPostSummaryResponses(items []application.PostSummary) []postSummaryResp {
+	resp := make([]postSummaryResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, mapPostSummaryResponse(item))
+	}
+	return resp
+}
+
+func mapPostSummaryResponse(item application.PostSummary) postSummaryResp {
+	return postSummaryResp{
+		PostID:             item.PostID,
+		AuthorID:           item.AuthorID,
+		AuthorName:         item.AuthorName,
+		AuthorAvatarFileID: item.AuthorAvatarFileID,
+		Title:              item.Title,
+		Summary:            item.Summary,
+		CoverFileID:        item.CoverFileID,
+		Status:             item.Status,
+		PostVersion:        item.PostVersion,
+		PublishedAt:        formatTime(item.PublishedAt),
+		CreatedAt:          formatTime(item.CreatedAt),
+		UpdatedAt:          formatTime(item.UpdatedAt),
+		Stats: postStatsResp{
+			ViewCount:     item.Stats.ViewCount,
+			LikeCount:     item.Stats.LikeCount,
+			FavoriteCount: item.Stats.FavoriteCount,
+			CommentCount:  item.Stats.CommentCount,
+		},
+	}
+}
+
+func mapPostBodyResponse(body application.PostBodyResult) (postBodyResp, bool) {
+	blocks, ok := extractCanonicalBlocks(body.CanonicalJSON)
+	if !ok {
+		return postBodyResp{}, false
+	}
+	return postBodyResp{
+		BodyID:        body.BodyID,
+		SchemaVersion: body.SchemaVersion,
+		Format:        "blocks",
+		Blocks:        blocks,
+		PlainText:     body.PlainText,
+		ContentHash:   body.ContentHash,
+		SizeBytes:     body.SizeBytes,
+		CreatedAt:     formatTime(body.CreatedAt),
+	}, true
 }
 
 func bodyValidationMapping(err *application.BodyValidationError) (int, int, string) {

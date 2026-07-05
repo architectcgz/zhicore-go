@@ -145,6 +145,21 @@ type fakeContentService struct {
 	getBodyResult application.GetPublishedPostBodyResult
 	getBodyErr    error
 
+	listPublishedCalls  int
+	listPublishedQuery  application.ListPublishedPostsQuery
+	listPublishedResult application.ListPublishedPostsResult
+	listPublishedErr    error
+
+	getDetailCalls  int
+	getDetailQuery  application.GetPostDetailQuery
+	getDetailResult application.GetPostDetailResult
+	getDetailErr    error
+
+	batchCalls  int
+	batchQuery  application.BatchGetPublishedPostsQuery
+	batchResult application.BatchGetPublishedPostsResult
+	batchErr    error
+
 	listOutboxCalls  int
 	listOutboxQuery  application.ListAdminOutboxEventsQuery
 	listOutboxResult application.ListAdminOutboxEventsResult
@@ -191,6 +206,33 @@ func (f *fakeContentService) GetPublishedPostBody(ctx context.Context, query app
 		return application.GetPublishedPostBodyResult{}, f.getBodyErr
 	}
 	return f.getBodyResult, nil
+}
+
+func (f *fakeContentService) ListPublishedPosts(ctx context.Context, query application.ListPublishedPostsQuery) (application.ListPublishedPostsResult, error) {
+	f.listPublishedCalls++
+	f.listPublishedQuery = query
+	if f.listPublishedErr != nil {
+		return application.ListPublishedPostsResult{}, f.listPublishedErr
+	}
+	return f.listPublishedResult, nil
+}
+
+func (f *fakeContentService) GetPostDetail(ctx context.Context, query application.GetPostDetailQuery) (application.GetPostDetailResult, error) {
+	f.getDetailCalls++
+	f.getDetailQuery = query
+	if f.getDetailErr != nil {
+		return application.GetPostDetailResult{}, f.getDetailErr
+	}
+	return f.getDetailResult, nil
+}
+
+func (f *fakeContentService) BatchGetPublishedPosts(ctx context.Context, query application.BatchGetPublishedPostsQuery) (application.BatchGetPublishedPostsResult, error) {
+	f.batchCalls++
+	f.batchQuery = query
+	if f.batchErr != nil {
+		return application.BatchGetPublishedPostsResult{}, f.batchErr
+	}
+	return f.batchResult, nil
 }
 
 func (f *fakeContentService) ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error) {
