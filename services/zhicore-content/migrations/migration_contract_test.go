@@ -41,6 +41,7 @@ func TestContentPublishCoreMigrationContract(t *testing.T) {
 		"CREATE TABLE content_body_cleanup_tasks",
 		"UNIQUE (body_id, task_type)",
 		"CREATE TABLE content_body_repair_tasks",
+		"body_id VARCHAR(64) NOT NULL",
 		"COMMIT;",
 	} {
 		if !strings.Contains(up, fragment) {
