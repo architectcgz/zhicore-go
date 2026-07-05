@@ -257,11 +257,11 @@
 
 **测试立场：** TDD - 下游错误分类、retry 边界、公开错误码和 handler mapping 属于 R4。
 
-- [ ] **步骤 1：固定 application / ports sentinel error**
+- [x] **步骤 1：固定 application / ports sentinel error**
 
   在 `ports` 或 application 层新增可分支错误：分类 / 话题 / 标签引用不存在、媒体引用非法、封面不可用。不得通过匹配下游错误文本做分支。
 
-- [ ] **步骤 2：编写 application 失败测试**
+- [x] **步骤 2：编写 application 失败测试**
 
   覆盖 create / save draft / publish 中：
   - 分类 / 话题 / 标签不存在 -> `4012`
@@ -273,11 +273,11 @@
 
   预期：失败。
 
-- [ ] **步骤 3：实现 application 错误传播**
+- [x] **步骤 3：实现 application 错误传播**
 
   application 只依赖 sentinel error，不关心 HTTP status 或下游传输细节。
 
-- [ ] **步骤 4：编写 User client adapter 测试**
+- [x] **步骤 4：编写 User client adapter 测试**
 
   使用 `httptest.Server` 覆盖用户快照成功、404、5xx、timeout、context cancel、envelope 错误和敏感 URL 不泄漏。
 
@@ -285,11 +285,11 @@
 
   预期：失败。
 
-- [ ] **步骤 5：实现 User client adapter**
+- [x] **步骤 5：实现 User client adapter**
 
   从对应 client contract 读取 path 和 DTO；adapter 只做传输和错误翻译，不构造业务成功假象。
 
-- [ ] **步骤 6：编写 File client adapter 测试**
+- [x] **步骤 6：编写 File client adapter 测试**
 
   覆盖媒体引用校验、封面校验、404/410 语义错误、5xx 依赖错误、timeout 和 retry 次数。
 
@@ -297,11 +297,11 @@
 
   预期：失败。
 
-- [ ] **步骤 7：实现 File client adapter**
+- [x] **步骤 7：实现 File client adapter**
 
   明确 `file.validate_ref` 和 cover validation operation，按 `runtime-resilience.md` 配置 timeout / retry / max-in-flight。
 
-- [ ] **步骤 8：补 handler mapping 和 contract test**
+- [x] **步骤 8：补 handler mapping 和 contract test**
 
   补 `api/http` 测试覆盖 `4012`、`4021`、`4023`，更新 `services/zhicore-content/api/http/README.md` 的“待补错误映射”状态。
 
@@ -309,7 +309,7 @@
 
   预期：通过。
 
-- [ ] **步骤 9：提交 client 和错误契约切片**
+- [x] **步骤 9：提交 client 和错误契约切片**
 
   推荐拆分为 sentinel / application、User client、File client、HTTP mapping 四个提交。
 
