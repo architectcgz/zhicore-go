@@ -13,11 +13,16 @@ import (
 )
 
 type Store struct {
-	db *sql.DB
+	db    *sql.DB
+	codec ports.NotificationPublicIDCodec
 }
 
 func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
+}
+
+func NewStoreWithCodec(db *sql.DB, codec ports.NotificationPublicIDCodec) *Store {
+	return &Store{db: db, codec: codec}
 }
 
 func (s *Store) MarkRead(ctx context.Context, input ports.MarkReadInput) (ports.MarkReadResult, error) {

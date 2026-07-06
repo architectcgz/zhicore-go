@@ -71,7 +71,7 @@ func openNotificationRuntimeDependencies(ctx context.Context, cfg NotificationSe
 		return openedNotificationRuntime{}, fmt.Errorf("build notification public id codec: %w", err)
 	}
 
-	store := notificationpostgres.NewStore(postgresDB)
+	store := notificationpostgres.NewStoreWithCodec(postgresDB, codec)
 	service, err := application.NewService(application.Dependencies{
 		Commands: store,
 		Queries:  store,
