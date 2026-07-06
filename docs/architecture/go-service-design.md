@@ -28,6 +28,8 @@
 
 HTTP 入站路由统一使用 Gin 组装。Gin 只属于 `api/http` 和进程 runtime 挂载边界；`*gin.Context` 不得传入 application、domain、ports 或 infrastructure。进入 application 前，handler 必须把请求解析成显式 `context.Context`、command、query 或 typed actor/principal，避免业务层依赖 Web 框架生命周期和参数容器。
 
+HTTP handler 的推荐流程固定为：`parse -> validate/map command -> call use case -> map response -> write`。Header、cookie、path、query 和 body 解析 helper 默认返回 `(value, error)` 或 `error`，由 endpoint handler 统一决定写 `400`、`413`、业务校验错误或 application/domain/ports 语义错误；helper 不应隐式吞掉错误后继续处理。`http.ResponseWriter` 只允许停留在 HTTP 入站层和 Go 标准库需要它的解析边界，例如 `http.MaxBytesReader`；不得传入 application、domain、ports 或 infrastructure。`context.Context` 只承载取消、deadline、trace/request metadata 等基础设施语义，不作为业务参数袋；`postId`、分页参数、版本号、request body 字段和用例依赖的 actor/userID 必须显式进入 command/query。认证中间件如需把 claims 放入 `ctx`，handler 进入 application 前仍要转换成显式 `Actor` / `Identity`。参考代码形态见 `docs/architecture/handler-io-reference.md`。
+
 Application 对外暴露给 `api/http`、runtime 或其他入站 adapter 的类型必须是 application 自有 DTO / command / query；不得用导出的 type alias 重新暴露 domain 类型，例如 `type UserID = domain.UserID` 或给 domain import 起别名后的等价写法。需要跨层传递领域值时，在 application 内部用显式 mapper / 类型转换进入 domain，避免入站层绕过 application 边界直接拿到 domain contract。
 
 这条规则不否认 `application -> domain` 的依赖方向。Application 可以在 use case 内部使用 domain 执行业务规则、创建值对象和调用领域方法；禁止的是把这种内部依赖变成 application 的公开 API。导出别名会让 `api/http` 表面上只依赖 application，实际上仍绑定 domain 类型，导致边界检查失真、application 防腐层失效，并让 domain 的字段和不变量演进被入站层锁死。
