@@ -109,3 +109,34 @@ func TestStorePlanPostPublishedCampaignReturnsDuplicateWhenEventAlreadyConsumed(
 		t.Fatalf("sql expectations: %v", err)
 	}
 }
+
+func TestStoreClaimCampaignShardUsesSkipLockedAndConfiguredTimeout(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("new sqlmock: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := NewStore(db)
+	now := time.Date(2026, 7, 6, 20, 0, 0, 0, time.UTC)
+	deadline := now.Add(30 * time.Second)
+
+	mock.ExpectQuery("FOR UPDATE SKIP LOCKED").
+		WithArgs("worker-1", now, int64(30)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "campaign_id", "follower_cursor", "attempt_count", "claim_deadline_at"}).
+			AddRow(int64(8001), int64(7001), "", 2, deadline))
+
+	claim, err := store.ClaimCampaignShard(context.Background(), ports.ClaimCampaignShardInput{
+		WorkerID:     "worker-1",
+		Now:          now,
+		ClaimTimeout: 30 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("ClaimCampaignShard() error = %v", err)
+	}
+	if !claim.Found || claim.ShardID != 8001 || claim.CampaignID != 7001 || claim.AttemptCount != 2 || !claim.ClaimDeadlineAt.Equal(deadline) {
+		t.Fatalf("claim = %+v", claim)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sql expectations: %v", err)
+	}
+}

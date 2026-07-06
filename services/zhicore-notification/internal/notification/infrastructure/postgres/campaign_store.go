@@ -77,3 +77,20 @@ func insertInitialCampaignShard(ctx context.Context, tx *sql.Tx, campaignID int6
 	}
 	return shardID, nil
 }
+
+func (s *Store) ClaimCampaignShard(ctx context.Context, input ports.ClaimCampaignShardInput) (ports.ClaimedCampaignShard, error) {
+	var claim ports.ClaimedCampaignShard
+	err := s.db.QueryRowContext(ctx, claimCampaignShardSQL,
+		input.WorkerID,
+		input.Now,
+		int64(input.ClaimTimeout/time.Second),
+	).Scan(&claim.ShardID, &claim.CampaignID, &claim.FollowerCursor, &claim.AttemptCount, &claim.ClaimDeadlineAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.ClaimedCampaignShard{}, nil
+	}
+	if err != nil {
+		return ports.ClaimedCampaignShard{}, fmt.Errorf("claim campaign shard: %w", err)
+	}
+	claim.Found = true
+	return claim, nil
+}

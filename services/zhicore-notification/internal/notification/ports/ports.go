@@ -159,8 +159,24 @@ type PlanCampaignResult struct {
 	ShardID    int64
 }
 
+type ClaimCampaignShardInput struct {
+	WorkerID     string
+	Now          time.Time
+	ClaimTimeout time.Duration
+}
+
+type ClaimedCampaignShard struct {
+	Found           bool
+	ShardID         int64
+	CampaignID      int64
+	FollowerCursor  string
+	AttemptCount    int
+	ClaimDeadlineAt time.Time
+}
+
 type CampaignRepository interface {
 	PlanPostPublishedCampaign(ctx context.Context, input PlanPostPublishedCampaignInput) (PlanCampaignResult, error)
+	ClaimCampaignShard(ctx context.Context, input ClaimCampaignShardInput) (ClaimedCampaignShard, error)
 }
 
 type NotificationSettingsRepository interface {

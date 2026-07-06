@@ -376,6 +376,10 @@ func (f *fakeCampaignStore) PlanPostPublishedCampaign(ctx context.Context, input
 	return ports.PlanCampaignResult{Created: true, CampaignID: 7001, ShardID: 8001}, nil
 }
 
+func (f *fakeCampaignStore) ClaimCampaignShard(context.Context, ports.ClaimCampaignShardInput) (ports.ClaimedCampaignShard, error) {
+	return ports.ClaimedCampaignShard{}, nil
+}
+
 type fakeRealtimeFanout struct {
 	hints []RealtimeUnreadHint
 	err   error
