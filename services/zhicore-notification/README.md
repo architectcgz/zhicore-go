@@ -12,6 +12,7 @@
 
 - `notifications`
 - `notification_group_state`
+- `notification_stats`
 - `notification_campaign`
 - `notification_campaign_shard`
 - `notification_delivery`
