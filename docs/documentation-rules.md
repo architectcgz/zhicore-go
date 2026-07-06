@@ -32,6 +32,7 @@
 
 | 路径 | 类型 | Owner | 入口 | 允许内容 | 禁止内容 | 编辑前阅读 | 验证命令 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `REVIEW.md` | 根 review 入口 | 实现和架构 review 流程 | 是 | review 全集检查清单、风险扫描命令、边界检查顺序和正式 review 证据路由 | 单次 review 发现、具体任务验证记录、当前架构事实正文、替代 `docs/reviews/` 的正式证据 | `docs/reviews/README.md`、`docs/reviews/done-definition.md`、`docs/reviews/quality-gates.md`、本文件 | `bash scripts/check-structure.sh` |
 | `docs/README.md` | 导航索引 | 仓库文档 | 是 | 当前文档地图、阅读顺序、路径路由 | 长篇实现说明 | 本文件 | `bash scripts/check-structure.sh` |
 | `CONTEXT-MAP.md` | 限界上下文术语入口 | 仓库文档 | 是 | 各服务/上下文的 `CONTEXT.md` 路由和上下文关系 | 实现方案、架构决策正文、临时讨论记录 | 对应上下文 `CONTEXT.md`、本文件 | `bash scripts/check-structure.sh` |
 | `docs/migration/` | 既有实现参考和服务替换计划 | ZhiCore Go 服务交付 | 是 | 既有服务映射、服务替换顺序、发布说明、已发布 contract 约束 | 长期 Java 设计盘点、未验证的“某服务已完成”结论 | Go 服务落点、本文件；需要核对既有行为时再读 `../zhicore-microservice` | `bash scripts/check-structure.sh` |
