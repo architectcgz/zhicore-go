@@ -1,2 +1,2 @@
-// Package httpapi contains shared HTTP response and error primitives.
+// Package httpapi contains shared HTTP request parsing, response, and error primitives.
 package httpapi
