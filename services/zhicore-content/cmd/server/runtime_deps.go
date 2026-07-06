@@ -8,11 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	kitrabbitmq "github.com/architectcgz/zhicore-go/libs/kit/rabbitmq"
-	contentbody "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/body"
-	contentclients "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/clients"
-	contentpostgres "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/postgres"
-	contentrabbitmq "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/infrastructure/rabbitmq"
 	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -70,12 +65,6 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 
 	readiness := newReadinessSwitch()
 	rabbitmq := rabbitMQHealthChecker{connection: rabbitConn, channel: rabbitChannel}
-	topicPublisher := kitrabbitmq.NewTopicPublisher(
-		kitrabbitmq.NewAMQPChannel(rabbitChannel),
-		cfg.RabbitMQ.Exchange,
-		kitrabbitmq.WithPublishConfirmTimeout(cfg.RabbitMQ.PublishConfirmTimeout),
-	)
-	outboxStore := contentpostgres.NewStore(postgresDB, contentpostgres.StoreConfig{})
 	module, err := contentruntime.Build(contentruntime.Deps{
 		Config: &contentruntime.Config{
 			ServiceName: cfg.ServiceName,
@@ -93,19 +82,12 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 			Mongo:     mongoPingChecker{client: mongoClient},
 			RabbitMQ:  rabbitmq,
 		},
-		Parser:            contentbody.NewV1BodyParser(contentbody.DefaultBodyValidationPolicy()),
-		Outbox:            outboxStore,
-		IntegrationEvents: contentrabbitmq.NewIntegrationEventPublisher(topicPublisher),
+		Parser:            contentruntime.NewDefaultBodyParser(),
+		Outbox:            contentruntime.NewPostgresOutboxPublisher(postgresDB),
+		IntegrationEvents: contentruntime.NewRabbitMQIntegrationEventPublisher(rabbitChannel, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.PublishConfirmTimeout),
 		Clock:             systemClock{},
-		Users: contentclients.NewUserClient(contentclients.UserClientConfig{
-			BaseURL: cfg.UserService.BaseURL,
-			Timeout: cfg.HTTP.ReadTimeout,
-		}),
-		Files: contentclients.NewFileClient(contentclients.FileClientConfig{
-			BaseURL:     cfg.FileService.BaseURL,
-			Timeout:     cfg.HTTP.ReadTimeout,
-			MaxAttempts: 2,
-		}),
+		Users:             contentruntime.NewUserProfileClient(cfg.UserService.BaseURL, cfg.HTTP.ReadTimeout),
+		Files:             contentruntime.NewFileResourceClient(cfg.FileService.BaseURL, cfg.HTTP.ReadTimeout, 2),
 	})
 	if err != nil {
 		closeNamedClosers(closers)
