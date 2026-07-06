@@ -75,11 +75,11 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | 作者 | 保存草稿正文 blocks。字段级 schema 见 [endpoints/save-draft-body.md](endpoints/save-draft-body.md)。 |
 | `DELETE` | `/api/v1/posts/{postId}/draft` | 作者 | 删除草稿指针并创建正文清理任务；字段级 schema 见 [endpoints/delete-post-draft.md](endpoints/delete-post-draft.md)。 |
 | `POST` | `/api/v1/posts/{postId}/publish` | 作者 | 发布草稿。字段级 schema 见 [endpoints/publish-post.md](endpoints/publish-post.md)。 |
-| `POST` | `/api/v1/posts/{postId}/unpublish` | 作者 | 撤回已发布文章。 |
-| `POST` | `/api/v1/posts/{postId}/schedule` | 作者 | 创建或更新定时发布。 |
-| `DELETE` | `/api/v1/posts/{postId}/schedule` | 作者 | 取消定时发布。 |
-| `DELETE` | `/api/v1/posts/{postId}` | 作者 | 软删除文章。 |
-| `POST` | `/api/v1/posts/{postId}/restore` | 作者 | 恢复软删除文章。 |
+| `POST` | `/api/v1/posts/{postId}/unpublish` | 作者 | 撤回已发布文章；字段级 schema 见 [endpoints/unpublish-post.md](endpoints/unpublish-post.md)。 |
+| `POST` | `/api/v1/posts/{postId}/schedule` | 作者 | 创建或更新定时发布；字段级 schema 见 [endpoints/schedule-post.md](endpoints/schedule-post.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/schedule` | 作者 | 取消定时发布；字段级 schema 见 [endpoints/cancel-post-schedule.md](endpoints/cancel-post-schedule.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}` | 作者 | 软删除文章；字段级 schema 见 [endpoints/delete-post.md](endpoints/delete-post.md)。 |
+| `POST` | `/api/v1/posts/{postId}/restore` | 作者 | 恢复软删除文章；字段级 schema 见 [endpoints/restore-post.md](endpoints/restore-post.md)。 |
 | `PUT` | `/api/v1/posts/{postId}/tags` | 作者 | 替换文章标签集合。 |
 | `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | 作者 | 删除单个文章标签。 |
 
@@ -135,6 +135,11 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | [endpoints/retry-admin-outbox-event.md](endpoints/retry-admin-outbox-event.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | [endpoints/save-draft-body.md](endpoints/save-draft-body.md) | `services/zhicore-content/api/http/save_draft_body_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/posts/{postId}/publish` | [endpoints/publish-post.md](endpoints/publish-post.md) | `services/zhicore-content/api/http/publish_post_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/posts/{postId}/unpublish` | [endpoints/unpublish-post.md](endpoints/unpublish-post.md) | `services/zhicore-content/api/http/post_lifecycle_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/posts/{postId}/schedule` | [endpoints/schedule-post.md](endpoints/schedule-post.md) | `services/zhicore-content/api/http/post_schedule_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/posts/{postId}/schedule` | [endpoints/cancel-post-schedule.md](endpoints/cancel-post-schedule.md) | `services/zhicore-content/api/http/post_schedule_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/posts/{postId}` | [endpoints/delete-post.md](endpoints/delete-post.md) | `services/zhicore-content/api/http/post_lifecycle_handler_test.go` | 已验证 |
+| `POST` | `/api/v1/posts/{postId}/restore` | [endpoints/restore-post.md](endpoints/restore-post.md) | `services/zhicore-content/api/http/post_lifecycle_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/posts/{postId}/body` | [endpoints/get-post-body.md](endpoints/get-post-body.md) | `services/zhicore-content/api/http/get_post_body_handler_test.go` | 已验证 |
 
 ## 已验证依赖语义错误映射

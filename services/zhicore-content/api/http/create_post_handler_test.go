@@ -140,6 +140,31 @@ type fakeContentService struct {
 	publishResult application.PublishPostResult
 	publishErr    error
 
+	unpublishCalls  int
+	unpublishCmd    application.PostLifecycleCommand
+	unpublishResult application.PostLifecycleResult
+	unpublishErr    error
+
+	deletePostCalls  int
+	deletePostCmd    application.PostLifecycleCommand
+	deletePostResult application.PostLifecycleResult
+	deletePostErr    error
+
+	restoreCalls  int
+	restoreCmd    application.PostLifecycleCommand
+	restoreResult application.PostLifecycleResult
+	restoreErr    error
+
+	scheduleCalls  int
+	scheduleCmd    application.SchedulePostCommand
+	scheduleResult application.SchedulePostResult
+	scheduleErr    error
+
+	cancelScheduleCalls  int
+	cancelScheduleCmd    application.PostLifecycleCommand
+	cancelScheduleResult application.PostLifecycleResult
+	cancelScheduleErr    error
+
 	getBodyCalls  int
 	getBodyQuery  application.GetPublishedPostBodyQuery
 	getBodyResult application.GetPublishedPostBodyResult
@@ -222,6 +247,51 @@ func (f *fakeContentService) PublishPost(ctx context.Context, cmd application.Pu
 		return application.PublishPostResult{}, f.publishErr
 	}
 	return f.publishResult, nil
+}
+
+func (f *fakeContentService) UnpublishPost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error) {
+	f.unpublishCalls++
+	f.unpublishCmd = cmd
+	if f.unpublishErr != nil {
+		return application.PostLifecycleResult{}, f.unpublishErr
+	}
+	return f.unpublishResult, nil
+}
+
+func (f *fakeContentService) DeletePost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error) {
+	f.deletePostCalls++
+	f.deletePostCmd = cmd
+	if f.deletePostErr != nil {
+		return application.PostLifecycleResult{}, f.deletePostErr
+	}
+	return f.deletePostResult, nil
+}
+
+func (f *fakeContentService) RestorePost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error) {
+	f.restoreCalls++
+	f.restoreCmd = cmd
+	if f.restoreErr != nil {
+		return application.PostLifecycleResult{}, f.restoreErr
+	}
+	return f.restoreResult, nil
+}
+
+func (f *fakeContentService) SchedulePost(ctx context.Context, cmd application.SchedulePostCommand) (application.SchedulePostResult, error) {
+	f.scheduleCalls++
+	f.scheduleCmd = cmd
+	if f.scheduleErr != nil {
+		return application.SchedulePostResult{}, f.scheduleErr
+	}
+	return f.scheduleResult, nil
+}
+
+func (f *fakeContentService) CancelSchedule(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error) {
+	f.cancelScheduleCalls++
+	f.cancelScheduleCmd = cmd
+	if f.cancelScheduleErr != nil {
+		return application.PostLifecycleResult{}, f.cancelScheduleErr
+	}
+	return f.cancelScheduleResult, nil
 }
 
 func (f *fakeContentService) GetPublishedPostBody(ctx context.Context, query application.GetPublishedPostBodyQuery) (application.GetPublishedPostBodyResult, error) {

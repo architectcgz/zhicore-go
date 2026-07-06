@@ -27,6 +27,11 @@ type Service interface {
 	CreatePost(ctx context.Context, cmd application.CreatePostCommand) (application.CreatePostResult, error)
 	SaveDraftBody(ctx context.Context, cmd application.SaveDraftBodyCommand) (application.SaveDraftBodyResult, error)
 	PublishPost(ctx context.Context, cmd application.PublishPostCommand) (application.PublishPostResult, error)
+	UnpublishPost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error)
+	DeletePost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error)
+	RestorePost(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error)
+	SchedulePost(ctx context.Context, cmd application.SchedulePostCommand) (application.SchedulePostResult, error)
+	CancelSchedule(ctx context.Context, cmd application.PostLifecycleCommand) (application.PostLifecycleResult, error)
 	GetPublishedPostBody(ctx context.Context, query application.GetPublishedPostBodyQuery) (application.GetPublishedPostBodyResult, error)
 	ListPublishedPosts(ctx context.Context, query application.ListPublishedPostsQuery) (application.ListPublishedPostsResult, error)
 	GetPostDetail(ctx context.Context, query application.GetPostDetailQuery) (application.GetPostDetailResult, error)
@@ -63,6 +68,11 @@ func (h *Handler) routes() {
 	h.router.DELETE("/api/v1/posts/:postId/draft", h.deleteAuthorDraft)
 	h.router.PUT("/api/v1/posts/:postId/draft/body", h.saveDraftBody)
 	h.router.POST("/api/v1/posts/:postId/publish", h.publishPost)
+	h.router.POST("/api/v1/posts/:postId/unpublish", h.unpublishPost)
+	h.router.POST("/api/v1/posts/:postId/schedule", h.schedulePost)
+	h.router.DELETE("/api/v1/posts/:postId/schedule", h.cancelSchedule)
+	h.router.POST("/api/v1/posts/:postId/restore", h.restorePost)
+	h.router.DELETE("/api/v1/posts/:postId", h.deletePost)
 	h.router.GET("/api/v1/posts/:postId/body", h.getPostBody)
 	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
 	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
@@ -394,6 +404,162 @@ func (h *Handler) publishPost(c *gin.Context) {
 	})
 }
 
+func (h *Handler) unpublishPost(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	var req postLifecycleReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if req.BasePostVersion <= 0 {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.UnpublishPost(r.Context(), application.PostLifecycleCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: req.BasePostVersion,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPostLifecycle)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapPostLifecycleResponse(result))
+}
+
+func (h *Handler) deletePost(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	basePostVersion, ok := optionalPositiveIntQuery(w, c, "basePostVersion")
+	if !ok {
+		return
+	}
+	result, err := h.service.DeletePost(r.Context(), application.PostLifecycleCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: int64(basePostVersion),
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPostLifecycle)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapPostLifecycleResponse(result))
+}
+
+func (h *Handler) restorePost(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	var req postLifecycleReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if req.BasePostVersion < 0 {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.RestorePost(r.Context(), application.PostLifecycleCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: req.BasePostVersion,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPostLifecycle)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapPostLifecycleResponse(result))
+}
+
+func (h *Handler) schedulePost(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	var req schedulePostReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	scheduledAt, err := time.Parse(time.RFC3339, strings.TrimSpace(req.ScheduledAt))
+	if err != nil || req.BasePostVersion <= 0 || strings.TrimSpace(req.DraftBodyID) == "" || strings.TrimSpace(req.DraftBodyHash) == "" {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.SchedulePost(r.Context(), application.SchedulePostCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: req.BasePostVersion,
+		DraftBodyID:     req.DraftBodyID,
+		DraftBodyHash:   req.DraftBodyHash,
+		ScheduledAt:     scheduledAt.UTC(),
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPostLifecycle)
+		return
+	}
+	sharedhttp.WriteSuccess(w, schedulePostResp{
+		PostID:      result.PostID,
+		PostVersion: result.PostVersion,
+		Status:      result.Status,
+		ScheduledAt: formatTime(result.ScheduledAt),
+	})
+}
+
+func (h *Handler) cancelSchedule(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	basePostVersion, ok := optionalPositiveIntQuery(w, c, "basePostVersion")
+	if !ok {
+		return
+	}
+	result, err := h.service.CancelSchedule(r.Context(), application.PostLifecycleCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: int64(basePostVersion),
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationPostLifecycle)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapPostLifecycleResponse(result))
+}
+
 func (h *Handler) getPostBody(c *gin.Context) {
 	w, r := c.Writer, c.Request
 	postID, ok := postIDFromPath(w, c)
@@ -518,177 +684,6 @@ func (h *Handler) retryAdminOutboxEvent(c *gin.Context) {
 	})
 }
 
-type createPostReq struct {
-	Title       string       `json:"title"`
-	Summary     string       `json:"summary"`
-	CoverFileID string       `json:"coverFileId"`
-	TopicID     string       `json:"topicId"`
-	CategoryID  string       `json:"categoryId"`
-	Tags        []string     `json:"tags"`
-	Body        *postBodyReq `json:"body"`
-}
-
-type postBodyReq struct {
-	SchemaVersion int                `json:"schemaVersion"`
-	Blocks        application.Blocks `json:"blocks"`
-}
-
-type saveDraftBodyReq struct {
-	BasePostVersion   int64              `json:"basePostVersion"`
-	BaseDraftBodyID   string             `json:"baseDraftBodyId"`
-	BaseDraftBodyHash string             `json:"baseDraftBodyHash"`
-	SchemaVersion     int                `json:"schemaVersion"`
-	Blocks            application.Blocks `json:"blocks"`
-	ClientSavedAt     string             `json:"clientSavedAt"`
-}
-
-type publishPostReq struct {
-	BasePostVersion int64  `json:"basePostVersion"`
-	DraftBodyID     string `json:"draftBodyId"`
-	DraftBodyHash   string `json:"draftBodyHash"`
-}
-
-type batchGetPostsReq struct {
-	PostIDs        []string `json:"postIds"`
-	IncludeDeleted bool     `json:"includeDeleted"`
-}
-
-type updateDraftMetaReq struct {
-	BasePostVersion int64     `json:"basePostVersion"`
-	Title           *string   `json:"title"`
-	Summary         *string   `json:"summary"`
-	CoverFileID     *string   `json:"coverFileId"`
-	TopicID         *string   `json:"topicId"`
-	CategoryID      *string   `json:"categoryId"`
-	Tags            *[]string `json:"tags"`
-}
-
-type createPostResp struct {
-	PostID      string `json:"postId"`
-	PostVersion int64  `json:"postVersion"`
-}
-
-type saveDraftBodyResp struct {
-	PostID        string `json:"postId"`
-	PostVersion   int64  `json:"postVersion"`
-	DraftBodyID   string `json:"draftBodyId"`
-	DraftBodyHash string `json:"draftBodyHash"`
-	SavedAt       string `json:"savedAt"`
-	WordCount     int    `json:"wordCount"`
-}
-
-type publishPostResp struct {
-	PostID      string `json:"postId"`
-	PostVersion int64  `json:"postVersion"`
-	PublishedAt string `json:"publishedAt"`
-}
-
-type postBodyResp struct {
-	BodyID        string          `json:"bodyId"`
-	SchemaVersion int             `json:"schemaVersion"`
-	Format        string          `json:"format"`
-	Blocks        json.RawMessage `json:"blocks"`
-	PlainText     string          `json:"plainText"`
-	ContentHash   string          `json:"contentHash"`
-	SizeBytes     int             `json:"sizeBytes"`
-	CreatedAt     string          `json:"createdAt"`
-}
-
-type cursorPageResp[T any] struct {
-	Items      []T    `json:"items"`
-	NextCursor string `json:"nextCursor,omitempty"`
-	HasMore    bool   `json:"hasMore"`
-	Limit      int    `json:"limit"`
-}
-
-type postDetailResp struct {
-	Post postSummaryResp `json:"post"`
-	Body *postBodyResp   `json:"body,omitempty"`
-}
-
-type postSummaryResp struct {
-	PostID             string        `json:"postId"`
-	AuthorID           string        `json:"authorId"`
-	AuthorName         string        `json:"authorName,omitempty"`
-	AuthorAvatarFileID string        `json:"authorAvatarFileId,omitempty"`
-	Title              string        `json:"title"`
-	Summary            string        `json:"summary,omitempty"`
-	CoverFileID        string        `json:"coverFileId,omitempty"`
-	Status             string        `json:"status"`
-	PostVersion        int64         `json:"postVersion"`
-	PublishedAt        string        `json:"publishedAt,omitempty"`
-	CreatedAt          string        `json:"createdAt"`
-	UpdatedAt          string        `json:"updatedAt"`
-	Stats              postStatsResp `json:"stats"`
-}
-
-type postStatsResp struct {
-	ViewCount     int64 `json:"viewCount"`
-	LikeCount     int64 `json:"likeCount"`
-	FavoriteCount int64 `json:"favoriteCount"`
-	CommentCount  int64 `json:"commentCount"`
-}
-
-type batchGetPostsResp struct {
-	Items          []postSummaryResp `json:"items"`
-	MissingPostIDs []string          `json:"missingPostIds"`
-}
-
-type authorDraftResp struct {
-	PostID        string        `json:"postId"`
-	PostVersion   int64         `json:"postVersion"`
-	Title         string        `json:"title"`
-	Summary       string        `json:"summary,omitempty"`
-	CoverFileID   string        `json:"coverFileId,omitempty"`
-	Status        string        `json:"status"`
-	DraftBodyID   string        `json:"draftBodyId,omitempty"`
-	DraftBodyHash string        `json:"draftBodyHash,omitempty"`
-	Body          *postBodyResp `json:"body,omitempty"`
-	CreatedAt     string        `json:"createdAt"`
-	UpdatedAt     string        `json:"updatedAt"`
-}
-
-type draftMutationResp struct {
-	PostID      string `json:"postId"`
-	PostVersion int64  `json:"postVersion"`
-	Title       string `json:"title,omitempty"`
-	Summary     string `json:"summary,omitempty"`
-	CoverFileID string `json:"coverFileId,omitempty"`
-	UpdatedAt   string `json:"updatedAt,omitempty"`
-}
-
-type adminOutboxRetryReq struct {
-	Reason string `json:"reason"`
-}
-
-type adminOutboxListResp struct {
-	Items []adminOutboxEventResp `json:"items"`
-	Page  int                    `json:"page"`
-	Size  int                    `json:"size"`
-	Total int64                  `json:"total"`
-}
-
-type adminOutboxEventResp struct {
-	EventID          string `json:"eventId"`
-	EventType        string `json:"eventType"`
-	AggregateType    string `json:"aggregateType"`
-	AggregateID      string `json:"aggregateId"`
-	AggregateVersion int64  `json:"aggregateVersion"`
-	Status           string `json:"status"`
-	RetryCount       int    `json:"retryCount"`
-	LastError        string `json:"lastError"`
-	OccurredAt       string `json:"occurredAt"`
-	CreatedAt        string `json:"createdAt"`
-	UpdatedAt        string `json:"updatedAt"`
-}
-
-type adminOutboxRetryResp struct {
-	EventID    string `json:"eventId"`
-	Status     string `json:"status"`
-	RetryCount int    `json:"retryCount"`
-	RetriedAt  string `json:"retriedAt"`
-}
-
 func actorFromRequest(r *http.Request) (*application.Actor, bool) {
 	raw := strings.TrimSpace(r.Header.Get(userIDHeaderName))
 	if raw == "" {
@@ -786,6 +781,7 @@ const (
 	errorOperationCreatePost      errorOperation = "createPost"
 	errorOperationSaveDraftBody   errorOperation = "saveDraftBody"
 	errorOperationPublishPost     errorOperation = "publishPost"
+	errorOperationPostLifecycle   errorOperation = "postLifecycle"
 	errorOperationGetPostBody     errorOperation = "getPostBody"
 	errorOperationPublicPostQuery errorOperation = "publicPostQuery"
 	errorOperationAuthorWorkbench errorOperation = "authorWorkbench"
@@ -842,6 +838,8 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusForbidden, 2008, "Forbidden", nil
 	case errors.Is(err, application.ErrPostAlreadyPublished):
 		return http.StatusConflict, 4002, "Post already published", nil
+	case errors.Is(err, application.ErrPostNotPublished):
+		return http.StatusConflict, 4003, "Post not published", nil
 	case errors.Is(err, application.ErrPostDeleted):
 		return http.StatusConflict, 4004, "Post deleted", nil
 	case errors.Is(err, application.ErrTitleRequired):
@@ -936,6 +934,15 @@ func mapAuthorDraftResponse(item application.AuthorDraftResult) authorDraftResp 
 		}
 	}
 	return resp
+}
+
+func mapPostLifecycleResponse(result application.PostLifecycleResult) postLifecycleResp {
+	return postLifecycleResp{
+		PostID:      result.PostID,
+		PostVersion: result.PostVersion,
+		Status:      result.Status,
+		UpdatedAt:   formatTime(result.UpdatedAt),
+	}
 }
 
 func mapDraftMutationResponse(item application.DraftMutationResult) draftMutationResp {
