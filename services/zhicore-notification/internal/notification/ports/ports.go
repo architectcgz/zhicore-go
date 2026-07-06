@@ -138,6 +138,31 @@ type InteractionNotificationStore interface {
 	CreateInteractionNotification(ctx context.Context, input CreateInteractionNotificationInput) (CreateInteractionNotificationResult, error)
 }
 
+type PlanPostPublishedCampaignInput struct {
+	Event         ConsumedEventMetadata
+	SourceEventID string
+	CampaignType  string
+	AuthorID      int64
+	PostID        int64
+	ObjectType    string
+	ObjectID      int64
+	Title         string
+	Excerpt       string
+	Payload       []byte
+	PublishedAt   time.Time
+	CreatedAt     time.Time
+}
+
+type PlanCampaignResult struct {
+	Created    bool
+	CampaignID int64
+	ShardID    int64
+}
+
+type CampaignRepository interface {
+	PlanPostPublishedCampaign(ctx context.Context, input PlanPostPublishedCampaignInput) (PlanCampaignResult, error)
+}
+
 type NotificationSettingsRepository interface {
 	GetNotificationPreferences(ctx context.Context, userID int64) (NotificationPreferences, error)
 	SaveNotificationPreferences(ctx context.Context, input SaveNotificationPreferencesInput) (NotificationPreferences, error)

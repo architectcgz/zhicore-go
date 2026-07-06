@@ -56,6 +56,42 @@ func TestInteractionConsumerCreatesPostLikedNotification(t *testing.T) {
 	}
 }
 
+func TestInteractionConsumerPlansPostPublishedCampaignWithoutFollowerFanout(t *testing.T) {
+	deps := newInteractionConsumerDeps()
+	consumer := newTestInteractionConsumer(deps)
+
+	result := consumer.Handle(context.Background(), IncomingEvent{
+		RoutingKey: "content.post.published",
+		Body: []byte(`{
+			"eventId":"evt_post_published_1",
+			"eventType":"content.post.published",
+			"payloadVersion":1,
+			"producer":"zhicore-content",
+			"occurredAt":"2026-07-06T10:00:00Z",
+			"aggregateType":"post",
+			"aggregateId":"post_41",
+			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
+		}`),
+	})
+
+	if result.Action != ConsumerActionAck {
+		t.Fatalf("action = %s, want ack; result=%+v", result.Action, result)
+	}
+	if len(deps.campaigns.planned) != 1 {
+		t.Fatalf("planned campaigns = %d, want 1", len(deps.campaigns.planned))
+	}
+	planned := deps.campaigns.planned[0]
+	if planned.Event.EventID != "evt_post_published_1" || planned.AuthorID != 1001 || planned.PostID != 41 {
+		t.Fatalf("planned campaign = %+v", planned)
+	}
+	if planned.Title != "Hello" || planned.Excerpt != "Short summary" || !planned.PublishedAt.Equal(time.Date(2026, 7, 6, 9, 59, 0, 0, time.UTC)) {
+		t.Fatalf("planned content snapshot = %+v", planned)
+	}
+	if len(deps.notifications.created) != 0 || len(deps.fanout.hints) != 0 {
+		t.Fatalf("published campaign must not fanout immediately: notifications=%d hints=%d", len(deps.notifications.created), len(deps.fanout.hints))
+	}
+}
+
 func TestInteractionConsumerAcksSelfInteractionWithoutWriting(t *testing.T) {
 	deps := newInteractionConsumerDeps()
 	consumer := newTestInteractionConsumer(deps)
@@ -163,6 +199,44 @@ func TestInteractionConsumerNacksTransientDependencyFailure(t *testing.T) {
 	}
 }
 
+func TestInteractionConsumerNacksPostPublishedWhenCampaignStoreUnavailable(t *testing.T) {
+	deps := newInteractionConsumerDeps()
+	deps.campaigns.err = ports.ErrDependencyUnavailable
+	consumer := newTestInteractionConsumer(deps)
+
+	result := consumer.Handle(context.Background(), validPostPublishedEvent())
+
+	if result.Action != ConsumerActionNackRequeue {
+		t.Fatalf("action = %s, want nack requeue", result.Action)
+	}
+}
+
+func TestInteractionConsumerDeadLettersInvalidPostPublishedPayload(t *testing.T) {
+	deps := newInteractionConsumerDeps()
+	consumer := newTestInteractionConsumer(deps)
+
+	result := consumer.Handle(context.Background(), IncomingEvent{
+		RoutingKey: "content.post.published",
+		Body: []byte(`{
+			"eventId":"evt_bad_publish",
+			"eventType":"content.post.published",
+			"payloadVersion":1,
+			"producer":"zhicore-content",
+			"occurredAt":"2026-07-06T10:00:00Z",
+			"aggregateType":"post",
+			"aggregateId":"post_bad",
+			"payload":{"publicId":"post_bad","authorId":1001,"title":"Hello","publishedAt":"2026-07-06T09:59:00Z"}
+		}`),
+	})
+
+	if result.Action != ConsumerActionDeadLetter || result.DeadLetter == nil || result.DeadLetter.ErrorClass != ErrorClassProducerContract {
+		t.Fatalf("result = %+v, want producer contract dead-letter", result)
+	}
+	if len(deps.campaigns.planned) != 0 {
+		t.Fatalf("planned campaigns = %d, want none", len(deps.campaigns.planned))
+	}
+}
+
 func TestInteractionConsumerDeadLettersProducerContractErrorWithoutRawPayload(t *testing.T) {
 	deps := newInteractionConsumerDeps()
 	consumer := newTestInteractionConsumer(deps)
@@ -235,9 +309,26 @@ func validCommentReplyEvent() IncomingEvent {
 	}
 }
 
+func validPostPublishedEvent() IncomingEvent {
+	return IncomingEvent{
+		RoutingKey: "content.post.published",
+		Body: []byte(`{
+			"eventId":"evt_post_published_1",
+			"eventType":"content.post.published",
+			"payloadVersion":1,
+			"producer":"zhicore-content",
+			"occurredAt":"2026-07-06T10:00:00Z",
+			"aggregateType":"post",
+			"aggregateId":"post_41",
+			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
+		}`),
+	}
+}
+
 func newTestInteractionConsumer(deps interactionConsumerDeps) *InteractionConsumer {
 	return NewInteractionConsumer(InteractionConsumerDeps{
 		Notifications: deps.notifications,
+		Campaigns:     deps.campaigns,
 		Fanout:        deps.fanout,
 		Clock:         deps.clock,
 	}, InteractionConsumerConfig{ConsumedEventsRetention: 168 * time.Hour})
@@ -245,6 +336,7 @@ func newTestInteractionConsumer(deps interactionConsumerDeps) *InteractionConsum
 
 type interactionConsumerDeps struct {
 	notifications *fakeInteractionNotificationStore
+	campaigns     *fakeCampaignStore
 	fanout        *fakeRealtimeFanout
 	clock         fakeInteractionClock
 }
@@ -252,6 +344,7 @@ type interactionConsumerDeps struct {
 func newInteractionConsumerDeps() interactionConsumerDeps {
 	return interactionConsumerDeps{
 		notifications: &fakeInteractionNotificationStore{},
+		campaigns:     &fakeCampaignStore{},
 		fanout:        &fakeRealtimeFanout{},
 		clock:         fakeInteractionClock{now: time.Date(2026, 7, 6, 11, 0, 0, 0, time.UTC)},
 	}
@@ -268,6 +361,19 @@ func (f *fakeInteractionNotificationStore) CreateInteractionNotification(ctx con
 		return ports.CreateInteractionNotificationResult{}, f.err
 	}
 	return ports.CreateInteractionNotificationResult{Created: true, NotificationID: 10001, PublicID: "ntf_1"}, nil
+}
+
+type fakeCampaignStore struct {
+	planned []ports.PlanPostPublishedCampaignInput
+	err     error
+}
+
+func (f *fakeCampaignStore) PlanPostPublishedCampaign(ctx context.Context, input ports.PlanPostPublishedCampaignInput) (ports.PlanCampaignResult, error) {
+	f.planned = append(f.planned, input)
+	if f.err != nil {
+		return ports.PlanCampaignResult{}, f.err
+	}
+	return ports.PlanCampaignResult{Created: true, CampaignID: 7001, ShardID: 8001}, nil
 }
 
 type fakeRealtimeFanout struct {

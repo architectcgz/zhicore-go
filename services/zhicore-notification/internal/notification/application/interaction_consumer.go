@@ -68,6 +68,7 @@ type RealtimeFanoutPublisher interface {
 
 type InteractionConsumerDeps struct {
 	Notifications ports.InteractionNotificationStore
+	Campaigns     ports.CampaignRepository
 	Fanout        RealtimeFanoutPublisher
 	Clock         ports.Clock
 }
@@ -79,6 +80,7 @@ type InteractionConsumerConfig struct {
 
 type InteractionConsumer struct {
 	notifications ports.InteractionNotificationStore
+	campaigns     ports.CampaignRepository
 	fanout        RealtimeFanoutPublisher
 	clock         ports.Clock
 	config        InteractionConsumerConfig
@@ -93,6 +95,7 @@ func NewInteractionConsumer(deps InteractionConsumerDeps, config InteractionCons
 	}
 	return &InteractionConsumer{
 		notifications: deps.Notifications,
+		campaigns:     deps.Campaigns,
 		fanout:        deps.Fanout,
 		clock:         deps.Clock,
 		config:        config,
@@ -105,6 +108,11 @@ func (c *InteractionConsumer) Handle(ctx context.Context, event IncomingEvent) C
 	payloadHash := hashPayload(event.Body)
 	if err != nil {
 		return c.deadLetter(event, envelope, consumerName, payloadHash, ErrorClassProducerContract)
+	}
+	if envelope.EventType == "content.post.published" {
+		// Published posts may have large follower sets, so the consumer only
+		// creates a durable campaign and initial shard. Worker fanout happens later.
+		return c.handlePostPublishedCampaign(ctx, envelope, event, consumerName, payloadHash)
 	}
 
 	input, noop, err := c.notificationInput(envelope, event, consumerName, payloadHash)
@@ -136,6 +144,65 @@ func (c *InteractionConsumer) Handle(ctx context.Context, event IncomingEvent) C
 		})
 	}
 	return ConsumerResult{Action: ConsumerActionAck}
+}
+
+func (c *InteractionConsumer) handlePostPublishedCampaign(ctx context.Context, envelope integrationEnvelope, event IncomingEvent, consumerName string, payloadHash string) ConsumerResult {
+	input, err := c.postPublishedCampaignInput(envelope, event, consumerName, payloadHash)
+	if err != nil {
+		return c.deadLetter(event, envelope, consumerName, payloadHash, ErrorClassProducerContract)
+	}
+	if c.campaigns == nil {
+		return ConsumerResult{Action: ConsumerActionNackRequeue}
+	}
+	if _, err := c.campaigns.PlanPostPublishedCampaign(ctx, input); errors.Is(err, ports.ErrDuplicateConsumedEvent) {
+		return ConsumerResult{Action: ConsumerActionAck}
+	} else if err != nil {
+		return ConsumerResult{Action: ConsumerActionNackRequeue}
+	}
+	return ConsumerResult{Action: ConsumerActionAck}
+}
+
+func (c *InteractionConsumer) postPublishedCampaignInput(envelope integrationEnvelope, event IncomingEvent, consumerName string, payloadHash string) (ports.PlanPostPublishedCampaignInput, error) {
+	occurredAt, err := time.Parse(time.RFC3339Nano, envelope.OccurredAt)
+	if err != nil {
+		return ports.PlanPostPublishedCampaignInput{}, fmt.Errorf("occurredAt is invalid")
+	}
+	var payload struct {
+		PublicID    string    `json:"publicId"`
+		InternalID  int64     `json:"internalId"`
+		AuthorID    int64     `json:"authorId"`
+		Title       string    `json:"title"`
+		Summary     string    `json:"summary"`
+		PublishedAt time.Time `json:"publishedAt"`
+	}
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return ports.PlanPostPublishedCampaignInput{}, err
+	}
+	if payload.PublicID == "" || payload.InternalID <= 0 || payload.AuthorID <= 0 || strings.TrimSpace(payload.Title) == "" || payload.PublishedAt.IsZero() {
+		return ports.PlanPostPublishedCampaignInput{}, fmt.Errorf("content.post.published payload is incomplete")
+	}
+	return ports.PlanPostPublishedCampaignInput{
+		Event: ports.ConsumedEventMetadata{
+			EventID:      envelope.EventID,
+			EventType:    envelope.EventType,
+			RoutingKey:   firstNonEmpty(event.RoutingKey, envelope.EventType),
+			ConsumerName: consumerName,
+			PayloadHash:  payloadHash,
+			OccurredAt:   occurredAt,
+			ExpiresAt:    c.clock.Now().Add(c.config.ConsumedEventsRetention),
+		},
+		SourceEventID: envelope.EventID,
+		CampaignType:  "POST_PUBLISHED",
+		AuthorID:      payload.AuthorID,
+		PostID:        payload.InternalID,
+		ObjectType:    "POST",
+		ObjectID:      payload.InternalID,
+		Title:         strings.TrimSpace(payload.Title),
+		Excerpt:       payload.Summary,
+		Payload:       envelope.Payload,
+		PublishedAt:   payload.PublishedAt,
+		CreatedAt:     c.clock.Now(),
+	}, nil
 }
 
 func (c *InteractionConsumer) notificationInput(envelope integrationEnvelope, event IncomingEvent, consumerName string, payloadHash string) (ports.CreateInteractionNotificationInput, bool, error) {

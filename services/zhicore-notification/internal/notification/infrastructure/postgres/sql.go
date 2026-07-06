@@ -43,4 +43,6 @@ var (
 	upsertAuthorSubscriptionSQL           = mustSQL("upsert_author_subscription.sql")
 	listDeliveriesSQL                     = mustSQL("list_deliveries.sql")
 	retryDeliverySQL                      = mustSQL("retry_delivery.sql")
+	insertPostPublishedCampaignSQL        = mustSQL("insert_post_published_campaign.sql")
+	insertInitialCampaignShardSQL         = mustSQL("insert_initial_campaign_shard.sql")
 )
