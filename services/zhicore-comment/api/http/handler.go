@@ -2,9 +2,7 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -64,12 +62,14 @@ func (h *Handler) createComment(c *gin.Context) {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, ok := postIDFromPath(w, c)
-	if !ok {
+	postID, err := postIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	var req createCommentReq
-	if !decodeJSONBody(w, r, &req) {
+	if err := decodeJSONBody(r, &req); err != nil {
+		writeValidationError(w)
 		return
 	}
 	result, err := h.service.CreateComment(r.Context(), application.CreateCommentCommand{
@@ -96,12 +96,14 @@ func (h *Handler) createComment(c *gin.Context) {
 
 func (h *Handler) listCommentsPage(c *gin.Context) {
 	w, r := c.Writer, c.Request
-	postID, ok := postIDFromPath(w, c)
-	if !ok {
+	postID, err := postIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
-	page, size, sort, ok := decodeListCommentsPageQuery(w, r)
-	if !ok {
+	page, size, sort, err := decodeListCommentsPageQuery(r)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	viewerID, _ := trustedUserIDFromRequest(r)
@@ -121,8 +123,9 @@ func (h *Handler) listCommentsPage(c *gin.Context) {
 
 func (h *Handler) getCommentDetail(c *gin.Context) {
 	w, r := c.Writer, c.Request
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	viewerID, _ := trustedUserIDFromRequest(r)
@@ -136,12 +139,14 @@ func (h *Handler) getCommentDetail(c *gin.Context) {
 
 func (h *Handler) listRepliesPage(c *gin.Context) {
 	w, r := c.Writer, c.Request
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
-	page, size, sort, ok := decodeRepliesPageQuery(w, r)
-	if !ok {
+	page, size, sort, err := decodeRepliesPageQuery(r)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	viewerID, _ := trustedUserIDFromRequest(r)
@@ -167,8 +172,9 @@ func (h *Handler) deleteComment(c *gin.Context) {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	result, err := h.service.DeleteComment(r.Context(), application.DeleteCommentCommand{ActorUserID: actorID, PostID: postID, CommentID: commentID})
@@ -190,12 +196,14 @@ func (h *Handler) adminDeleteComment(c *gin.Context) {
 		writeMappedError(w, errAdminRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	var req adminDeleteCommentReq
-	if !decodeJSONBody(w, r, &req) {
+	if err := decodeJSONBody(r, &req); err != nil {
+		writeValidationError(w)
 		return
 	}
 	result, err := h.service.AdminDeleteComment(r.Context(), application.AdminDeleteCommentCommand{ActorUserID: actorID, PostID: postID, CommentID: commentID, Reason: req.Reason})
@@ -221,14 +229,12 @@ func (h *Handler) changeLike(c *gin.Context, liked bool) {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
-	var (
-		result application.LikeCommentResult
-		err    error
-	)
+	var result application.LikeCommentResult
 	if liked {
 		result, err = h.service.LikeComment(r.Context(), application.LikeCommentCommand{ActorUserID: actorID, PostID: postID, CommentID: commentID})
 	} else {
@@ -248,8 +254,9 @@ func (h *Handler) getLikeStatus(c *gin.Context) {
 		writeMappedError(w, errLoginRequired)
 		return
 	}
-	postID, commentID, ok := postAndCommentIDFromPath(w, c)
-	if !ok {
+	postID, commentID, err := postAndCommentIDFromPath(c)
+	if err != nil {
+		writeValidationError(w)
 		return
 	}
 	result, err := h.service.GetLikeStatus(r.Context(), application.GetLikeStatusQuery{PostID: postID, CommentID: commentID, ViewerUserID: viewerID})
@@ -346,95 +353,74 @@ func trustedUserIDFromRequest(r *http.Request) (application.UserID, bool) {
 	return application.UserID(userID), true
 }
 
-func postIDFromPath(w http.ResponseWriter, c *gin.Context) (application.PostID, bool) {
+func postIDFromPath(c *gin.Context) (application.PostID, error) {
 	postID := strings.TrimSpace(c.Param("postId"))
 	if postID == "" {
-		writeValidationError(w)
-		return "", false
+		return "", application.ErrInvalidRequest
 	}
-	return application.PostID(postID), true
+	return application.PostID(postID), nil
 }
 
-func postAndCommentIDFromPath(w http.ResponseWriter, c *gin.Context) (application.PostID, application.PublicCommentID, bool) {
-	postID, ok := postIDFromPath(w, c)
-	if !ok {
-		return "", "", false
+func postAndCommentIDFromPath(c *gin.Context) (application.PostID, application.PublicCommentID, error) {
+	postID, err := postIDFromPath(c)
+	if err != nil {
+		return "", "", err
 	}
 	commentID := application.PublicCommentID(strings.TrimSpace(c.Param("commentId")))
 	if commentID == "" {
-		writeValidationError(w)
-		return "", "", false
+		return "", "", application.ErrCommentIDInvalid
 	}
-	return postID, commentID, true
+	return postID, commentID, nil
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request, out any) bool {
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(out); err != nil {
-		writeValidationError(w)
-		return false
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeValidationError(w)
-		return false
-	}
-	return true
+func decodeJSONBody(r *http.Request, out any) error {
+	return sharedhttp.DecodeJSONBody(r, out)
 }
 
-func decodeListCommentsPageQuery(w http.ResponseWriter, r *http.Request) (int, int, application.CommentSort, bool) {
+func decodeListCommentsPageQuery(r *http.Request) (int, int, application.CommentSort, error) {
 	values := r.URL.Query()
-	page, ok := decodePositiveIntQuery(w, values.Get("page"), 0, 1000000)
-	if !ok {
-		return 0, 0, "", false
+	page, err := decodePositiveIntQuery(values.Get("page"), 0, 1000000)
+	if err != nil {
+		return 0, 0, "", err
 	}
-	size, ok := decodePositiveIntQuery(w, values.Get("size"), 0, 100)
-	if !ok {
-		return 0, 0, "", false
+	size, err := decodePositiveIntQuery(values.Get("size"), 0, 100)
+	if err != nil {
+		return 0, 0, "", err
 	}
 	sort := application.CommentSort(strings.TrimSpace(values.Get("sort")))
 	if sort != "" {
 		switch sort {
 		case application.CommentSortRecommended, application.CommentSortHot, application.CommentSortTime:
 		default:
-			writeValidationError(w)
-			return 0, 0, "", false
+			return 0, 0, "", application.ErrInvalidRequest
 		}
 	}
-	return page, size, sort, true
+	return page, size, sort, nil
 }
 
-func decodeRepliesPageQuery(w http.ResponseWriter, r *http.Request) (int, int, application.CommentSort, bool) {
+func decodeRepliesPageQuery(r *http.Request) (int, int, application.CommentSort, error) {
 	values := r.URL.Query()
-	page, ok := decodePositiveIntQuery(w, values.Get("page"), 0, 1000000)
-	if !ok {
-		return 0, 0, "", false
+	page, err := decodePositiveIntQuery(values.Get("page"), 0, 1000000)
+	if err != nil {
+		return 0, 0, "", err
 	}
-	size, ok := decodePositiveIntQuery(w, values.Get("size"), 0, 100)
-	if !ok {
-		return 0, 0, "", false
+	size, err := decodePositiveIntQuery(values.Get("size"), 0, 100)
+	if err != nil {
+		return 0, 0, "", err
 	}
 	sort := application.CommentSort(strings.TrimSpace(values.Get("sort")))
 	if sort != "" {
 		switch sort {
 		case application.CommentSortHot, application.CommentSortTime:
 		default:
-			writeValidationError(w)
-			return 0, 0, "", false
+			return 0, 0, "", application.ErrInvalidRequest
 		}
 	}
-	return page, size, sort, true
+	return page, size, sort, nil
 }
 
-func decodePositiveIntQuery(w http.ResponseWriter, raw string, defaultValue int, max int) (int, bool) {
-	if strings.TrimSpace(raw) == "" {
-		return defaultValue, true
-	}
-	value, err := strconv.Atoi(raw)
-	if err != nil || value <= 0 || value > max {
-		writeValidationError(w)
-		return 0, false
-	}
-	return value, true
+func decodePositiveIntQuery(raw string, defaultValue int, max int) (int, error) {
+	return sharedhttp.ParsePositiveInt(raw, defaultValue, max)
 }
 
 func hasAdminRole(r *http.Request) bool {
@@ -487,8 +473,5 @@ func errorMapping(err error) (int, int, string) {
 }
 
 func formatTime(value time.Time) string {
-	if value.IsZero() {
-		return ""
-	}
-	return value.UTC().Format(time.RFC3339)
+	return sharedhttp.FormatRFC3339UTC(value)
 }
