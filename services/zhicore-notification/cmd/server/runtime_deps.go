@@ -73,10 +73,12 @@ func openNotificationRuntimeDependencies(ctx context.Context, cfg NotificationSe
 
 	store := notificationpostgres.NewStoreWithCodec(postgresDB, codec)
 	service, err := application.NewService(application.Dependencies{
-		Commands: store,
-		Queries:  store,
-		Unread:   notificationredis.NewUnreadCache(redisClientAdapter{client: redisClient}, 5*time.Minute),
-		IDs:      codec,
+		Commands:   store,
+		Queries:    store,
+		Unread:     notificationredis.NewUnreadCache(redisClientAdapter{client: redisClient}, 5*time.Minute),
+		IDs:        codec,
+		Settings:   store,
+		Deliveries: store,
 	})
 	if err != nil {
 		closeNamedClosers(closers)
