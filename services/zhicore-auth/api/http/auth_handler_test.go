@@ -588,10 +588,12 @@ func TestGetSecurityOperationSuccessAndNotFound(t *testing.T) {
 }
 
 type fakeAuthService struct {
+	registerCalled bool
 	registerInput  RegisterCommand
 	registerResult RegisterResult
 	registerErr    error
 
+	loginCalled bool
 	loginInput  LoginCommand
 	loginResult LoginResult
 	loginErr    error
@@ -628,11 +630,13 @@ type fakeAuthService struct {
 }
 
 func (f *fakeAuthService) Register(ctx context.Context, cmd RegisterCommand) (RegisterResult, error) {
+	f.registerCalled = true
 	f.registerInput = cmd
 	return f.registerResult, normalizeTestServiceError(f.registerErr)
 }
 
 func (f *fakeAuthService) Login(ctx context.Context, cmd LoginCommand) (LoginResult, error) {
+	f.loginCalled = true
 	f.loginInput = cmd
 	return f.loginResult, normalizeTestServiceError(f.loginErr)
 }
