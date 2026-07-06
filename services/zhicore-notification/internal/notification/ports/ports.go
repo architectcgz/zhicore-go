@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrNotificationNotFound  = errors.New("notification not found")
-	ErrDependencyUnavailable = errors.New("dependency unavailable")
+	ErrNotificationNotFound   = errors.New("notification not found")
+	ErrDependencyUnavailable  = errors.New("dependency unavailable")
+	ErrDuplicateConsumedEvent = errors.New("duplicate consumed event")
 )
 
 type NotificationPublicIDCodec interface {
@@ -95,4 +96,44 @@ type UnreadCountCacheStore interface {
 	GetUnreadCount(ctx context.Context, userID int64) (count int64, hit bool, err error)
 	SetUnreadCount(ctx context.Context, userID int64, count int64) error
 	Delete(ctx context.Context, keys ...string) error
+}
+
+type ConsumedEventMetadata struct {
+	EventID      string
+	EventType    string
+	RoutingKey   string
+	ConsumerName string
+	PayloadHash  string
+	OccurredAt   time.Time
+	ExpiresAt    time.Time
+}
+
+type CreateInteractionNotificationInput struct {
+	Event            ConsumedEventMetadata
+	RecipientID      int64
+	ActorID          *int64
+	Category         string
+	NotificationType string
+	EventCode        string
+	Importance       string
+	TargetType       string
+	TargetID         string
+	SourceEventID    string
+	DedupeKey        string
+	GroupKey         string
+	Title            string
+	Content          string
+	Payload          []byte
+	OccurredAt       time.Time
+	CreatedAt        time.Time
+}
+
+type CreateInteractionNotificationResult struct {
+	Created        bool
+	NotificationID int64
+	PublicID       string
+}
+
+type InteractionNotificationStore interface {
+	CreateInteractionNotification(ctx context.Context, input CreateInteractionNotificationInput) (CreateInteractionNotificationResult, error)
 }
