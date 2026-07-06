@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
+	commentevents "github.com/architectcgz/zhicore-go/libs/contracts/events/comment"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/ports"
 )
 
 const (
-	commentCreatedEventType = "comment.created"
-	commentDeletedEventType = "comment.deleted"
-	commentLikedEventType   = "comment.liked"
-	commentUnlikedEventType = "comment.unliked"
+	commentCreatedEventType = commentevents.EventCommentCreated
+	commentDeletedEventType = commentevents.EventCommentDeleted
+	commentLikedEventType   = commentevents.EventCommentLiked
+	commentUnlikedEventType = commentevents.EventCommentUnliked
 )
 
 var (
@@ -871,22 +872,22 @@ func (s *Service) ensureCommentAllowedByRelations(ctx context.Context, actorID d
 
 func (s *Service) publishCreated(ctx context.Context, event domain.CommentCreated, post ports.CommentablePost, occurredAt time.Time) error {
 	comment := event.CreatedComment()
-	payload := map[string]any{
-		"commentId":    comment.ID,
-		"publicId":     post.PostID,
-		"internalId":   post.ContentInternalID,
-		"postAuthorId": post.AuthorID,
-		"authorId":     comment.AuthorID,
-		"hasImages":    len(comment.Media.ImageFileIDs) > 0,
-		"hasVoice":     strings.TrimSpace(comment.Media.VoiceFileID) != "",
-		"createdAt":    occurredAt.UTC().Format(time.RFC3339),
+	payload := commentevents.CommentCreatedPayload{
+		CommentID:    int64(comment.ID),
+		PublicID:     string(post.PostID),
+		InternalID:   int64(post.ContentInternalID),
+		PostAuthorID: int64(post.AuthorID),
+		AuthorID:     int64(comment.AuthorID),
+		HasImages:    len(comment.Media.ImageFileIDs) > 0,
+		HasVoice:     strings.TrimSpace(comment.Media.VoiceFileID) != "",
+		CreatedAt:    occurredAt.UTC().Format(time.RFC3339),
 	}
 	if root, ok := event.RootComment(); ok {
 		parent, _ := event.ParentComment()
-		payload["rootId"] = root.ID
-		payload["rootAuthorId"] = root.AuthorID
-		payload["parentId"] = parent.ID
-		payload["parentAuthorId"] = parent.AuthorID
+		payload.RootID = int64Ptr(int64(root.ID))
+		payload.RootAuthorID = int64Ptr(int64(root.AuthorID))
+		payload.ParentID = int64Ptr(int64(parent.ID))
+		payload.ParentAuthorID = int64Ptr(int64(parent.AuthorID))
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -906,22 +907,22 @@ func (s *Service) publishCreated(ctx context.Context, event domain.CommentCreate
 
 func (s *Service) publishDeleted(ctx context.Context, deleted ports.DeleteSubtreeResult, deletedBy domain.UserID, role DeletedByRole, reason string, occurredAt time.Time) error {
 	entry := deleted.Entry
-	payload := map[string]any{
-		"commentId":     entry.ID,
-		"publicId":      entry.PostID,
-		"internalId":    entry.ContentInternalID,
-		"authorId":      entry.AuthorID,
-		"deletedBy":     deletedBy,
-		"deletedByRole": string(role),
-		"deletedAt":     occurredAt.UTC().Format(time.RFC3339),
-		"isRoot":        entry.IsTopLevel(),
-		"affectedCount": deleted.AffectedCount,
+	payload := commentevents.CommentDeletedPayload{
+		CommentID:     int64(entry.ID),
+		PublicID:      string(entry.PostID),
+		InternalID:    int64(entry.ContentInternalID),
+		AuthorID:      int64(entry.AuthorID),
+		DeletedBy:     int64(deletedBy),
+		DeletedByRole: string(role),
+		DeletedAt:     occurredAt.UTC().Format(time.RFC3339),
+		IsRoot:        entry.IsTopLevel(),
+		AffectedCount: deleted.AffectedCount,
 	}
 	if entry.IsReply() {
-		payload["rootId"] = entry.RootID
+		payload.RootID = int64Ptr(int64(entry.RootID))
 	}
 	if strings.TrimSpace(reason) != "" {
-		payload["deleteReason"] = strings.TrimSpace(reason)
+		payload.DeleteReason = stringPtr(strings.TrimSpace(reason))
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -937,17 +938,25 @@ func (s *Service) publishDeleted(ctx context.Context, deleted ports.DeleteSubtre
 }
 
 func (s *Service) publishLikeChanged(ctx context.Context, eventType string, comment domain.Comment, actorID domain.UserID, occurredAt time.Time) error {
-	payload := map[string]any{
-		"commentId":       comment.ID,
-		"publicId":        comment.PostID,
-		"internalId":      comment.ContentInternalID,
-		"commentAuthorId": comment.AuthorID,
-		"occurredAt":      occurredAt.UTC().Format(time.RFC3339),
-	}
+	var payload any
 	if eventType == commentLikedEventType {
-		payload["likedBy"] = actorID
+		payload = commentevents.CommentLikedPayload{
+			CommentID:       int64(comment.ID),
+			PublicID:        string(comment.PostID),
+			InternalID:      int64(comment.ContentInternalID),
+			CommentAuthorID: int64(comment.AuthorID),
+			LikedBy:         int64(actorID),
+			OccurredAt:      occurredAt.UTC().Format(time.RFC3339),
+		}
 	} else {
-		payload["unlikedBy"] = actorID
+		payload = commentevents.CommentUnlikedPayload{
+			CommentID:       int64(comment.ID),
+			PublicID:        string(comment.PostID),
+			InternalID:      int64(comment.ContentInternalID),
+			CommentAuthorID: int64(comment.AuthorID),
+			UnlikedBy:       int64(actorID),
+			OccurredAt:      occurredAt.UTC().Format(time.RFC3339),
+		}
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -960,6 +969,14 @@ func (s *Service) publishLikeChanged(ctx context.Context, eventType string, comm
 		OccurredAt:    occurredAt,
 		Payload:       body,
 	})
+}
+
+func int64Ptr(value int64) *int64 {
+	return &value
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
 
 func rootPublicID(ids ports.CommentIDCodec, comment domain.Comment) PublicCommentID {
