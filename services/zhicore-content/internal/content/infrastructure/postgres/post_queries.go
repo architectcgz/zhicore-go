@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/architectcgz/zhicore-go/libs/kit/postgres/sqlarg"
 	"github.com/lib/pq"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
@@ -16,7 +16,7 @@ import (
 func (s *Store) ListPublishedPosts(ctx context.Context, query ports.PostListQuery) ([]ports.PostSummaryRecord, error) {
 	rows, err := s.db.QueryContext(ctx, listPublishedPostsSQL,
 		query.AuthorID,
-		nullableTime(query.Cursor.PublishedAt),
+		sqlarg.Time(query.Cursor.PublishedAt),
 		query.Cursor.PublicID,
 		query.Limit,
 	)
@@ -137,11 +137,4 @@ func scanPostDetailRecord(row rowScanner) (ports.PostDetailRecord, error) {
 	detail.PublishedBodyID = bodyID.String
 	detail.PublishedHash = bodyHash.String
 	return detail, nil
-}
-
-func nullableTime(value time.Time) any {
-	if value.IsZero() {
-		return nil
-	}
-	return value
 }

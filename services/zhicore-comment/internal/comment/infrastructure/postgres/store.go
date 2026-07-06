@@ -7,10 +7,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	kitoutbox "github.com/architectcgz/zhicore-go/libs/kit/postgres/outbox"
+	"github.com/architectcgz/zhicore-go/libs/kit/postgres/sqlarg"
 	"github.com/lib/pq"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-comment/internal/comment/domain"
@@ -115,8 +115,8 @@ func (s *Store) Create(ctx context.Context, draft domain.Comment) (domain.Commen
 		nullableCommentID(draft.ParentID),
 		draft.Content,
 		nullableStringArray(draft.Media.ImageFileIDs),
-		nullableString(draft.Media.VoiceFileID),
-		nullableInt(draft.Media.VoiceDuration),
+		sqlarg.NonBlankString(draft.Media.VoiceFileID),
+		sqlarg.Int(draft.Media.VoiceDuration),
 		string(draft.Status),
 		draft.CreatedAt,
 		draft.UpdatedAt,
@@ -549,20 +549,6 @@ func nullableCommentID(id domain.CommentID) any {
 		return nil
 	}
 	return int64(id)
-}
-
-func nullableString(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
-}
-
-func nullableInt(value int) any {
-	if value == 0 {
-		return nil
-	}
-	return value
 }
 
 func nullableStringArray(values []string) any {

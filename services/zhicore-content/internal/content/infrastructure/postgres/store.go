@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/architectcgz/zhicore-go/libs/kit/postgres/sqlarg"
 	"github.com/lib/pq"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
@@ -92,15 +93,15 @@ func (s *Store) CreateDraft(ctx context.Context, tx ports.Tx, input ports.Create
 			publicID,
 			input.OwnerID,
 			input.OwnerDisplayName,
-			nullableString(input.OwnerAvatarFileID),
+			sqlarg.String(input.OwnerAvatarFileID),
 			input.OwnerProfileVersion,
 			input.Title,
-			nullableString(input.Summary),
-			nullableString(input.CoverFileID),
-			nullableString(input.DraftBodyID),
-			nullableString(input.DraftBodyHash),
-			nullableInt(input.DraftSizeBytes),
-			nullableInt(input.DraftPlainTextLength),
+			sqlarg.String(input.Summary),
+			sqlarg.String(input.CoverFileID),
+			sqlarg.String(input.DraftBodyID),
+			sqlarg.String(input.DraftBodyHash),
+			sqlarg.Int(input.DraftSizeBytes),
+			sqlarg.Int(input.DraftPlainTextLength),
 		))
 		if err != nil {
 			if isUniqueViolation(err, "ux_posts_public_id") {
@@ -250,7 +251,7 @@ func (s *Store) Append(ctx context.Context, tx ports.Tx, event ports.OutboxEvent
 
 func appendCleanupTask(ctx context.Context, execer sqlExecutor, task ports.BodyCleanupTask) error {
 	if _, err := execer.ExecContext(ctx, upsertCleanupTaskSQL,
-		nullableInt64(task.PostID),
+		sqlarg.Int64(task.PostID),
 		task.BodyID,
 		task.TaskType,
 		task.Reason,
@@ -269,8 +270,8 @@ func appendRepairTask(ctx context.Context, execer sqlExecutor, task ports.BodyRe
 		task.PostID,
 		task.BodyID,
 		task.TaskType,
-		nullableString(task.ExpectedHash),
-		nullableString(task.ObservedHash),
+		sqlarg.String(task.ExpectedHash),
+		sqlarg.String(task.ObservedHash),
 		task.CreatedAt,
 	); err != nil {
 		return fmt.Errorf("upsert content body repair task: %w", err)
@@ -373,27 +374,6 @@ func classifyMutationMiss(ctx context.Context, execer sqlExecutor, publicID stri
 	_ = draftBodyID
 	_ = draftBodyHash
 	return domain.ErrDraftConflict
-}
-
-func nullableString(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
-}
-
-func nullableInt(value int) any {
-	if value == 0 {
-		return nil
-	}
-	return value
-}
-
-func nullableInt64(value int64) any {
-	if value == 0 {
-		return nil
-	}
-	return value
 }
 
 func isUniqueViolation(err error, constraint string) bool {
