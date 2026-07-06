@@ -63,7 +63,7 @@ CREATE TABLE notification_delivery (
     CHECK (recipient_id > 0),
     CHECK (public_id <> ''),
     CHECK (channel IN ('IN_APP', 'WEBSOCKET', 'EMAIL', 'SMS')),
-    CHECK (status IN ('PLANNED', 'INBOX_CREATED', 'WEBSOCKET_PENDING', 'WEBSOCKET_DISPATCHED', 'DIGEST_PENDING', 'DIGEST_DELIVERED', 'SKIPPED', 'FAILED')),
+    CHECK (status IN ('IN_APP', 'WEBSOCKET_PENDING', 'WEBSOCKET_DISPATCHED', 'DIGEST_PENDING', 'DIGEST_DELIVERED', 'SKIPPED', 'FAILED')),
     CHECK (attempt_count >= 0),
     CHECK (dedupe_key <> '')
 );

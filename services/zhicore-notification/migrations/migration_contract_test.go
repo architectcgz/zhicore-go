@@ -95,6 +95,7 @@ func TestNotificationPreferenceAndDeliveryMigrationDefinesSettingsAndLedger(t *t
 		"channel VARCHAR(32) NOT NULL",
 		"status VARCHAR(64) NOT NULL",
 		"dedupe_key VARCHAR(256) NOT NULL",
+		"CHECK (status IN ('IN_APP', 'WEBSOCKET_PENDING', 'WEBSOCKET_DISPATCHED', 'DIGEST_PENDING', 'DIGEST_DELIVERED', 'SKIPPED', 'FAILED'))",
 		"CREATE UNIQUE INDEX ux_notification_delivery_public_id",
 		"CREATE UNIQUE INDEX ux_notification_delivery_dedupe_key",
 		"CREATE INDEX ix_notification_delivery_recipient_created_at",

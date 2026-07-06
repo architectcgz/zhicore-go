@@ -1,8 +1,10 @@
 package delivery
 
 const (
+	StatusInApp            = "IN_APP"
 	StatusWebsocketPending = "WEBSOCKET_PENDING"
 	StatusDigestPending    = "DIGEST_PENDING"
+	StatusSkipped          = "SKIPPED"
 	StatusFailed           = "FAILED"
 )
 
