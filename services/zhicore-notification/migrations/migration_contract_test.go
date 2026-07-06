@@ -63,6 +63,60 @@ func TestNotificationInboxCoreMigrationDefinesInboxGroupStateAndConsumedEvents(t
 	}
 }
 
+func TestNotificationPreferenceAndDeliveryMigrationDefinesSettingsAndLedger(t *testing.T) {
+	up := readNotificationMigration(t, "add_notification_preference_and_delivery", ".up.sql")
+	down := readNotificationMigration(t, "add_notification_preference_and_delivery", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE notification_user_preference",
+		"user_id BIGINT NOT NULL",
+		"notification_type VARCHAR(64) NOT NULL",
+		"channel VARCHAR(32) NOT NULL",
+		"enabled BOOLEAN NOT NULL",
+		"PRIMARY KEY (user_id, notification_type, channel)",
+		"CHECK (channel IN ('IN_APP', 'WEBSOCKET', 'EMAIL', 'SMS'))",
+		"CREATE TABLE notification_user_dnd",
+		"start_time TIME NOT NULL",
+		"end_time TIME NOT NULL",
+		"timezone VARCHAR(64) NOT NULL",
+		"categories VARCHAR(64)[] NOT NULL DEFAULT '{}'",
+		"channels VARCHAR(32)[] NOT NULL DEFAULT '{}'",
+		"CHECK (start_time <> end_time)",
+		"CREATE TABLE notification_author_subscription",
+		"author_id BIGINT NOT NULL",
+		"level VARCHAR(32) NOT NULL",
+		"CHECK (level IN ('ALL', 'DIGEST_ONLY', 'MUTED'))",
+		"PRIMARY KEY (user_id, author_id)",
+		"CREATE TABLE notification_delivery",
+		"public_id VARCHAR(32) NOT NULL",
+		"recipient_id BIGINT NOT NULL",
+		"notification_id BIGINT NULL REFERENCES notifications (id)",
+		"channel VARCHAR(32) NOT NULL",
+		"status VARCHAR(64) NOT NULL",
+		"dedupe_key VARCHAR(256) NOT NULL",
+		"CREATE UNIQUE INDEX ux_notification_delivery_public_id",
+		"CREATE UNIQUE INDEX ux_notification_delivery_dedupe_key",
+		"CREATE INDEX ix_notification_delivery_recipient_created_at",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("up migration missing %q", fragment)
+		}
+	}
+
+	for _, fragment := range []string{
+		"DROP TABLE IF EXISTS notification_delivery",
+		"DROP TABLE IF EXISTS notification_author_subscription",
+		"DROP TABLE IF EXISTS notification_user_dnd",
+		"DROP TABLE IF EXISTS notification_user_preference",
+	} {
+		if !strings.Contains(down, fragment) {
+			t.Fatalf("down migration missing %q", fragment)
+		}
+	}
+}
+
 func readNotificationMigration(t *testing.T, namePart, suffix string) string {
 	t.Helper()
 
