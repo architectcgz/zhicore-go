@@ -12,6 +12,13 @@
 
 | 计划 | 范围 | 状态 |
 | --- | --- | --- |
+| `impl-plan/2026-07-06-unimplemented-service-modules-implementation-plan.md` | 未实现服务模块总览、并行边界、Ops / ID Generator 排除和恢复条件 | 待执行 |
+| `impl-plan/2026-07-06-admin-moderation-facade-foundation-implementation-plan.md` | Admin 管理审核 facade、举报处理、审计和 provider 委托基础 | 待执行 |
+| `impl-plan/2026-07-06-gateway-routing-auth-foundation-implementation-plan.md` | Gateway 路由清单、认证、Auth fallback、身份 header 注入和诊断基础 | 待执行 |
+| `impl-plan/2026-07-06-message-module-foundation-implementation-plan.md` | Message 私信发送、会话投影、未读数、runtime、召回和 outbox 基础 | 待执行 |
+| `impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md` | Notification 收件箱、未读、consumer、偏好、delivery 和 campaign 基础 | 待执行 |
+| `impl-plan/2026-07-06-search-post-index-foundation-implementation-plan.md` | Search HTTP contract、PostgreSQL 搜索读模型、Content 事件索引、查询和历史基础 | 待执行 |
+| `impl-plan/2026-07-06-ranking-ledger-hot-posts-foundation-implementation-plan.md` | Ranking ledger、bucket、文章热榜、consumer、runtime 和 rebuild foundation | 待执行 |
 | `impl-plan/2026-07-06-httpapi-request-kit-handler-split-implementation-plan.md` | 共享 request kit、Content/Auth/User handler 拆分和 Comment helper 迁移 | 已完成 |
 | `impl-plan/2026-07-05-content-module-completion-implementation-plan.md` | Content 可运行 runtime、worker、系统测试、错误契约、剩余 API family、限流和观测收口 | 待执行 |
 | `exploratory/2026-07-04-content-body-parser-typed-schema-design-plan.md` | Content V1 body parser 从动态 `map[string]any` 重构为强类型 schema | 探索方案 |
