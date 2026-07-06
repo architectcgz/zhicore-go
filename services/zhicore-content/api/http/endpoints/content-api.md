@@ -1,6 +1,6 @@
 # Content API 详细设计
 
-状态：草案。本文是 `zhicore-content` Go-first HTTP API 的字段级 contract，尚未由 Go handler / contract test 验证。
+状态：草案。本文是 `zhicore-content` Go-first HTTP API 总览；已拆分 endpoint 的字段级 contract 以同目录下对应 endpoint 文档为准。
 
 ## 总体方案
 
@@ -35,6 +35,8 @@ Content HTTP API 分为五组：
 限流命中返回 `1003 REQUEST_TOO_FREQUENT` / HTTP `429`。限流依赖不可用且当前 API 不允许 fail-open 时返回 `1004 SERVICE_DEGRADED` / HTTP `503`。
 
 ## 通用对象
+
+已验证 endpoint 的字段级 schema 以同目录下按 endpoint 拆分的文档为准；本节只保留跨 API 总览，避免和拆分文档重复维护后漂移。
 
 ### `PostSummary`
 
@@ -98,10 +100,15 @@ Content HTTP API 分为五组：
 | --- | --- | --- | --- |
 | `postId` | string | 是 | 文章公开 ID。 |
 | `postVersion` | int | 是 | 乐观锁版本。 |
-| `meta` | object | 是 | `title`、`summary`、`coverFileId`、`topicId`、`categoryId`、`tags`。 |
-| `draftBody` | `PostBody` | 否 | 当前草稿正文。空草稿可为空。 |
+| `title` | string | 是 | 当前草稿标题，空草稿可为空字符串。 |
+| `summary` | string | 否 | 当前草稿摘要。 |
+| `coverFileId` | string | 否 | 当前草稿封面文件 ID。 |
+| `status` | string | 是 | 当前文章状态。 |
+| `body` | `PostBody` | 否 | 当前草稿正文。空草稿可为空。 |
+| `draftBodyId` | string | 否 | 当前草稿 body ID。 |
 | `draftBodyHash` | string | 否 | 当前草稿 body hash。 |
-| `savedAt` | string | 否 | 最近保存时间。 |
+| `createdAt` | string | 是 | RFC3339。 |
+| `updatedAt` | string | 是 | RFC3339。 |
 
 ### `CursorPage<T>`
 
@@ -262,7 +269,7 @@ Query：`cursor`、`limit`。
 
 响应 `data`：`Draft`。
 
-错误：`2006`、`2008`、`4001`、`4004`。
+错误：`2006`、`2008`、`4001`、`4004`、`4018`、`4019`、`1004`。
 
 ### `PATCH /api/v1/posts/{postId}/draft/meta`
 
@@ -278,13 +285,13 @@ Body：
 | `title` | string | 否 | 最大 200。 |
 | `summary` | string | 否 | 最大长度由 Content 配置。 |
 | `coverFileId` | string | 否 | 置空表示移除封面。 |
-| `topicId` | string | 否 | 置空表示移除话题。 |
-| `categoryId` | string | 否 | 分类引用。 |
-| `tags` | string[] | 否 | 最多 10 个。 |
+| `topicId` | string | 否 | 任务 8 taxonomy 落地前传入返回 `1001`。 |
+| `categoryId` | string | 否 | 任务 8 taxonomy 落地前传入返回 `1001`。 |
+| `tags` | string[] | 否 | 任务 8 taxonomy 落地前传入返回 `1001`。 |
 
-响应 `data`：`Draft`。
+响应 `data`：`DraftMutation`，包含 `postId`、`postVersion`、`title`、`summary`、`coverFileId` 和 `updatedAt`。
 
-错误：`2008`、`4001`、`4004`、`4007`、`4012`、`4017`、`4021`。
+错误：`2006`、`2008`、`4001`、`4004`、`1001`、`4007`、`4017`、`4023`。
 
 ### `PUT /api/v1/posts/{postId}/draft/body`
 
@@ -324,9 +331,9 @@ Body：
 
 鉴权：作者。
 
-响应 `data`：可省略。
+响应 `data`：`DraftMutation`，包含 `postId` 和 `postVersion`。
 
-错误：`2008`、`4001`、`4004`。
+错误：`2006`、`2008`、`4001`、`4004`、`1004`。
 
 ### `POST /api/v1/posts/{postId}/publish`
 

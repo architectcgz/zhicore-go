@@ -1,6 +1,6 @@
 # 删除文章草稿
 
-状态：草案。本文从 `content-api.md` 拆出草稿删除入口，Go handler 尚未实现。
+状态：已验证。本文固定草稿删除入口，已由 application / repository / handler test 覆盖可信 `X-User-Id`、作者权限、草稿指针清空和旧 draft body cleanup task。
 
 ## 请求
 
@@ -12,7 +12,7 @@
 
 ## 成功响应
 
-`data` 可省略。已发布文章删除草稿不影响线上 published body；Content application 必须为旧 draft body 创建 cleanup task。
+`data` 为 `DraftMutation`，包含 `postId` 和 `postVersion`。已发布文章删除草稿不影响线上 published body；Content application 必须为旧 draft body 创建 cleanup task。
 
 ## 错误响应
 
@@ -23,3 +23,9 @@
 | `4001` | `404` | 文章不存在。 |
 | `4004` | `409` | 文章已删除。 |
 | `1004` | `503` | PostgreSQL 等依赖不可用。 |
+
+## 测试
+
+- Handler contract test：`services/zhicore-content/api/http/author_workbench_handler_test.go`
+- Application test：`services/zhicore-content/internal/content/application/author_workbench_test.go`
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/author_workbench_test.go`

@@ -1,6 +1,6 @@
 # 我的草稿列表
 
-状态：草案。本文从 `content-api.md` 拆出作者工作台草稿列表入口，Go handler 尚未实现。
+状态：已验证。本文固定作者工作台草稿列表入口，已由 application / repository / handler test 覆盖可信 `X-User-Id`、cursor、limit、envelope 和 PostgreSQL metadata 查询。
 
 ## 请求
 
@@ -20,6 +20,12 @@
 ## 成功响应
 
 `data` 为 `CursorPage<PostSummary>`。只返回草稿 metadata，不批量读取 MongoDB 正文。
+
+## 测试
+
+- Handler contract test：`services/zhicore-content/api/http/author_workbench_handler_test.go`
+- Application test：`services/zhicore-content/internal/content/application/author_workbench_test.go`
+- Repository test：`services/zhicore-content/internal/content/infrastructure/postgres/author_workbench_test.go`
 
 ## 错误响应
 

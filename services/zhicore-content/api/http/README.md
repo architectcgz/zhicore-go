@@ -126,6 +126,11 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `GET` | `/api/v1/posts` | [endpoints/list-posts.md](endpoints/list-posts.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/posts/{postId}` | [endpoints/get-post-detail.md](endpoints/get-post-detail.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/posts/batch-get` | [endpoints/batch-get-posts.md](endpoints/batch-get-posts.md) | `services/zhicore-content/api/http/public_post_queries_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/me/posts` | [endpoints/list-my-posts.md](endpoints/list-my-posts.md) | `services/zhicore-content/api/http/author_workbench_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/me/drafts` | [endpoints/list-my-drafts.md](endpoints/list-my-drafts.md) | `services/zhicore-content/api/http/author_workbench_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/posts/{postId}/draft` | [endpoints/get-post-draft.md](endpoints/get-post-draft.md) | `services/zhicore-content/api/http/author_workbench_handler_test.go` | 已验证 |
+| `PATCH` | `/api/v1/posts/{postId}/draft/meta` | [endpoints/update-draft-meta.md](endpoints/update-draft-meta.md) | `services/zhicore-content/api/http/author_workbench_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/posts/{postId}/draft` | [endpoints/delete-post-draft.md](endpoints/delete-post-draft.md) | `services/zhicore-content/api/http/author_workbench_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/admin/content/outbox-events` | [endpoints/list-admin-outbox-events.md](endpoints/list-admin-outbox-events.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | [endpoints/retry-admin-outbox-event.md](endpoints/retry-admin-outbox-event.md) | `services/zhicore-content/api/http/admin_outbox_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/draft/body` | [endpoints/save-draft-body.md](endpoints/save-draft-body.md) | `services/zhicore-content/api/http/save_draft_body_handler_test.go` | 已验证 |
