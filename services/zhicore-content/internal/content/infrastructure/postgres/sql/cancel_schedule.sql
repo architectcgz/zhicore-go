@@ -1,13 +1,11 @@
 UPDATE posts
-SET draft_title = COALESCE($1, draft_title),
-    draft_summary = CASE WHEN $2::TEXT IS NULL THEN draft_summary ELSE NULLIF($2, '') END,
-    draft_cover_file_id = CASE WHEN $3::TEXT IS NULL THEN draft_cover_file_id ELSE NULLIF($3, '') END,
+SET status = 'DRAFT',
     post_version = post_version + 1,
     updated_at = $4
-WHERE public_id = $5
-  AND owner_id = $6
-  AND post_version = $7
-  AND status NOT IN ('DELETED', 'SCHEDULED')
+WHERE public_id = $1
+  AND owner_id = $2
+  AND ($3 = 0 OR post_version = $3)
+  AND status = 'SCHEDULED'
 RETURNING
     id,
     public_id,

@@ -185,6 +185,116 @@ func (s *Store) Publish(ctx context.Context, tx ports.Tx, input ports.PublishPos
 	return record, nil
 }
 
+func (s *Store) Unpublish(ctx context.Context, tx ports.Tx, input ports.PostLifecycleUpdate) (ports.PostRecord, error) {
+	return s.mutatePostLifecycle(ctx, tx, unpublishPostSQL, input, "unpublish content post")
+}
+
+func (s *Store) DeletePost(ctx context.Context, tx ports.Tx, input ports.PostLifecycleUpdate) (ports.PostRecord, error) {
+	execer, err := s.execer(tx)
+	if err != nil {
+		return ports.PostRecord{}, err
+	}
+	record, err := scanPostRecord(execer.QueryRowContext(ctx, deletePostSQL,
+		input.PublicID,
+		input.OwnerID,
+		input.BasePostVersion,
+		input.UpdatedAt,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.PostRecord{}, classifyMutationMiss(ctx, execer, input.PublicID, input.OwnerID, false)
+	}
+	if err != nil {
+		return ports.PostRecord{}, fmt.Errorf("delete content post: %w", err)
+	}
+	// A scheduled post can be deleted before its due time. Canceling the pending
+	// schedule in the same transaction prevents a later scheduler from trying
+	// to publish content that is no longer author-visible.
+	if _, err := execer.ExecContext(ctx, cancelScheduledPublishEventSQL, record.ID, input.UpdatedAt); err != nil {
+		return ports.PostRecord{}, fmt.Errorf("cancel scheduled publish event for deleted post: %w", err)
+	}
+	return record, nil
+}
+
+func (s *Store) RestorePost(ctx context.Context, tx ports.Tx, input ports.PostLifecycleUpdate) (ports.PostRecord, error) {
+	return s.mutatePostLifecycle(ctx, tx, restorePostSQL, input, "restore content post")
+}
+
+func (s *Store) SchedulePost(ctx context.Context, tx ports.Tx, input ports.SchedulePostUpdate) (ports.PostRecord, error) {
+	execer, err := s.execer(tx)
+	if err != nil {
+		return ports.PostRecord{}, err
+	}
+	record, err := scanPostRecord(execer.QueryRowContext(ctx, schedulePostSQL,
+		input.PublicID,
+		input.OwnerID,
+		input.BasePostVersion,
+		input.DraftBodyID,
+		input.DraftBodyHash,
+		input.UpdatedAt,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.PostRecord{}, classifyMutationMiss(ctx, execer, input.PublicID, input.OwnerID, false)
+	}
+	if err != nil {
+		return ports.PostRecord{}, fmt.Errorf("schedule content post: %w", err)
+	}
+	if _, err := execer.ExecContext(ctx, upsertScheduledPublishEventSQL,
+		record.ID,
+		record.PublicID,
+		record.OwnerID,
+		input.DraftBodyID,
+		input.DraftBodyHash,
+		input.ScheduledAt,
+		input.UpdatedAt,
+	); err != nil {
+		return ports.PostRecord{}, fmt.Errorf("upsert scheduled publish event: %w", err)
+	}
+	return record, nil
+}
+
+func (s *Store) CancelSchedule(ctx context.Context, tx ports.Tx, input ports.PostLifecycleUpdate) (ports.PostRecord, error) {
+	execer, err := s.execer(tx)
+	if err != nil {
+		return ports.PostRecord{}, err
+	}
+	record, err := scanPostRecord(execer.QueryRowContext(ctx, cancelScheduleSQL,
+		input.PublicID,
+		input.OwnerID,
+		input.BasePostVersion,
+		input.UpdatedAt,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.PostRecord{}, classifyMutationMiss(ctx, execer, input.PublicID, input.OwnerID, false)
+	}
+	if err != nil {
+		return ports.PostRecord{}, fmt.Errorf("cancel scheduled content post: %w", err)
+	}
+	if _, err := execer.ExecContext(ctx, cancelScheduledPublishEventSQL, record.ID, input.UpdatedAt); err != nil {
+		return ports.PostRecord{}, fmt.Errorf("cancel scheduled publish event: %w", err)
+	}
+	return record, nil
+}
+
+func (s *Store) mutatePostLifecycle(ctx context.Context, tx ports.Tx, query string, input ports.PostLifecycleUpdate, operation string) (ports.PostRecord, error) {
+	execer, err := s.execer(tx)
+	if err != nil {
+		return ports.PostRecord{}, err
+	}
+	record, err := scanPostRecord(execer.QueryRowContext(ctx, query,
+		input.PublicID,
+		input.OwnerID,
+		input.BasePostVersion,
+		input.UpdatedAt,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.PostRecord{}, classifyMutationMiss(ctx, execer, input.PublicID, input.OwnerID, false)
+	}
+	if err != nil {
+		return ports.PostRecord{}, fmt.Errorf("%s: %w", operation, err)
+	}
+	return record, nil
+}
+
 func (s *Store) GetPublishedBodyPointer(ctx context.Context, publicID string) (ports.PublishedBodyPointer, error) {
 	var pointer ports.PublishedBodyPointer
 	var status string

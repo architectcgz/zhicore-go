@@ -24,6 +24,11 @@ func (s *Service) SaveDraftBody(ctx context.Context, cmd SaveDraftBodyCommand) (
 	if current.Status == domain.PostStatusDeleted {
 		return SaveDraftBodyResult{}, domain.ErrPostDeleted
 	}
+	if current.Status == domain.PostStatusScheduled {
+		// A scheduled post has already captured the exact draft body/hash to
+		// publish; require canceling the schedule before edits can move it.
+		return SaveDraftBodyResult{}, domain.ErrDraftConflict
+	}
 	if current.PostVersion != cmd.BasePostVersion ||
 		current.DraftBodyID != cmd.BaseDraftBodyID ||
 		current.DraftBodyHash != cmd.BaseDraftBodyHash {

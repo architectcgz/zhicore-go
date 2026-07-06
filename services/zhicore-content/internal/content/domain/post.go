@@ -228,6 +228,41 @@ func (p *Post) Publish(policy PostPublishPolicy, input PublishInput) error {
 func (p *Post) Delete(deletedAt time.Time) {
 	p.status = PostStatusDeleted
 	p.deletedAt = &deletedAt
+	p.events = append(p.events, PostDeleted{
+		PublicID:  p.publicID,
+		OwnerID:   p.ownerID,
+		DeletedAt: deletedAt,
+	})
+}
+
+func (p *Post) Unpublish(unpublishedAt time.Time) error {
+	if p.status == PostStatusDeleted {
+		return ErrPostDeleted
+	}
+	if p.status != PostStatusPublished {
+		return ErrPostNotPublished
+	}
+	p.status = PostStatusDraft
+	p.events = append(p.events, PostUnpublished{
+		PublicID:      p.publicID,
+		OwnerID:       p.ownerID,
+		UnpublishedAt: unpublishedAt,
+	})
+	return nil
+}
+
+func (p *Post) Restore(restoredAt time.Time) error {
+	if p.status != PostStatusDeleted {
+		return ErrPostNotFound
+	}
+	p.status = PostStatusDraft
+	p.deletedAt = nil
+	p.events = append(p.events, PostRestored{
+		PublicID:   p.publicID,
+		OwnerID:    p.ownerID,
+		RestoredAt: restoredAt,
+	})
+	return nil
 }
 
 func (p *Post) PullEvents() []DomainEvent {

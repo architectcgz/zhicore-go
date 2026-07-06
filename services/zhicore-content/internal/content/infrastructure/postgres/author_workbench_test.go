@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -167,6 +168,18 @@ func TestStoreDeleteDraftClassifiesDeletedMutationMiss(t *testing.T) {
 		t.Fatalf("DeleteDraft() error = %v, want ErrPostDeleted", err)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestDraftMutationSQLGuardsScheduledStatus(t *testing.T) {
+	for name, sqlText := range map[string]string{
+		"update draft body": updateDraftBodySQL,
+		"update draft meta": updateDraftMetaSQL,
+		"delete draft":      deleteDraftSQL,
+	} {
+		if !strings.Contains(sqlText, "'SCHEDULED'") {
+			t.Fatalf("%s SQL must reject scheduled posts so queued publish content cannot drift; got:\n%s", name, sqlText)
+		}
+	}
 }
 
 func postRecordRows() *sqlmock.Rows {

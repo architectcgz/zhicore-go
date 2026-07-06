@@ -11,7 +11,7 @@ WHERE public_id = $5
   AND post_version = $7
   AND COALESCE(draft_body_id, '') = $8
   AND COALESCE(draft_body_hash, '') = $9
-  AND status <> 'DELETED'
+  AND status NOT IN ('DELETED', 'SCHEDULED')
 RETURNING
     id,
     public_id,

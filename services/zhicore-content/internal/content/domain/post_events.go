@@ -20,3 +20,27 @@ type PostPublished struct {
 }
 
 func (PostPublished) EventName() string { return "PostPublished" }
+
+type PostUnpublished struct {
+	PublicID      PublicPostID
+	OwnerID       OwnerID
+	UnpublishedAt time.Time
+}
+
+func (PostUnpublished) EventName() string { return "PostUnpublished" }
+
+type PostDeleted struct {
+	PublicID  PublicPostID
+	OwnerID   OwnerID
+	DeletedAt time.Time
+}
+
+func (PostDeleted) EventName() string { return "PostDeleted" }
+
+type PostRestored struct {
+	PublicID   PublicPostID
+	OwnerID    OwnerID
+	RestoredAt time.Time
+}
+
+func (PostRestored) EventName() string { return "PostRestored" }

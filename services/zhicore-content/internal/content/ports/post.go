@@ -18,6 +18,11 @@ type PostRepository interface {
 	GetForUpdate(ctx context.Context, tx Tx, publicID string) (PostRecord, error)
 	SaveDraftBody(ctx context.Context, tx Tx, input SaveDraftBodyUpdate) (PostRecord, error)
 	Publish(ctx context.Context, tx Tx, input PublishPostUpdate) (PostRecord, error)
+	Unpublish(ctx context.Context, tx Tx, input PostLifecycleUpdate) (PostRecord, error)
+	DeletePost(ctx context.Context, tx Tx, input PostLifecycleUpdate) (PostRecord, error)
+	RestorePost(ctx context.Context, tx Tx, input PostLifecycleUpdate) (PostRecord, error)
+	SchedulePost(ctx context.Context, tx Tx, input SchedulePostUpdate) (PostRecord, error)
+	CancelSchedule(ctx context.Context, tx Tx, input PostLifecycleUpdate) (PostRecord, error)
 	UpdateDraftMeta(ctx context.Context, tx Tx, input UpdateDraftMetaUpdate) (PostRecord, error)
 	DeleteDraft(ctx context.Context, tx Tx, input DeleteDraftUpdate) (PostRecord, error)
 }
@@ -96,6 +101,23 @@ type PublishPostUpdate struct {
 	NewPublishedBodyHash     string
 	NewPublishedPlainTextLen int
 	PublishedAt              time.Time
+}
+
+type PostLifecycleUpdate struct {
+	PublicID        string
+	OwnerID         int64
+	BasePostVersion int64
+	UpdatedAt       time.Time
+}
+
+type SchedulePostUpdate struct {
+	PublicID        string
+	OwnerID         int64
+	BasePostVersion int64
+	DraftBodyID     string
+	DraftBodyHash   string
+	ScheduledAt     time.Time
+	UpdatedAt       time.Time
 }
 
 type OptionalStringUpdate struct {

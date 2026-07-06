@@ -6,6 +6,7 @@ var (
 	ErrPostNotFound         = errors.New("post not found")
 	ErrForbidden            = errors.New("forbidden")
 	ErrPostAlreadyPublished = errors.New("post already published")
+	ErrPostNotPublished     = errors.New("post not published")
 	ErrPostDeleted          = errors.New("post deleted")
 	ErrTitleRequired        = errors.New("title required")
 	ErrTitleTooLong         = errors.New("title too long")

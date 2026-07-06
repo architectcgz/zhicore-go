@@ -67,7 +67,34 @@ func TestContentPublishCoreMigrationContract(t *testing.T) {
 	}
 }
 
+func TestScheduledPublishMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_scheduled_publish_events", ".up.sql")
+	down := readNamedMigration(t, "add_scheduled_publish_events", ".down.sql")
+
+	for _, fragment := range []string{
+		"CREATE TABLE scheduled_publish_events",
+		"post_id BIGINT NOT NULL REFERENCES posts (id)",
+		"draft_body_id VARCHAR(64) NOT NULL",
+		"draft_body_hash VARCHAR(80) NOT NULL",
+		"scheduled_at TIMESTAMPTZ NOT NULL",
+		"CHECK (status IN ('PENDING', 'CANCELED', 'EXECUTED', 'FAILED', 'DEAD'))",
+		"CREATE UNIQUE INDEX ux_scheduled_publish_events_pending_post",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("scheduled publish up migration missing %q", fragment)
+		}
+	}
+
+	if !strings.Contains(down, "DROP TABLE IF EXISTS scheduled_publish_events") {
+		t.Fatalf("scheduled publish down migration missing drop table")
+	}
+}
+
 func readContentPublishCoreMigration(t *testing.T, suffix string) string {
+	return readNamedMigration(t, "create_content_publish_core", suffix)
+}
+
+func readNamedMigration(t *testing.T, namePart, suffix string) string {
 	t.Helper()
 
 	entries, err := os.ReadDir(".")
@@ -80,12 +107,12 @@ func readContentPublishCoreMigration(t *testing.T, suffix string) string {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
 			continue
 		}
-		if strings.Contains(entry.Name(), "create_content_publish_core") {
+		if strings.Contains(entry.Name(), namePart) {
 			matches = append(matches, entry.Name())
 		}
 	}
 	if len(matches) != 1 {
-		t.Fatalf("migration files ending %s = %v, want exactly one create_content_publish_core migration", suffix, matches)
+		t.Fatalf("migration files ending %s containing %s = %v, want exactly one", suffix, namePart, matches)
 	}
 
 	body, err := os.ReadFile(filepath.Join(".", matches[0]))

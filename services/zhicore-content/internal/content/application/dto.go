@@ -57,6 +57,35 @@ type PublishPostResult struct {
 	PublishedAt time.Time
 }
 
+type PostLifecycleCommand struct {
+	Actor           *Actor
+	PostID          string
+	BasePostVersion int64
+}
+
+type PostLifecycleResult struct {
+	PostID      string
+	PostVersion int64
+	Status      string
+	UpdatedAt   time.Time
+}
+
+type SchedulePostCommand struct {
+	Actor           *Actor
+	PostID          string
+	BasePostVersion int64
+	DraftBodyID     string
+	DraftBodyHash   string
+	ScheduledAt     time.Time
+}
+
+type SchedulePostResult struct {
+	PostID      string
+	PostVersion int64
+	Status      string
+	ScheduledAt time.Time
+}
+
 type GetPublishedPostBodyQuery struct {
 	PostID string
 }

@@ -183,6 +183,11 @@ func (s *Service) UpdateDraftMeta(ctx context.Context, cmd UpdateDraftMetaComman
 	if current.Status == domain.PostStatusDeleted {
 		return DraftMutationResult{}, domain.ErrPostDeleted
 	}
+	if current.Status == domain.PostStatusScheduled {
+		// Scheduled publish records pin the current draft metadata and body;
+		// editing requires canceling the schedule so the queued job cannot drift.
+		return DraftMutationResult{}, domain.ErrDraftConflict
+	}
 	if current.PostVersion != cmd.BasePostVersion {
 		return DraftMutationResult{}, domain.ErrDraftConflict
 	}
@@ -252,6 +257,11 @@ func (s *Service) DeleteAuthorDraft(ctx context.Context, cmd DeleteAuthorDraftCo
 		if current.Status == domain.PostStatusDeleted {
 			return domain.ErrPostDeleted
 		}
+		if current.Status == domain.PostStatusScheduled {
+			// Deleting the draft would orphan the pending scheduled publish
+			// intent, so authors must cancel the schedule first.
+			return domain.ErrDraftConflict
+		}
 		updated, err = s.posts.DeleteDraft(ctx, tx, ports.DeleteDraftUpdate{PublicID: cmd.PostID, OwnerID: cmd.Actor.UserID, UpdatedAt: now})
 		if err != nil {
 			return err
@@ -268,7 +278,8 @@ func (s *Service) DeleteAuthorDraft(ctx context.Context, cmd DeleteAuthorDraftCo
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, domain.ErrForbidden) || errors.Is(err, domain.ErrPostDeleted) || errors.Is(err, domain.ErrPostNotFound) {
+		if errors.Is(err, domain.ErrForbidden) || errors.Is(err, domain.ErrPostDeleted) ||
+			errors.Is(err, domain.ErrPostNotFound) || errors.Is(err, domain.ErrDraftConflict) {
 			return DraftMutationResult{}, err
 		}
 		return DraftMutationResult{}, fmt.Errorf("%w: delete draft", ErrDependencyUnavailable)

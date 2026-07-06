@@ -19,6 +19,7 @@ var (
 	ErrPostNotFound              = domain.ErrPostNotFound
 	ErrForbidden                 = domain.ErrForbidden
 	ErrPostAlreadyPublished      = domain.ErrPostAlreadyPublished
+	ErrPostNotPublished          = domain.ErrPostNotPublished
 	ErrPostDeleted               = domain.ErrPostDeleted
 	ErrTitleRequired             = domain.ErrTitleRequired
 	ErrTitleTooLong              = domain.ErrTitleTooLong

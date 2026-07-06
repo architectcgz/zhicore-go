@@ -16,3 +16,17 @@ type PostPublishedPayload struct {
 	PublishedBodyID   string    `json:"publishedBodyId,omitempty"`
 	PublishedBodyHash string    `json:"publishedBodyHash,omitempty"`
 }
+
+// PostVisibilityChangedPayload is the version 1 payload for
+// content.post.visibility_changed. It captures lifecycle visibility facts
+// without forcing consumers to infer public visibility from Content status.
+type PostVisibilityChangedPayload struct {
+	PublicID      string    `json:"publicId"`
+	InternalID    int64     `json:"internalId"`
+	AuthorID      int64     `json:"authorId,omitempty"`
+	OldVisibility string    `json:"oldVisibility"`
+	NewVisibility string    `json:"newVisibility"`
+	PublicVisible bool      `json:"publicVisible"`
+	Reason        string    `json:"reason"`
+	ChangedAt     time.Time `json:"changedAt"`
+}

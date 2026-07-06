@@ -10,7 +10,7 @@ SET draft_title = NULL,
     updated_at = $3
 WHERE public_id = $1
   AND owner_id = $2
-  AND status <> 'DELETED'
+  AND status NOT IN ('DELETED', 'SCHEDULED')
 RETURNING
     id,
     public_id,

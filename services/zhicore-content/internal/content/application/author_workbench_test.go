@@ -250,6 +250,43 @@ func TestAuthorWorkbench(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects scheduled post metadata update before repository mutation", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.Status = domain.PostStatusScheduled
+		service := NewService(deps.asDeps())
+		title := "queued edit"
+
+		_, err := service.UpdateDraftMeta(context.Background(), UpdateDraftMetaCommand{
+			Actor:           &Actor{UserID: 1001},
+			PostID:          "post_1",
+			BasePostVersion: 5,
+			Title:           &title,
+		})
+		if !errors.Is(err, domain.ErrDraftConflict) {
+			t.Fatalf("error = %v, want ErrDraftConflict", err)
+		}
+		if deps.posts.updateMetaCalls != 0 || deps.files.validateCoverCalls != 0 {
+			t.Fatalf("update/cover calls = %d/%d, want none", deps.posts.updateMetaCalls, deps.files.validateCoverCalls)
+		}
+	})
+
+	t.Run("rejects scheduled post draft deletion before cleanup", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.Status = domain.PostStatusScheduled
+		service := NewService(deps.asDeps())
+
+		_, err := service.DeleteAuthorDraft(context.Background(), DeleteAuthorDraftCommand{
+			Actor:  &Actor{UserID: 1001},
+			PostID: "post_1",
+		})
+		if !errors.Is(err, domain.ErrDraftConflict) {
+			t.Fatalf("error = %v, want ErrDraftConflict", err)
+		}
+		if deps.posts.deleteDraftCalls != 0 || deps.cleanup.appendCalls != 0 {
+			t.Fatalf("delete/cleanup calls = %d/%d, want none", deps.posts.deleteDraftCalls, deps.cleanup.appendCalls)
+		}
+	})
+
 	t.Run("deletes draft and schedules old draft body cleanup", func(t *testing.T) {
 		deps := newSaveDraftDeps()
 		deps.posts.deleteDraftResult = ports.PostRecord{

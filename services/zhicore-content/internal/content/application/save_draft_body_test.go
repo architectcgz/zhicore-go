@@ -52,6 +52,20 @@ func TestSaveDraftBody(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects scheduled post before parsing or body write", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		deps.posts.getResult.Status = domain.PostStatusScheduled
+		service := NewService(deps.asDeps())
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+		if !errors.Is(err, domain.ErrDraftConflict) {
+			t.Fatalf("error = %v, want ErrDraftConflict", err)
+		}
+		if deps.parser.calls != 0 || deps.bodies.writeDraftCalls != 0 || deps.posts.saveCalls != 0 {
+			t.Fatalf("parse/write/save calls = %d/%d/%d, want none", deps.parser.calls, deps.bodies.writeDraftCalls, deps.posts.saveCalls)
+		}
+	})
+
 	t.Run("returns no-op when content hash is unchanged", func(t *testing.T) {
 		deps := newSaveDraftDeps()
 		deps.parser.normalized.ContentHash = "sha256:old"

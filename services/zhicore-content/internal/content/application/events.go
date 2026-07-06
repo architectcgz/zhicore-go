@@ -47,3 +47,44 @@ func newPostPublishedOutboxEvent(current, published ports.PostRecord, publishedB
 		OccurredAt:       publishedAt,
 	}, nil
 }
+
+func newPostVisibilityChangedOutboxEvent(current, changed ports.PostRecord, oldVisibility, newVisibility string, publicVisible bool, reason string, changedAt time.Time) (ports.OutboxEvent, error) {
+	payloadJSON, err := json.Marshal(contentevents.PostVisibilityChangedPayload{
+		PublicID:      current.PublicID,
+		InternalID:    current.ID,
+		AuthorID:      current.OwnerID,
+		OldVisibility: oldVisibility,
+		NewVisibility: newVisibility,
+		PublicVisible: publicVisible,
+		Reason:        reason,
+		ChangedAt:     changedAt,
+	})
+	if err != nil {
+		return ports.OutboxEvent{}, err
+	}
+
+	return ports.OutboxEvent{
+		EventType:        "content.post.visibility_changed",
+		PayloadVersion:   1,
+		AggregateType:    "post",
+		AggregateID:      current.PublicID,
+		AggregateVersion: changed.PostVersion,
+		PayloadJSON:      payloadJSON,
+		OccurredAt:       changedAt,
+	}, nil
+}
+
+func postVisibilityForStatus(status domain.PostStatus) string {
+	switch status {
+	case domain.PostStatusPublished:
+		return "PUBLIC"
+	case domain.PostStatusDeleted:
+		return "DELETED"
+	case domain.PostStatusDraft, domain.PostStatusScheduled:
+		// Scheduled content is not public yet; consumers need visibility
+		// semantics, not the author's workflow status.
+		return "UNPUBLISHED"
+	default:
+		return "UNPUBLISHED"
+	}
+}
