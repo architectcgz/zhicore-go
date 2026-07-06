@@ -2,7 +2,7 @@
 
 本目录放 `zhicore-user` 作为 provider 拥有的同步 typed client contract。
 
-当前状态：已提供第一批 Go contract 常量和 DTO，用于内部 HTTP path、caller operation、批量用户摘要、可用性和拉黑关系检查。HTTP adapter 仍由 consumer 服务实现，User provider 后续注册 internal route 时必须复用本目录的 path / DTO。
+当前状态：已提供第一批 Go contract 常量和 DTO，用于内部 HTTP path、caller operation、批量用户摘要、可用性、拉黑关系检查和 Notification 粉丝分片。HTTP adapter 仍由 consumer 服务实现，User provider 后续注册 internal route 时必须复用本目录的 path / DTO。
 
 ## 使用场景
 
@@ -48,6 +48,15 @@ type Client interface {
 
 ## DTO 规则
 
+内部 HTTP path：
+
+| 能力 | Path | Caller operation |
+| --- | --- | --- |
+| 批量用户可用性 | `/api/v1/internal/users/batch-availability` | `comment.check_user_availability` |
+| 批量用户摘要 | `/api/v1/internal/users/batch-simple` | `comment.batch_get_author_summaries` |
+| 批量拉黑关系检查 | `/api/v1/internal/users/blocks/batch-check` | `comment.batch_check_blocked` |
+| 粉丝分片 | `/api/v1/internal/users/follower-shard` | `notification.list_follower_shard` |
+
 `BatchGetUserSimple` 入参使用内部 `userId`。返回 DTO 至少包含：
 
 | 字段 | 类型 | 说明 |
@@ -63,6 +72,8 @@ type Client interface {
 需要稳定展示 URL 的前端聚合接口应由 owning service 调 Upload/File Service 批量解析；`avatarUrl` 只能作为 provider 已解析时的可选快照字段。
 
 批量查询中缺失用户不让整体失败，结果省略缺失项并返回 `missingUserIds`。
+
+`ListFollowerShard` 入参使用内部 `followingId`、内部 cursor 和 `limit`；返回 `followerIds`、`nextCursor`、`hasMore`。该 contract 服务 Notification fanout，只返回 follower ID 分片，不返回 profile 摘要、头像或公开 `publicId`，避免高 fanout 路径放大 User profile 查询。
 
 ## 错误语义
 

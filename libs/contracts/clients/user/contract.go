@@ -5,11 +5,13 @@ const (
 	BatchAvailabilityPath = "/api/v1/internal/users/batch-availability"
 	BatchSimplePath       = "/api/v1/internal/users/batch-simple"
 	BatchCheckBlockedPath = "/api/v1/internal/users/blocks/batch-check"
+	ListFollowerShardPath = "/api/v1/internal/users/follower-shard"
 
 	OperationCommentCheckUserAvailability   = "comment.check_user_availability"
 	OperationCommentBatchGetAuthorSummaries = "comment.batch_get_author_summaries"
 	OperationCommentBatchCheckBlocked       = "comment.batch_check_blocked"
 	OperationContentGetOwnerSnapshot        = "content.get_owner_snapshot"
+	OperationNotificationListFollowerShard  = "notification.list_follower_shard"
 )
 
 type IDsRequest struct {
@@ -58,4 +60,16 @@ type BlockPairResult struct {
 	BlockerID int64 `json:"blockerId"`
 	BlockedID int64 `json:"blockedId"`
 	Blocked   bool  `json:"blocked"`
+}
+
+type ListFollowerShardRequest struct {
+	FollowingID int64  `json:"followingId"`
+	Cursor      string `json:"cursor,omitempty"`
+	Limit       int    `json:"limit,omitempty"`
+}
+
+type ListFollowerShardResponse struct {
+	FollowerIDs []int64 `json:"followerIds"`
+	NextCursor  string  `json:"nextCursor,omitempty"`
+	HasMore     bool    `json:"hasMore"`
 }
