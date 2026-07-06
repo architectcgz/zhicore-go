@@ -137,3 +137,126 @@ type CreateInteractionNotificationResult struct {
 type InteractionNotificationStore interface {
 	CreateInteractionNotification(ctx context.Context, input CreateInteractionNotificationInput) (CreateInteractionNotificationResult, error)
 }
+
+type NotificationSettingsRepository interface {
+	GetNotificationPreferences(ctx context.Context, userID int64) (NotificationPreferences, error)
+	SaveNotificationPreferences(ctx context.Context, input SaveNotificationPreferencesInput) (NotificationPreferences, error)
+	GetNotificationDND(ctx context.Context, userID int64) (NotificationDND, error)
+	SaveNotificationDND(ctx context.Context, input SaveNotificationDNDInput) (NotificationDND, error)
+	GetAuthorSubscription(ctx context.Context, input GetAuthorSubscriptionInput) (AuthorSubscription, error)
+	SaveAuthorSubscription(ctx context.Context, input SaveAuthorSubscriptionInput) (AuthorSubscription, error)
+}
+
+type NotificationPreferences struct {
+	UserID      int64
+	Preferences []NotificationPreference
+}
+
+type NotificationPreference struct {
+	NotificationType string
+	Channel          string
+	Enabled          bool
+}
+
+type SaveNotificationPreferencesInput struct {
+	UserID      int64
+	Preferences []NotificationPreference
+	UpdatedAt   time.Time
+}
+
+type NotificationDND struct {
+	UserID     int64
+	Enabled    bool
+	StartTime  string
+	EndTime    string
+	Timezone   string
+	Categories []string
+	Channels   []string
+}
+
+type SaveNotificationDNDInput struct {
+	UserID     int64
+	Enabled    bool
+	StartTime  string
+	EndTime    string
+	Timezone   string
+	Categories []string
+	Channels   []string
+	UpdatedAt  time.Time
+}
+
+type GetAuthorSubscriptionInput struct {
+	UserID   int64
+	AuthorID int64
+}
+
+type AuthorSubscription struct {
+	UserID           int64
+	AuthorID         int64
+	Level            string
+	InAppEnabled     bool
+	WebsocketEnabled bool
+	EmailEnabled     bool
+	DigestEnabled    bool
+}
+
+type SaveAuthorSubscriptionInput struct {
+	UserID           int64
+	AuthorID         int64
+	Level            string
+	InAppEnabled     bool
+	WebsocketEnabled bool
+	EmailEnabled     bool
+	DigestEnabled    bool
+	UpdatedAt        time.Time
+}
+
+type DeliveryRepository interface {
+	ListDeliveries(ctx context.Context, query ListDeliveriesQuery) (DeliveryPage, error)
+	RetryDelivery(ctx context.Context, input RetryDeliveryInput) (DeliveryRetryResult, error)
+}
+
+type ListDeliveriesQuery struct {
+	RequesterID int64
+	IsAdmin     bool
+	RecipientID int64
+	Channel     string
+	Status      string
+	Cursor      string
+	Size        int
+}
+
+type DeliveryPage struct {
+	Items      []Delivery
+	NextCursor string
+	HasMore    bool
+}
+
+type Delivery struct {
+	DeliveryID       string
+	RecipientID      int64
+	NotificationID   *string
+	Channel          string
+	NotificationType string
+	Status           string
+	Provider         string
+	AttemptCount     int
+	LastErrorCode    string
+	NextRetryAt      *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type RetryDeliveryInput struct {
+	DeliveryID  int64
+	RequesterID int64
+	IsAdmin     bool
+	RetriedAt   time.Time
+}
+
+type DeliveryRetryResult struct {
+	PublicID    string
+	RecipientID int64
+	Status      string
+	Retried     bool
+}
