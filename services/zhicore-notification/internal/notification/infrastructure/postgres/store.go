@@ -35,11 +35,7 @@ func (s *Store) MarkRead(ctx context.Context, input ports.MarkReadInput) (ports.
 	var publicID, groupKey string
 	var isRead bool
 	var readAt sql.NullTime
-	err = tx.QueryRowContext(ctx, `
-SELECT public_id, group_key, is_read, read_at
-FROM notifications
-WHERE id = $1 AND recipient_id = $2
-FOR UPDATE`, input.NotificationID, input.RecipientID).Scan(&publicID, &groupKey, &isRead, &readAt)
+	err = tx.QueryRowContext(ctx, selectNotificationForMarkReadSQL, input.NotificationID, input.RecipientID).Scan(&publicID, &groupKey, &isRead, &readAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ports.MarkReadResult{}, ports.ErrNotificationNotFound
 	}
@@ -54,17 +50,11 @@ FOR UPDATE`, input.NotificationID, input.RecipientID).Scan(&publicID, &groupKey,
 		return ports.MarkReadResult{NotificationID: input.NotificationID, PublicID: publicID, Changed: false, ReadAt: readAt.Time}, nil
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-UPDATE notifications
-SET is_read = TRUE, read_at = $3, updated_at = $3
-WHERE id = $1 AND recipient_id = $2`, input.NotificationID, input.RecipientID, input.ReadAt); err != nil {
+	if _, err := tx.ExecContext(ctx, updateNotificationReadSQL, input.NotificationID, input.RecipientID, input.ReadAt); err != nil {
 		return ports.MarkReadResult{}, fmt.Errorf("update notification read state: %w", err)
 	}
 	// Group state is a derived read model; clamp at zero so repeated or repaired reads never create negative unread counts.
-	if _, err := tx.ExecContext(ctx, `
-UPDATE notification_group_state
-SET unread_count = GREATEST(unread_count - 1, 0), updated_at = $3
-WHERE recipient_id = $1 AND group_key = $2`, input.RecipientID, groupKey, input.ReadAt); err != nil {
+	if _, err := tx.ExecContext(ctx, decrementGroupUnreadSQL, input.RecipientID, groupKey, input.ReadAt); err != nil {
 		return ports.MarkReadResult{}, fmt.Errorf("decrement notification group unread count: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -80,10 +70,7 @@ func (s *Store) MarkAllRead(ctx context.Context, input ports.MarkAllReadInput) (
 	}
 	defer tx.Rollback()
 
-	result, err := tx.ExecContext(ctx, `
-UPDATE notifications
-SET is_read = TRUE, read_at = $2, updated_at = $2
-WHERE recipient_id = $1 AND is_read = FALSE`, input.RecipientID, input.ReadAt)
+	result, err := tx.ExecContext(ctx, markAllNotificationsReadSQL, input.RecipientID, input.ReadAt)
 	if err != nil {
 		return ports.MarkAllReadResult{}, fmt.Errorf("mark all notifications read: %w", err)
 	}
@@ -91,10 +78,7 @@ WHERE recipient_id = $1 AND is_read = FALSE`, input.RecipientID, input.ReadAt)
 	if err != nil {
 		return ports.MarkAllReadResult{}, fmt.Errorf("count marked notifications: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `
-UPDATE notification_group_state
-SET unread_count = 0, updated_at = $2
-WHERE recipient_id = $1`, input.RecipientID, input.ReadAt); err != nil {
+	if _, err := tx.ExecContext(ctx, resetGroupUnreadSQL, input.RecipientID, input.ReadAt); err != nil {
 		return ports.MarkAllReadResult{}, fmt.Errorf("reset notification group unread count: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -105,21 +89,14 @@ WHERE recipient_id = $1`, input.RecipientID, input.ReadAt); err != nil {
 
 func (s *Store) GetUnreadCount(ctx context.Context, recipientID int64) (int64, error) {
 	var count int64
-	if err := s.db.QueryRowContext(ctx, `
-SELECT COUNT(*)
-FROM notifications
-WHERE recipient_id = $1 AND is_read = FALSE`, recipientID).Scan(&count); err != nil {
+	if err := s.db.QueryRowContext(ctx, getUnreadCountSQL, recipientID).Scan(&count); err != nil {
 		return 0, fmt.Errorf("get notification unread count: %w", err)
 	}
 	return count, nil
 }
 
 func (s *Store) GetUnreadBreakdown(ctx context.Context, recipientID int64) (ports.UnreadBreakdown, error) {
-	rows, err := s.db.QueryContext(ctx, `
-SELECT category, COUNT(*)
-FROM notifications
-WHERE recipient_id = $1 AND is_read = FALSE
-GROUP BY category`, recipientID)
+	rows, err := s.db.QueryContext(ctx, getUnreadBreakdownSQL, recipientID)
 	if err != nil {
 		return ports.UnreadBreakdown{}, fmt.Errorf("get notification unread breakdown: %w", err)
 	}
@@ -175,14 +152,7 @@ func (s *Store) ListAggregated(ctx context.Context, query ports.ListAggregatedQu
 }
 
 func (s *Store) listAggregatedFromGroupState(ctx context.Context, query ports.ListAggregatedQuery, limit int) (ports.AggregatedNotificationPage, error) {
-	rows, err := s.db.QueryContext(ctx, `
-SELECT notification_type, category, target_type, target_id, total_count, unread_count, latest_time, latest_content, latest_actor_ids, aggregated_content
-FROM notification_group_state
-WHERE recipient_id = $1
-  AND ($2 = '' OR category = $2)
-  AND ($3 = FALSE OR unread_count > 0)
-ORDER BY latest_time DESC, group_key DESC
-LIMIT $4`, query.RecipientID, query.Category, query.UnreadOnly, limit+1)
+	rows, err := s.db.QueryContext(ctx, listAggregatedFromGroupStateSQL, query.RecipientID, query.Category, query.UnreadOnly, limit+1)
 	if err != nil {
 		return ports.AggregatedNotificationPage{}, fmt.Errorf("list notification group state: %w", err)
 	}
@@ -216,24 +186,7 @@ LIMIT $4`, query.RecipientID, query.Category, query.UnreadOnly, limit+1)
 }
 
 func (s *Store) listAggregatedFromInbox(ctx context.Context, query ports.ListAggregatedQuery, limit int) (ports.AggregatedNotificationPage, error) {
-	rows, err := s.db.QueryContext(ctx, `
-SELECT notification_type,
-       category,
-       target_type,
-       target_id,
-       COUNT(*) AS total_count,
-       COUNT(*) FILTER (WHERE is_read = FALSE) AS unread_count,
-       MAX(created_at) AS latest_time,
-       (ARRAY_AGG(content ORDER BY created_at DESC, id DESC))[1] AS latest_content,
-       ARRAY_REMOVE((ARRAY_AGG(actor_id ORDER BY created_at DESC, id DESC))[1:5], NULL) AS latest_actor_ids,
-       '{}'::jsonb AS aggregated_content
-FROM notifications
-WHERE recipient_id = $1
-  AND ($2 = '' OR category = $2)
-  AND ($3 = FALSE OR is_read = FALSE)
-GROUP BY group_key, notification_type, category, target_type, target_id
-ORDER BY latest_time DESC, group_key DESC
-LIMIT $4`, query.RecipientID, query.Category, query.UnreadOnly, limit+1)
+	rows, err := s.db.QueryContext(ctx, listAggregatedFromInboxSQL, query.RecipientID, query.Category, query.UnreadOnly, limit+1)
 	if err != nil {
 		return ports.AggregatedNotificationPage{}, fmt.Errorf("list notification inbox fallback aggregation: %w", err)
 	}
