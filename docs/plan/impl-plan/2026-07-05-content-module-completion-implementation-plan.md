@@ -469,25 +469,27 @@
 
   公开查询 endpoint 已在本任务第一组提交中实现并标为已验证；作者工作台 endpoint 已拆为草案，待下一组实现后更新测试状态。
 
-- [ ] **步骤 2：编写 application 查询测试**
+- [x] **步骤 2：编写 application 查询测试**
 
   覆盖公开只读 published、作者读取自己的 draft、非作者 forbidden、deleted 不可见、cursor/page 默认值和上限。
 
-- [ ] **步骤 3：实现 query ports 和 PostgreSQL 查询**
+- [x] **步骤 3：实现 query ports 和 PostgreSQL 查询**
 
   列表只读 PostgreSQL metadata，不批量读取 MongoDB 正文；排序必须稳定。
 
-- [ ] **步骤 4：编写 handler contract test**
+- [x] **步骤 4：编写 handler contract test**
 
   覆盖 path、query、身份 header、envelope、分页字段和错误码。
 
-- [ ] **步骤 5：实现 handler**
+- [x] **步骤 5：实现 handler**
 
   handler 不从 body 接受当前 actor；公开接口支持匿名读取 published。
 
-- [ ] **步骤 6：更新 endpoint 状态并提交**
+- [x] **步骤 6：更新 endpoint 状态并提交**
 
   已由 handler test 覆盖的 endpoint 标为“已验证”。公开查询和作者工作台建议拆两个提交组。
+
+  进展：作者工作台 endpoint 状态已更新并按可审阅边界拆分提交。
 
 ## 任务 7：发布生命周期 API
 
