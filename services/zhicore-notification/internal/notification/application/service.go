@@ -21,19 +21,23 @@ type Actor struct {
 }
 
 type Dependencies struct {
-	Commands ports.NotificationCommandRepository
-	Queries  ports.NotificationQueryRepository
-	Unread   ports.UnreadCountCacheStore
-	IDs      ports.NotificationPublicIDCodec
-	Clock    ports.Clock
+	Commands   ports.NotificationCommandRepository
+	Queries    ports.NotificationQueryRepository
+	Unread     ports.UnreadCountCacheStore
+	IDs        ports.NotificationPublicIDCodec
+	Settings   ports.NotificationSettingsRepository
+	Deliveries ports.DeliveryRepository
+	Clock      ports.Clock
 }
 
 type Service struct {
-	commands ports.NotificationCommandRepository
-	queries  ports.NotificationQueryRepository
-	unread   ports.UnreadCountCacheStore
-	ids      ports.NotificationPublicIDCodec
-	clock    ports.Clock
+	commands   ports.NotificationCommandRepository
+	queries    ports.NotificationQueryRepository
+	unread     ports.UnreadCountCacheStore
+	ids        ports.NotificationPublicIDCodec
+	settings   ports.NotificationSettingsRepository
+	deliveries ports.DeliveryRepository
+	clock      ports.Clock
 }
 
 func NewService(deps Dependencies) (*Service, error) {
@@ -53,11 +57,13 @@ func NewService(deps Dependencies) (*Service, error) {
 		deps.Clock = systemClock{}
 	}
 	return &Service{
-		commands: deps.Commands,
-		queries:  deps.Queries,
-		unread:   deps.Unread,
-		ids:      deps.IDs,
-		clock:    deps.Clock,
+		commands:   deps.Commands,
+		queries:    deps.Queries,
+		unread:     deps.Unread,
+		ids:        deps.IDs,
+		settings:   deps.Settings,
+		deliveries: deps.Deliveries,
+		clock:      deps.Clock,
 	}, nil
 }
 
@@ -79,4 +85,25 @@ func unreadCacheKeys(userID int64) []string {
 		fmt.Sprintf("notification:%d:unread", userID),
 		fmt.Sprintf("notification:%d:aggregation", userID),
 	}
+}
+
+func preferenceCacheKey(userID int64) string {
+	return fmt.Sprintf("notification:%d:preferences", userID)
+}
+
+func dndCacheKey(userID int64) string {
+	return fmt.Sprintf("notification:%d:dnd", userID)
+}
+
+func authorSubscriptionCacheKey(userID, authorID int64) string {
+	return fmt.Sprintf("notification:%d:author:%d:subscription", userID, authorID)
+}
+
+func hasAdminRole(actor Actor) bool {
+	for _, role := range actor.Roles {
+		if role == "admin" || role == "ADMIN" {
+			return true
+		}
+	}
+	return false
 }
