@@ -18,6 +18,8 @@ type PostRepository interface {
 	GetForUpdate(ctx context.Context, tx Tx, publicID string) (PostRecord, error)
 	SaveDraftBody(ctx context.Context, tx Tx, input SaveDraftBodyUpdate) (PostRecord, error)
 	Publish(ctx context.Context, tx Tx, input PublishPostUpdate) (PostRecord, error)
+	UpdateDraftMeta(ctx context.Context, tx Tx, input UpdateDraftMetaUpdate) (PostRecord, error)
+	DeleteDraft(ctx context.Context, tx Tx, input DeleteDraftUpdate) (PostRecord, error)
 }
 
 type PostQueryRepository interface {
@@ -25,6 +27,8 @@ type PostQueryRepository interface {
 	ListPublishedPosts(ctx context.Context, query PostListQuery) ([]PostSummaryRecord, error)
 	GetPublishedPostDetail(ctx context.Context, publicID string) (PostDetailRecord, error)
 	BatchGetPublishedPostSummaries(ctx context.Context, publicIDs []string) ([]PostSummaryRecord, error)
+	ListAuthorPosts(ctx context.Context, query AuthorPostListQuery) ([]PostSummaryRecord, error)
+	GetDraftPost(ctx context.Context, publicID string) (DraftPostRecord, error)
 }
 
 type BodyReferenceChecker interface {
@@ -94,6 +98,30 @@ type PublishPostUpdate struct {
 	PublishedAt              time.Time
 }
 
+type OptionalStringUpdate struct {
+	Set   bool
+	Value string
+}
+
+type UpdateDraftMetaUpdate struct {
+	PublicID        string
+	OwnerID         int64
+	BasePostVersion int64
+	Title           *string
+	Summary         *string
+	CoverFileID     OptionalStringUpdate
+	TopicID         OptionalStringUpdate
+	CategoryID      OptionalStringUpdate
+	Tags            *[]string
+	UpdatedAt       time.Time
+}
+
+type DeleteDraftUpdate struct {
+	PublicID  string
+	OwnerID   int64
+	UpdatedAt time.Time
+}
+
 type PublishedBodyPointer struct {
 	PostID                int64
 	PublicID              string
@@ -112,6 +140,18 @@ type PostListQuery struct {
 	AuthorID int64
 	Cursor   PublishedPostCursor
 	Limit    int
+}
+
+type AuthorPostCursor struct {
+	UpdatedAt time.Time
+	PublicID  string
+}
+
+type AuthorPostListQuery struct {
+	OwnerID int64
+	Status  string
+	Cursor  AuthorPostCursor
+	Limit   int
 }
 
 type PostSummaryRecord struct {
@@ -138,4 +178,10 @@ type PostDetailRecord struct {
 	Summary         PostSummaryRecord
 	PublishedBodyID string
 	PublishedHash   string
+}
+
+type DraftPostRecord struct {
+	Post      PostRecord
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

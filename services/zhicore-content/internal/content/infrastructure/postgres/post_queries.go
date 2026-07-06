@@ -78,6 +78,7 @@ type rowScanner interface {
 func scanPostSummaryRecord(row rowScanner) (ports.PostSummaryRecord, error) {
 	var record ports.PostSummaryRecord
 	var authorAvatar, summary, cover sql.NullString
+	var publishedAt sql.NullTime
 	if err := row.Scan(
 		&record.PostID,
 		&record.AuthorID,
@@ -88,7 +89,7 @@ func scanPostSummaryRecord(row rowScanner) (ports.PostSummaryRecord, error) {
 		&cover,
 		&record.Status,
 		&record.PostVersion,
-		&record.PublishedAt,
+		&publishedAt,
 		&record.CreatedAt,
 		&record.UpdatedAt,
 		&record.ViewCount,
@@ -101,6 +102,7 @@ func scanPostSummaryRecord(row rowScanner) (ports.PostSummaryRecord, error) {
 	record.AuthorAvatarFileID = authorAvatar.String
 	record.Summary = summary.String
 	record.CoverFileID = cover.String
+	record.PublishedAt = publishedAt.Time
 	return record, nil
 }
 
