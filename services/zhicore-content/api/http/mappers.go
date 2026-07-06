@@ -1,0 +1,116 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"time"
+
+	sharedhttp "github.com/architectcgz/zhicore-go/libs/kit/httpapi"
+	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/application"
+)
+
+func extractCanonicalBlocks(canonicalJSON []byte) (json.RawMessage, bool) {
+	if len(canonicalJSON) == 0 {
+		return nil, false
+	}
+	var body struct {
+		Blocks json.RawMessage `json:"blocks"`
+	}
+	if err := json.Unmarshal(canonicalJSON, &body); err != nil || len(body.Blocks) == 0 {
+		return nil, false
+	}
+	return body.Blocks, true
+}
+
+func mapPostSummaryResponses(items []application.PostSummary) []postSummaryResp {
+	resp := make([]postSummaryResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, mapPostSummaryResponse(item))
+	}
+	return resp
+}
+
+func mapPostSummaryResponse(item application.PostSummary) postSummaryResp {
+	return postSummaryResp{
+		PostID:             item.PostID,
+		AuthorID:           item.AuthorID,
+		AuthorName:         item.AuthorName,
+		AuthorAvatarFileID: item.AuthorAvatarFileID,
+		Title:              item.Title,
+		Summary:            item.Summary,
+		CoverFileID:        item.CoverFileID,
+		Status:             item.Status,
+		PostVersion:        item.PostVersion,
+		PublishedAt:        formatTime(item.PublishedAt),
+		CreatedAt:          formatTime(item.CreatedAt),
+		UpdatedAt:          formatTime(item.UpdatedAt),
+		Stats: postStatsResp{
+			ViewCount:     item.Stats.ViewCount,
+			LikeCount:     item.Stats.LikeCount,
+			FavoriteCount: item.Stats.FavoriteCount,
+			CommentCount:  item.Stats.CommentCount,
+		},
+	}
+}
+
+func mapAuthorDraftResponse(item application.AuthorDraftResult) authorDraftResp {
+	resp := authorDraftResp{
+		PostID:        item.PostID,
+		PostVersion:   item.PostVersion,
+		Title:         item.Title,
+		Summary:       item.Summary,
+		CoverFileID:   item.CoverFileID,
+		Status:        item.Status,
+		DraftBodyID:   item.DraftBodyID,
+		DraftBodyHash: item.DraftBodyHash,
+		CreatedAt:     formatTime(item.CreatedAt),
+		UpdatedAt:     formatTime(item.UpdatedAt),
+	}
+	if item.Body != nil {
+		body, ok := mapPostBodyResponse(*item.Body)
+		if ok {
+			resp.Body = &body
+		}
+	}
+	return resp
+}
+
+func mapPostLifecycleResponse(result application.PostLifecycleResult) postLifecycleResp {
+	return postLifecycleResp{
+		PostID:      result.PostID,
+		PostVersion: result.PostVersion,
+		Status:      result.Status,
+		UpdatedAt:   formatTime(result.UpdatedAt),
+	}
+}
+
+func mapDraftMutationResponse(item application.DraftMutationResult) draftMutationResp {
+	return draftMutationResp{
+		PostID:      item.PostID,
+		PostVersion: item.PostVersion,
+		Title:       item.Title,
+		Summary:     item.Summary,
+		CoverFileID: item.CoverFileID,
+		UpdatedAt:   formatTime(item.UpdatedAt),
+	}
+}
+
+func mapPostBodyResponse(body application.PostBodyResult) (postBodyResp, bool) {
+	blocks, ok := extractCanonicalBlocks(body.CanonicalJSON)
+	if !ok {
+		return postBodyResp{}, false
+	}
+	return postBodyResp{
+		BodyID:        body.BodyID,
+		SchemaVersion: body.SchemaVersion,
+		Format:        "blocks",
+		Blocks:        blocks,
+		PlainText:     body.PlainText,
+		ContentHash:   body.ContentHash,
+		SizeBytes:     body.SizeBytes,
+		CreatedAt:     formatTime(body.CreatedAt),
+	}, true
+}
+
+func formatTime(value time.Time) string {
+	return sharedhttp.FormatRFC3339UTC(value)
+}
