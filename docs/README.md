@@ -17,7 +17,7 @@
   - `docs/architecture/services/`：各 Go 目标服务的模块级设计、API 族、数据归属、事件和实现风险。
   - `docs/architecture/module/`：单个模块内部的 API 背后设计、application service、domain、ports、数据和事件细节。
   - `docs/architecture/services/<service>/adr/`：服务内架构决策记录，记录难逆、需要复盘、且有真实取舍的决策。
-  - `docs/architecture/go-service-design.md`：Go 服务内分层、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
+  - `docs/architecture/go-service-design.md`：Go 服务内分层、application 文件组织、typed DTO / `map[string]any` 使用、运行时依赖映射、命名和映射归属、migration、缓存和事件规则。
   - `docs/architecture/configuration.md`：服务配置、环境变量、配置模板、密钥处理和配置加载边界。
   - `docs/architecture/observability.md`：结构化日志、请求关联 ID、trace、metrics、脱敏和可观测性边界。
   - `docs/architecture/security.md`：认证、授权、身份传播、审计、上传安全和敏感输入边界。
