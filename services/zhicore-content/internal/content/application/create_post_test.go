@@ -306,21 +306,35 @@ func (d createPostDeps) asDeps() Deps {
 
 type fakePostRepository struct {
 	createCalls         int
+	createTx            ports.Tx
 	createInput         ports.CreateDraftPost
 	createResult        ports.PostRecord
 	createErr           error
 	getCalls            int
+	getTx               ports.Tx
 	getPublicID         string
 	getResult           ports.PostRecord
 	getErr              error
 	saveCalls           int
+	saveTx              ports.Tx
 	saveInput           ports.SaveDraftBodyUpdate
 	saveResult          ports.PostRecord
 	saveErr             error
 	publishCalls        int
+	publishTx           ports.Tx
 	publishInput        ports.PublishPostUpdate
 	publishResult       ports.PostRecord
 	publishErr          error
+	updateMetaCalls     int
+	updateMetaTx        ports.Tx
+	updateMetaInput     ports.UpdateDraftMetaUpdate
+	updateMetaResult    ports.PostRecord
+	updateMetaErr       error
+	deleteDraftCalls    int
+	deleteDraftTx       ports.Tx
+	deleteDraftInput    ports.DeleteDraftUpdate
+	deleteDraftResult   ports.PostRecord
+	deleteDraftErr      error
 	bodyPointerCalls    int
 	bodyPointerPublic   string
 	bodyPointerResult   ports.PublishedBodyPointer
@@ -337,6 +351,14 @@ type fakePostRepository struct {
 	batchIDs            []string
 	batchResult         []ports.PostSummaryRecord
 	batchErr            error
+	listAuthorCalls     int
+	listAuthorQuery     ports.AuthorPostListQuery
+	listAuthorResult    []ports.PostSummaryRecord
+	listAuthorErr       error
+	draftCalls          int
+	draftPublicID       string
+	draftResult         ports.DraftPostRecord
+	draftErr            error
 	referenceChecks     int
 	referenceBodyID     string
 	bodyReferenced      bool
@@ -345,6 +367,7 @@ type fakePostRepository struct {
 
 func (f *fakePostRepository) CreateDraft(ctx context.Context, tx ports.Tx, input ports.CreateDraftPost) (ports.PostRecord, error) {
 	f.createCalls++
+	f.createTx = tx
 	f.createInput = input
 	if f.createErr != nil {
 		return ports.PostRecord{}, f.createErr
@@ -354,6 +377,7 @@ func (f *fakePostRepository) CreateDraft(ctx context.Context, tx ports.Tx, input
 
 func (f *fakePostRepository) GetForUpdate(ctx context.Context, tx ports.Tx, publicID string) (ports.PostRecord, error) {
 	f.getCalls++
+	f.getTx = tx
 	f.getPublicID = publicID
 	if f.getErr != nil {
 		return ports.PostRecord{}, f.getErr
@@ -363,6 +387,7 @@ func (f *fakePostRepository) GetForUpdate(ctx context.Context, tx ports.Tx, publ
 
 func (f *fakePostRepository) SaveDraftBody(ctx context.Context, tx ports.Tx, input ports.SaveDraftBodyUpdate) (ports.PostRecord, error) {
 	f.saveCalls++
+	f.saveTx = tx
 	f.saveInput = input
 	if f.saveErr != nil {
 		return ports.PostRecord{}, f.saveErr
@@ -372,11 +397,32 @@ func (f *fakePostRepository) SaveDraftBody(ctx context.Context, tx ports.Tx, inp
 
 func (f *fakePostRepository) Publish(ctx context.Context, tx ports.Tx, input ports.PublishPostUpdate) (ports.PostRecord, error) {
 	f.publishCalls++
+	f.publishTx = tx
 	f.publishInput = input
 	if f.publishErr != nil {
 		return ports.PostRecord{}, f.publishErr
 	}
 	return f.publishResult, nil
+}
+
+func (f *fakePostRepository) UpdateDraftMeta(ctx context.Context, tx ports.Tx, input ports.UpdateDraftMetaUpdate) (ports.PostRecord, error) {
+	f.updateMetaCalls++
+	f.updateMetaTx = tx
+	f.updateMetaInput = input
+	if f.updateMetaErr != nil {
+		return ports.PostRecord{}, f.updateMetaErr
+	}
+	return f.updateMetaResult, nil
+}
+
+func (f *fakePostRepository) DeleteDraft(ctx context.Context, tx ports.Tx, input ports.DeleteDraftUpdate) (ports.PostRecord, error) {
+	f.deleteDraftCalls++
+	f.deleteDraftTx = tx
+	f.deleteDraftInput = input
+	if f.deleteDraftErr != nil {
+		return ports.PostRecord{}, f.deleteDraftErr
+	}
+	return f.deleteDraftResult, nil
 }
 
 func (f *fakePostRepository) GetPublishedBodyPointer(ctx context.Context, publicID string) (ports.PublishedBodyPointer, error) {
@@ -413,6 +459,24 @@ func (f *fakePostRepository) BatchGetPublishedPostSummaries(ctx context.Context,
 		return nil, f.batchErr
 	}
 	return append([]ports.PostSummaryRecord(nil), f.batchResult...), nil
+}
+
+func (f *fakePostRepository) ListAuthorPosts(ctx context.Context, query ports.AuthorPostListQuery) ([]ports.PostSummaryRecord, error) {
+	f.listAuthorCalls++
+	f.listAuthorQuery = query
+	if f.listAuthorErr != nil {
+		return nil, f.listAuthorErr
+	}
+	return append([]ports.PostSummaryRecord(nil), f.listAuthorResult...), nil
+}
+
+func (f *fakePostRepository) GetDraftPost(ctx context.Context, publicID string) (ports.DraftPostRecord, error) {
+	f.draftCalls++
+	f.draftPublicID = publicID
+	if f.draftErr != nil {
+		return ports.DraftPostRecord{}, f.draftErr
+	}
+	return f.draftResult, nil
 }
 
 func (f *fakePostRepository) IsBodyReferenced(ctx context.Context, bodyID string) (bool, error) {
@@ -504,6 +568,7 @@ func (f *fakeFileResourceClient) ValidateCoverFile(ctx context.Context, fileID s
 
 type fakeCleanupTaskStore struct {
 	appendCalls        int
+	appendTxs          []ports.Tx
 	appendOutsideCalls int
 	tasks              []ports.BodyCleanupTask
 	outsideTasks       []ports.BodyCleanupTask
@@ -582,6 +647,7 @@ func (f *fakeOutboxPublisher) Append(ctx context.Context, tx ports.Tx, event por
 
 func (f *fakeCleanupTaskStore) Append(ctx context.Context, tx ports.Tx, task ports.BodyCleanupTask) error {
 	f.appendCalls++
+	f.appendTxs = append(f.appendTxs, tx)
 	f.tasks = append(f.tasks, task)
 	return f.err
 }
@@ -640,12 +706,16 @@ type fakeTxRunner struct {
 	err   error
 }
 
+type fakeTx struct {
+	id int
+}
+
 func (f *fakeTxRunner) WithinTx(ctx context.Context, fn func(ctx context.Context, tx ports.Tx) error) error {
 	f.calls++
 	if f.err != nil {
 		return f.err
 	}
-	return fn(ctx, struct{}{})
+	return fn(ctx, fakeTx{id: f.calls})
 }
 
 type fakeBodyParser struct {
