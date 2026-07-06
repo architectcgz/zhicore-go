@@ -14,6 +14,7 @@
 ## 当前条目
 
 - [file-cleanup-orphan.md](file-cleanup-orphan.md)：File 服务孤儿文件清理。
+- [unimplemented-service-modules.md](unimplemented-service-modules.md)：未实现服务模块盘点。
 
 ## 已处理条目
 
