@@ -235,15 +235,19 @@ type sqlSet struct {
 func buildSQL(config Config) sqlSet {
 	table := identifier(config.Table, "outbox_events")
 	versionColumn := identifier(config.VersionColumn, "payload_version")
-	aggregateVersionSelect := ""
+	// Keep the optional aggregate-version projection in SQL files so Go only
+	// validates identifiers and selects the repository contract variant.
+	claimTemplate := claimPendingTemplate
+	claimArgs := []any{table, table, versionColumn}
 	claimAggregateVersion := false
 	if config.AggregateVersionColumn != "" {
 		aggregateVersionColumn := identifier(config.AggregateVersionColumn, "")
-		aggregateVersionSelect = fmt.Sprintf("    e.%s,\n", aggregateVersionColumn)
+		claimTemplate = claimPendingWithAggregateVersionTemplate
+		claimArgs = []any{table, table, versionColumn, aggregateVersionColumn}
 		claimAggregateVersion = true
 	}
 	return sqlSet{
-		claimPending:          fmt.Sprintf(claimPendingTemplate, table, table, versionColumn, aggregateVersionSelect),
+		claimPending:          fmt.Sprintf(claimTemplate, claimArgs...),
 		claimAggregateVersion: claimAggregateVersion,
 		markPublished:         fmt.Sprintf(markPublishedTemplate, table),
 		markFailed:            fmt.Sprintf(markFailedTemplate, table),
@@ -262,79 +266,3 @@ func identifier(value, fallback string) string {
 	}
 	panic(fmt.Sprintf("outbox: invalid SQL identifier %q", value))
 }
-
-const claimPendingTemplate = `
-WITH picked AS (
-    SELECT id
-    FROM %s
-    WHERE (
-        status IN ('PENDING', 'FAILED')
-        AND (next_retry_at IS NULL OR next_retry_at <= $1)
-    )
-    -- CLAIMING rows are reclaimed only after their dispatcher lease is stale;
-    -- otherwise a crash after claim commit could strand events forever.
-    OR (
-        status = 'CLAIMING'
-        AND claim_started_at < $2
-    )
-    ORDER BY id
-    FOR UPDATE SKIP LOCKED
-    LIMIT $4
-)
-UPDATE %s AS e
-SET status = 'CLAIMING',
-    claimed_by = $3,
-    claim_started_at = $1,
-    updated_at = $1
-FROM picked
-WHERE e.id = picked.id
-RETURNING
-    e.id,
-    e.event_id,
-    e.event_type,
-    e.%s,
-    e.aggregate_type,
-    e.aggregate_id,
-%s
-    e.payload_json,
-    e.occurred_at,
-    e.attempt_count`
-
-const markPublishedTemplate = `
-UPDATE %s
-SET status = 'PUBLISHED',
-    claimed_by = NULL,
-    claim_started_at = NULL,
-    next_retry_at = NULL,
-    last_error = NULL,
-    published_at = $1,
-    updated_at = $1
-WHERE id = $2
-  AND status = 'CLAIMING'
-  AND claimed_by = $3`
-
-const markFailedTemplate = `
-UPDATE %s
-SET status = $1,
-    claimed_by = NULL,
-    claim_started_at = NULL,
-    attempt_count = $2,
-    next_retry_at = $3,
-    last_error = $4,
-    updated_at = $5
-WHERE id = $6
-  AND status = 'CLAIMING'
-  AND claimed_by = $7`
-
-const insertTemplate = `
-INSERT INTO %s (
-    event_id,
-    event_type,
-    %s,
-    aggregate_type,
-    aggregate_id,
-    payload_json,
-    status,
-    occurred_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7)`
