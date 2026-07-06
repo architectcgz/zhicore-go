@@ -495,7 +495,7 @@
 
 **测试立场：** TDD - 状态机、可见性、outbox、cleanup 和定时任务属于 R4。
 
-- [ ] **步骤 1：拆 endpoint contract**
+- [x] **步骤 1：拆 endpoint contract**
 
   固定：
   - `POST /api/v1/posts/{postId}/unpublish`
@@ -504,19 +504,19 @@
   - `DELETE /api/v1/posts/{postId}`
   - `POST /api/v1/posts/{postId}/restore`
 
-- [ ] **步骤 2：补 domain/application 状态机测试**
+- [x] **步骤 2：补 domain/application 状态机测试**
 
   覆盖已发布撤回、删除、恢复、定时发布创建/取消、重复操作幂等或冲突语义。
 
-- [ ] **步骤 3：实现 application 和 repository**
+- [x] **步骤 3：实现 application 和 repository**
 
   状态变更必须写 outbox / visibility event；删除和恢复不得破坏 draft / published pointer 语义。
 
-- [ ] **步骤 4：补 handler contract test 和实现**
+- [x] **步骤 4：补 handler contract test 和实现**
 
   覆盖作者鉴权、缺登录态、非作者、已删除、未发布、重复操作和成功 envelope。
 
-- [ ] **步骤 5：提交发布生命周期切片**
+- [x] **步骤 5：提交发布生命周期切片**
 
   unpublish/delete/restore 和 schedule 建议分开提交。
 
