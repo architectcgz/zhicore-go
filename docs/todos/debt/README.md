@@ -14,4 +14,7 @@
 ## 当前条目
 
 - [file-cleanup-orphan.md](file-cleanup-orphan.md)：File 服务孤儿文件清理。
+
+## 已处理条目
+
 - [http-payload-file-organization.md](http-payload-file-organization.md)：统一已实现服务的 HTTP payload 文件组织。
