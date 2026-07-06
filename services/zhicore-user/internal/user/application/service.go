@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	userevents "github.com/architectcgz/zhicore-go/libs/contracts/events/user"
 	"github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-user/internal/user/ports"
 )
@@ -114,10 +115,10 @@ type RelationshipProfilePage struct {
 }
 
 const (
-	relationshipEventUserFollowed   = "user.followed"
-	relationshipEventUserUnfollowed = "user.unfollowed"
-	relationshipEventUserBlocked    = "user.blocked"
-	relationshipEventUserUnblocked  = "user.unblocked"
+	relationshipEventUserFollowed   = userevents.EventFollowed
+	relationshipEventUserUnfollowed = userevents.EventUnfollowed
+	relationshipEventUserBlocked    = userevents.EventBlocked
+	relationshipEventUserUnblocked  = userevents.EventUnblocked
 )
 
 func NewService(deps Dependencies) (*Service, error) {
@@ -432,13 +433,13 @@ func (s *Service) CreateProfileForAccount(ctx context.Context, cmd CreateProfile
 		if !created {
 			return nil
 		}
-		return s.publish(txCtx, "user.profile.created", profile.UserID, now, map[string]any{
-			"userId":         profile.UserID,
-			"accountId":      profile.AccountID,
-			"nickname":       profile.Nickname,
-			"avatarFileId":   profile.AvatarFileID,
-			"profileVersion": profile.ProfileVersion,
-			"occurredAt":     now,
+		return s.publish(txCtx, userevents.EventProfileCreated, profile.UserID, now, userevents.ProfileCreatedPayload{
+			UserID:         int64(profile.UserID),
+			AccountID:      int64(profile.AccountID),
+			Nickname:       profile.Nickname,
+			AvatarFileID:   profile.AvatarFileID,
+			ProfileVersion: profile.ProfileVersion,
+			OccurredAt:     now,
 		})
 	}); err != nil {
 		return Profile{}, err
@@ -521,14 +522,14 @@ func (s *Service) UpdateProfile(ctx context.Context, cmd UpdateProfileCommand) (
 			if err != nil {
 				return err
 			}
-			if err := s.publish(txCtx, "user.profile.updated", updated.UserID, now, map[string]any{
-				"userId":         updated.UserID,
-				"accountId":      updated.AccountID,
-				"nickname":       updated.Nickname,
-				"avatarFileId":   updated.AvatarFileID,
-				"bio":            updated.Bio,
-				"profileVersion": updated.ProfileVersion,
-				"occurredAt":     now,
+			if err := s.publish(txCtx, userevents.EventProfileUpdated, updated.UserID, now, userevents.ProfileUpdatedPayload{
+				UserID:         int64(updated.UserID),
+				AccountID:      int64(updated.AccountID),
+				Nickname:       updated.Nickname,
+				AvatarFileID:   updated.AvatarFileID,
+				Bio:            updated.Bio,
+				ProfileVersion: updated.ProfileVersion,
+				OccurredAt:     now,
 			}); err != nil {
 				return err
 			}
@@ -561,10 +562,10 @@ func (s *Service) DeactivateUserProfile(ctx context.Context, cmd DeactivateUserP
 		if !changed {
 			return nil
 		}
-		return s.publish(txCtx, "user.deactivated", updated.UserID, updated.UpdatedAt, map[string]any{
-			"userId":     updated.UserID,
-			"accountId":  updated.AccountID,
-			"occurredAt": updated.UpdatedAt,
+		return s.publish(txCtx, userevents.EventDeactivated, updated.UserID, updated.UpdatedAt, userevents.DeactivatedPayload{
+			UserID:     int64(updated.UserID),
+			AccountID:  int64(updated.AccountID),
+			OccurredAt: updated.UpdatedAt,
 		})
 	}); err != nil {
 		return Profile{}, err
@@ -590,11 +591,11 @@ func (s *Service) MarkUserDeleted(ctx context.Context, cmd MarkUserDeletedComman
 		if !changed {
 			return nil
 		}
-		return s.publish(txCtx, "user.deleted", updated.UserID, updated.UpdatedAt, map[string]any{
-			"userId":     updated.UserID,
-			"operatorId": updated.DeletedBy,
-			"reason":     updated.DeletedReason,
-			"occurredAt": updated.UpdatedAt,
+		return s.publish(txCtx, userevents.EventDeleted, updated.UserID, updated.UpdatedAt, userevents.DeletedPayload{
+			UserID:     int64(updated.UserID),
+			OperatorID: int64(updated.DeletedBy),
+			Reason:     updated.DeletedReason,
+			OccurredAt: updated.UpdatedAt,
 		})
 	}); err != nil {
 		return Profile{}, err
@@ -620,11 +621,11 @@ func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDele
 		if !changed {
 			return nil
 		}
-		return s.publish(txCtx, "user.restored", updated.UserID, updated.UpdatedAt, map[string]any{
-			"userId":     updated.UserID,
-			"operatorId": updated.RestoredBy,
-			"reason":     updated.RestoredReason,
-			"occurredAt": updated.UpdatedAt,
+		return s.publish(txCtx, userevents.EventRestored, updated.UserID, updated.UpdatedAt, userevents.RestoredPayload{
+			UserID:     int64(updated.UserID),
+			OperatorID: int64(updated.RestoredBy),
+			Reason:     updated.RestoredReason,
+			OccurredAt: updated.UpdatedAt,
 		})
 	}); err != nil {
 		return Profile{}, err
@@ -635,7 +636,7 @@ func (s *Service) RestoreDeletedUserProfile(ctx context.Context, cmd RestoreDele
 	return profileFromDomain(updated), nil
 }
 
-func (s *Service) publish(ctx context.Context, eventType string, userID domain.UserID, occurredAt time.Time, payload map[string]any) error {
+func (s *Service) publish(ctx context.Context, eventType string, userID domain.UserID, occurredAt time.Time, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal %s payload: %w", eventType, err)
@@ -704,30 +705,30 @@ func (s *Service) publishRelationshipEvent(ctx context.Context, event domain.Rel
 	// the outward integration event name and JSON payload that enter outbox.
 	switch e := event.(type) {
 	case domain.UserFollowed:
-		return s.publish(ctx, relationshipEventUserFollowed, e.FollowerID, occurredAt, map[string]any{
-			"followerId":  e.FollowerID,
-			"followingId": e.FollowingID,
-			"occurredAt":  occurredAt,
+		return s.publish(ctx, relationshipEventUserFollowed, e.FollowerID, occurredAt, userevents.FollowedPayload{
+			FollowerID:  int64(e.FollowerID),
+			FollowingID: int64(e.FollowingID),
+			OccurredAt:  occurredAt,
 		})
 	case domain.UserUnfollowed:
-		return s.publish(ctx, relationshipEventUserUnfollowed, e.FollowerID, occurredAt, map[string]any{
-			"followerId":  e.FollowerID,
-			"followingId": e.FollowingID,
-			"reason":      string(e.Reason),
-			"occurredAt":  occurredAt,
+		return s.publish(ctx, relationshipEventUserUnfollowed, e.FollowerID, occurredAt, userevents.UnfollowedPayload{
+			FollowerID:  int64(e.FollowerID),
+			FollowingID: int64(e.FollowingID),
+			Reason:      string(e.Reason),
+			OccurredAt:  occurredAt,
 		})
 	case domain.UserBlocked:
-		return s.publish(ctx, relationshipEventUserBlocked, e.BlockerID, occurredAt, map[string]any{
-			"blockerId":  e.BlockerID,
-			"blockedId":  e.BlockedID,
-			"reason":     e.Reason,
-			"occurredAt": occurredAt,
+		return s.publish(ctx, relationshipEventUserBlocked, e.BlockerID, occurredAt, userevents.BlockedPayload{
+			BlockerID:  int64(e.BlockerID),
+			BlockedID:  int64(e.BlockedID),
+			Reason:     e.Reason,
+			OccurredAt: occurredAt,
 		})
 	case domain.UserUnblocked:
-		return s.publish(ctx, relationshipEventUserUnblocked, e.BlockerID, occurredAt, map[string]any{
-			"blockerId":  e.BlockerID,
-			"blockedId":  e.BlockedID,
-			"occurredAt": occurredAt,
+		return s.publish(ctx, relationshipEventUserUnblocked, e.BlockerID, occurredAt, userevents.UnblockedPayload{
+			BlockerID:  int64(e.BlockerID),
+			BlockedID:  int64(e.BlockedID),
+			OccurredAt: occurredAt,
 		})
 	default:
 		return fmt.Errorf("unknown relationship event %T", event)
