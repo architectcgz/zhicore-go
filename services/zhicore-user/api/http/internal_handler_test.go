@@ -112,6 +112,37 @@ func TestInternalBatchCheckBlockedMapsPairs(t *testing.T) {
 	}
 }
 
+func TestInternalListFollowerShardMapsRequestAndRequiresNotificationOperation(t *testing.T) {
+	service := &fakeProfileService{
+		followerShardResult: application.FollowerShardPage{
+			FollowerIDs: []application.UserID{101, 99},
+			NextCursor:  "99",
+			HasMore:     true,
+		},
+	}
+	req := withJSONHeader(httptest.NewRequest(http.MethodPost, usercontract.ListFollowerShardPath, bytes.NewBufferString(`{"followingId":77,"cursor":"42","limit":200}`)))
+	req.Header.Set("X-Caller-Service", "zhicore-notification")
+	req.Header.Set("X-Caller-Operation", usercontract.OperationNotificationListFollowerShard)
+	rr := httptest.NewRecorder()
+
+	NewHandler(service, nil).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	if service.followerShardCalls != 1 {
+		t.Fatalf("followerShardCalls = %d, want 1", service.followerShardCalls)
+	}
+	if service.followerShardQuery.FollowingID != 77 || service.followerShardQuery.Cursor != "42" || service.followerShardQuery.Limit != 200 {
+		t.Fatalf("followerShardQuery = %#v", service.followerShardQuery)
+	}
+	var body envelope[usercontract.ListFollowerShardResponse]
+	decodeJSON(t, rr.Body.Bytes(), &body)
+	if len(body.Data.FollowerIDs) != 2 || body.Data.FollowerIDs[0] != 101 || body.Data.NextCursor != "99" || !body.Data.HasMore {
+		t.Fatalf("follower shard response = %#v", body.Data)
+	}
+}
+
 func withInternalCaller(req *http.Request, operation string) *http.Request {
 	req.Header.Set("X-Caller-Service", "zhicore-comment")
 	req.Header.Set("X-Caller-Operation", operation)

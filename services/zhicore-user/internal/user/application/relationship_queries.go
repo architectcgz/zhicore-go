@@ -25,10 +25,22 @@ type ListFollowingQuery struct {
 	Limit          int
 }
 
+type ListFollowerShardQuery struct {
+	FollowingID UserID
+	Cursor      string
+	Limit       int
+}
+
 type RelationshipProfilePage struct {
 	Items      []Profile
 	NextCursor string
 	HasMore    bool
+}
+
+type FollowerShardPage struct {
+	FollowerIDs []UserID
+	NextCursor  string
+	HasMore     bool
 }
 
 func (s *Service) ListBlockedUsers(ctx context.Context, query ListBlockedUsersQuery) (RelationshipProfilePage, error) {
@@ -83,6 +95,31 @@ func (s *Service) ListFollowing(ctx context.Context, query ListFollowingQuery) (
 	return s.relationshipProfiles(ctx, page, func(record ports.RelationshipRecord) domain.UserID {
 		return record.TargetID
 	})
+}
+
+func (s *Service) ListFollowerShard(ctx context.Context, query ListFollowerShardQuery) (FollowerShardPage, error) {
+	if err := s.requireRelationshipRepository(); err != nil {
+		return FollowerShardPage{}, err
+	}
+	page, err := s.relationships.ListFollowers(ctx, domainUserID(query.FollowingID), query.Cursor, domain.NormalizeRelationshipLimit(query.Limit))
+	if err != nil {
+		return FollowerShardPage{}, err
+	}
+	followerIDs := make([]UserID, 0, len(page.Records))
+	for _, record := range page.Records {
+		// Notification fanout needs only stable follower IDs; resolving profiles here
+		// would turn a high-volume shard read into an unnecessary profile hot path.
+		followerIDs = append(followerIDs, UserID(record.ActorID))
+	}
+	nextCursor := ""
+	if page.HasMore && len(page.Records) > 0 {
+		nextCursor = domain.EncodeRelationshipCursor(page.Records[len(page.Records)-1].ID)
+	}
+	return FollowerShardPage{
+		FollowerIDs: followerIDs,
+		NextCursor:  nextCursor,
+		HasMore:     page.HasMore,
+	}, nil
 }
 
 func (s *Service) BatchCheckBlocked(ctx context.Context, pairs []UserPair) (map[UserPair]bool, error) {

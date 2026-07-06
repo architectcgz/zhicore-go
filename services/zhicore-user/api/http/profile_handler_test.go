@@ -303,6 +303,7 @@ type fakeProfileService struct {
 	batchSimpleErr   error
 	availabilityErr  error
 	batchBlockedErr  error
+	followerShardErr error
 
 	getMyCalls         int
 	getPublicCalls     int
@@ -317,23 +318,26 @@ type fakeProfileService struct {
 	batchSimpleCalls   int
 	availabilityCalls  int
 	batchBlockedCalls  int
+	followerShardCalls int
 
-	getMyUserID        application.UserID
-	getPublicID        application.PublicID
-	updateCmd          application.UpdateProfileCommand
-	blockCmd           application.BlockUserCommand
-	unblockCmd         application.UnblockUserCommand
-	followCmd          application.FollowUserCommand
-	unfollowCmd        application.UnfollowUserCommand
-	listBlockedQuery   application.ListBlockedUsersQuery
-	listFollowersQuery application.ListFollowersQuery
-	listFollowingQuery application.ListFollowingQuery
-	batchSimpleIDs     []application.UserID
-	availabilityIDs    []application.UserID
-	batchBlockedPairs  []application.UserPair
-	batchSimpleResult  application.BatchUserSimpleResult
-	availabilityItems  []application.UserAvailability
-	batchBlockedResult map[application.UserPair]bool
+	getMyUserID         application.UserID
+	getPublicID         application.PublicID
+	updateCmd           application.UpdateProfileCommand
+	blockCmd            application.BlockUserCommand
+	unblockCmd          application.UnblockUserCommand
+	followCmd           application.FollowUserCommand
+	unfollowCmd         application.UnfollowUserCommand
+	listBlockedQuery    application.ListBlockedUsersQuery
+	listFollowersQuery  application.ListFollowersQuery
+	listFollowingQuery  application.ListFollowingQuery
+	batchSimpleIDs      []application.UserID
+	availabilityIDs     []application.UserID
+	batchBlockedPairs   []application.UserPair
+	followerShardQuery  application.ListFollowerShardQuery
+	batchSimpleResult   application.BatchUserSimpleResult
+	availabilityItems   []application.UserAvailability
+	batchBlockedResult  map[application.UserPair]bool
+	followerShardResult application.FollowerShardPage
 }
 
 func (f *fakeProfileService) GetMyProfile(_ context.Context, userID application.UserID) (application.Profile, error) {
@@ -439,6 +443,15 @@ func (f *fakeProfileService) BatchCheckBlocked(_ context.Context, pairs []applic
 		return nil, f.batchBlockedErr
 	}
 	return f.batchBlockedResult, nil
+}
+
+func (f *fakeProfileService) ListFollowerShard(_ context.Context, query application.ListFollowerShardQuery) (application.FollowerShardPage, error) {
+	f.followerShardCalls++
+	f.followerShardQuery = query
+	if f.followerShardErr != nil {
+		return application.FollowerShardPage{}, f.followerShardErr
+	}
+	return f.followerShardResult, nil
 }
 
 type fakeAvatarURLResolver struct {

@@ -222,6 +222,14 @@ func TestRelationshipQueriesUseInternalIDsAndCursorPages(t *testing.T) {
 		t.Fatal("CheckFollowing() = false, want true")
 	}
 
+	shard, err := service.ListFollowerShard(context.Background(), ListFollowerShardQuery{FollowingID: UserID(actor.UserID), Limit: 1})
+	if err != nil {
+		t.Fatalf("ListFollowerShard() error = %v", err)
+	}
+	if len(shard.FollowerIDs) != 1 || shard.FollowerIDs[0] != UserID(targetA.UserID) || shard.HasMore || shard.NextCursor != "" {
+		t.Fatalf("follower shard = %#v, want targetA only", shard)
+	}
+
 	_, err = service.ListBlockedUsers(context.Background(), ListBlockedUsersQuery{ActorUserID: UserID(actor.UserID), Cursor: "not-a-cursor", Limit: 10})
 	if !errors.Is(err, domain.ErrCursorInvalid) {
 		t.Fatalf("ListBlockedUsers() cursor error = %v, want %v", err, domain.ErrCursorInvalid)
