@@ -54,16 +54,12 @@ func (s *Store) CreateInteractionNotification(ctx context.Context, input ports.C
 }
 
 func insertConsumedEvent(ctx context.Context, tx *sql.Tx, event ports.ConsumedEventMetadata) error {
-	return tx.QueryRowContext(ctx, `
-INSERT INTO consumed_events (event_id, event_type, routing_key, consumer_name, payload_hash, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (event_id) DO NOTHING
-RETURNING event_id`, event.EventID, event.EventType, event.RoutingKey, event.ConsumerName, event.PayloadHash, event.ExpiresAt).Scan(new(string))
+	return tx.QueryRowContext(ctx, insertConsumedEventSQL, event.EventID, event.EventType, event.RoutingKey, event.ConsumerName, event.PayloadHash, event.ExpiresAt).Scan(new(string))
 }
 
 func (s *Store) nextNotificationID(ctx context.Context, tx *sql.Tx) (int64, error) {
 	var id int64
-	if err := tx.QueryRowContext(ctx, `SELECT nextval(pg_get_serial_sequence('notifications', 'id'))`).Scan(&id); err != nil {
+	if err := tx.QueryRowContext(ctx, nextNotificationIDSQL).Scan(&id); err != nil {
 		return 0, fmt.Errorf("allocate notification id: %w", err)
 	}
 	return id, nil
@@ -82,18 +78,7 @@ func (s *Store) encodePublicID(id int64) (string, error) {
 
 func insertNotification(ctx context.Context, tx *sql.Tx, id int64, publicID string, input ports.CreateInteractionNotificationInput) (int64, bool, error) {
 	var insertedID int64
-	err := tx.QueryRowContext(ctx, `
-INSERT INTO notifications (
-    id, public_id, recipient_id, actor_id, category, notification_type, event_code, importance,
-    target_type, target_id, source_event_id, dedupe_key, group_key, title, content, payload,
-    occurred_at, created_at, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16,
-    $17, $18, $18
-)
-ON CONFLICT DO NOTHING
-RETURNING id`,
+	err := tx.QueryRowContext(ctx, insertInteractionNotificationSQL,
 		id,
 		publicID,
 		input.RecipientID,
@@ -123,29 +108,7 @@ RETURNING id`,
 }
 
 func upsertGroupState(ctx context.Context, tx *sql.Tx, notificationID int64, input ports.CreateInteractionNotificationInput) error {
-	_, err := tx.ExecContext(ctx, `
-INSERT INTO notification_group_state (
-    recipient_id, group_key, notification_type, category, target_type, target_id,
-    latest_notification_id, total_count, unread_count, latest_time, latest_content,
-    latest_actor_ids, aggregated_content, created_at, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, 1, 1, $8, $9,
-    CASE WHEN $10::BIGINT IS NULL THEN '{}'::BIGINT[] ELSE ARRAY[$10::BIGINT] END,
-    $11, $12, $12
-)
-ON CONFLICT (recipient_id, group_key) DO UPDATE SET
-    latest_notification_id = EXCLUDED.latest_notification_id,
-    total_count = notification_group_state.total_count + 1,
-    unread_count = notification_group_state.unread_count + 1,
-    latest_time = EXCLUDED.latest_time,
-    latest_content = EXCLUDED.latest_content,
-    latest_actor_ids = CASE
-        WHEN $10::BIGINT IS NULL THEN notification_group_state.latest_actor_ids
-        ELSE (ARRAY_PREPEND($10::BIGINT, ARRAY_REMOVE(notification_group_state.latest_actor_ids, $10::BIGINT)))[1:5]
-    END,
-    aggregated_content = EXCLUDED.aggregated_content,
-    updated_at = EXCLUDED.updated_at`,
+	_, err := tx.ExecContext(ctx, upsertInteractionNotificationGroupSQL,
 		input.RecipientID,
 		input.GroupKey,
 		input.NotificationType,
@@ -166,10 +129,7 @@ ON CONFLICT (recipient_id, group_key) DO UPDATE SET
 }
 
 func markConsumedEvent(ctx context.Context, tx *sql.Tx, eventID string, consumedAt time.Time) error {
-	if _, err := tx.ExecContext(ctx, `
-UPDATE consumed_events
-SET status = 'CONSUMED', consumed_at = $2, updated_at = $2
-WHERE event_id = $1`, eventID, consumedAt); err != nil {
+	if _, err := tx.ExecContext(ctx, markConsumedEventSQL, eventID, consumedAt); err != nil {
 		return fmt.Errorf("mark consumed notification event: %w", err)
 	}
 	return nil
