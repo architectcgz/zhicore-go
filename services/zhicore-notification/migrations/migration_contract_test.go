@@ -149,6 +149,60 @@ func TestNotificationStatsMigrationDefinesUserUnreadReadModel(t *testing.T) {
 	}
 }
 
+func TestNotificationCampaignMigrationDefinesCampaignAndShardTables(t *testing.T) {
+	up := readNotificationMigration(t, "add_notification_campaign_tables", ".up.sql")
+	down := readNotificationMigration(t, "add_notification_campaign_tables", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE notification_campaign",
+		"source_event_id VARCHAR(128) NOT NULL",
+		"campaign_type VARCHAR(64) NOT NULL",
+		"author_id BIGINT NOT NULL",
+		"post_id BIGINT NOT NULL",
+		"audience_estimate BIGINT NULL",
+		"payload JSONB NOT NULL DEFAULT '{}'::jsonb",
+		"status VARCHAR(64) NOT NULL",
+		"CHECK (status IN ('PLANNED', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELED'))",
+		"CREATE UNIQUE INDEX ux_notification_campaign_source_event_id",
+		"CREATE TABLE notification_campaign_shard",
+		"campaign_id BIGINT NOT NULL REFERENCES notification_campaign (id)",
+		"follower_cursor VARCHAR(256) NOT NULL DEFAULT ''",
+		"next_follower_cursor VARCHAR(256) NOT NULL DEFAULT ''",
+		"processed_count BIGINT NOT NULL DEFAULT 0",
+		"success_count BIGINT NOT NULL DEFAULT 0",
+		"skipped_count BIGINT NOT NULL DEFAULT 0",
+		"failed_count BIGINT NOT NULL DEFAULT 0",
+		"claimed_by VARCHAR(128) NOT NULL DEFAULT ''",
+		"claim_deadline_at TIMESTAMPTZ NULL",
+		"next_retry_at TIMESTAMPTZ NULL",
+		"CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'))",
+		"CREATE INDEX ix_notification_campaign_shard_claim",
+		"ALTER TABLE notification_delivery",
+		"ADD CONSTRAINT fk_notification_delivery_campaign",
+		"FOREIGN KEY (campaign_id) REFERENCES notification_campaign (id)",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("up migration missing %q", fragment)
+		}
+	}
+
+	for _, fragment := range []string{
+		"ALTER TABLE notification_delivery",
+		"DROP CONSTRAINT IF EXISTS fk_notification_delivery_campaign",
+		"DROP TABLE IF EXISTS notification_campaign_shard",
+		"DROP TABLE IF EXISTS notification_campaign",
+	} {
+		if !strings.Contains(down, fragment) {
+			t.Fatalf("down migration missing %q", fragment)
+		}
+	}
+	if strings.Contains(down, "DROP TABLE IF EXISTS notification_delivery") || strings.Contains(down, "DROP TABLE IF EXISTS notifications") {
+		t.Fatalf("campaign down migration must not drop delivery or inbox tables")
+	}
+}
+
 func readNotificationMigration(t *testing.T, namePart, suffix string) string {
 	t.Helper()
 
