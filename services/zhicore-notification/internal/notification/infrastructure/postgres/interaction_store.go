@@ -43,6 +43,9 @@ func (s *Store) CreateInteractionNotification(ctx context.Context, input ports.C
 		if err := upsertGroupState(ctx, tx, insertedID, input); err != nil {
 			return ports.CreateInteractionNotificationResult{}, err
 		}
+		if err := incrementNotificationStats(ctx, tx, input); err != nil {
+			return ports.CreateInteractionNotificationResult{}, err
+		}
 	}
 	if err := markConsumedEvent(ctx, tx, input.Event.EventID, input.CreatedAt); err != nil {
 		return ports.CreateInteractionNotificationResult{}, err
@@ -124,6 +127,13 @@ func upsertGroupState(ctx context.Context, tx *sql.Tx, notificationID int64, inp
 	)
 	if err != nil {
 		return fmt.Errorf("upsert notification group state: %w", err)
+	}
+	return nil
+}
+
+func incrementNotificationStats(ctx context.Context, tx *sql.Tx, input ports.CreateInteractionNotificationInput) error {
+	if _, err := tx.ExecContext(ctx, incrementNotificationStatsSQL, input.RecipientID, input.Category, input.CreatedAt); err != nil {
+		return fmt.Errorf("increment notification stats unread count: %w", err)
 	}
 	return nil
 }

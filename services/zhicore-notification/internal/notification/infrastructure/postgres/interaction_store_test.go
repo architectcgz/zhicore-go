@@ -52,6 +52,9 @@ func TestStoreCreateInteractionNotificationPersistsEventAndInboxInOneTransaction
 	mock.ExpectExec("INSERT INTO notification_group_state").
 		WithArgs(int64(1001), "post_liked:41", "POST_LIKED", "INTERACTION", "POST", "41", int64(10001), now, "liked your post", sql.NullInt64{Int64: actorID, Valid: true}, []byte(`{"internalId":41}`), now).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO notification_stats").
+		WithArgs(int64(1001), "INTERACTION", now).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("UPDATE consumed_events").
 		WithArgs("evt_like_1", now).
 		WillReturnResult(sqlmock.NewResult(0, 1))

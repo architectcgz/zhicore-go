@@ -117,6 +117,38 @@ func TestNotificationPreferenceAndDeliveryMigrationDefinesSettingsAndLedger(t *t
 	}
 }
 
+func TestNotificationStatsMigrationDefinesUserUnreadReadModel(t *testing.T) {
+	up := readNotificationMigration(t, "add_notification_stats", ".up.sql")
+	down := readNotificationMigration(t, "add_notification_stats", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE notification_stats",
+		"recipient_id BIGINT PRIMARY KEY",
+		"unread_total BIGINT NOT NULL DEFAULT 0",
+		"unread_interaction BIGINT NOT NULL DEFAULT 0",
+		"unread_content BIGINT NOT NULL DEFAULT 0",
+		"unread_social BIGINT NOT NULL DEFAULT 0",
+		"unread_system BIGINT NOT NULL DEFAULT 0",
+		"unread_security BIGINT NOT NULL DEFAULT 0",
+		"CHECK (unread_total >= 0)",
+		"CHECK (unread_interaction >= 0)",
+		"CHECK (unread_total = unread_interaction + unread_content + unread_social + unread_system + unread_security)",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("up migration missing %q", fragment)
+		}
+	}
+
+	if !strings.Contains(down, "DROP TABLE IF EXISTS notification_stats") {
+		t.Fatalf("down migration missing notification_stats drop")
+	}
+	if strings.Contains(down, "DROP TABLE IF EXISTS notifications") || strings.Contains(down, "DROP TABLE IF EXISTS notification_group_state") {
+		t.Fatalf("notification_stats down migration must not drop inbox core tables")
+	}
+}
+
 func readNotificationMigration(t *testing.T, namePart, suffix string) string {
 	t.Helper()
 

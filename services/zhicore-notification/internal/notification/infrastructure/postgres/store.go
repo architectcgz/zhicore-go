@@ -32,10 +32,10 @@ func (s *Store) MarkRead(ctx context.Context, input ports.MarkReadInput) (ports.
 	}
 	defer tx.Rollback()
 
-	var publicID, groupKey string
+	var publicID, groupKey, category string
 	var isRead bool
 	var readAt sql.NullTime
-	err = tx.QueryRowContext(ctx, selectNotificationForMarkReadSQL, input.NotificationID, input.RecipientID).Scan(&publicID, &groupKey, &isRead, &readAt)
+	err = tx.QueryRowContext(ctx, selectNotificationForMarkReadSQL, input.NotificationID, input.RecipientID).Scan(&publicID, &groupKey, &category, &isRead, &readAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ports.MarkReadResult{}, ports.ErrNotificationNotFound
 	}
@@ -56,6 +56,9 @@ func (s *Store) MarkRead(ctx context.Context, input ports.MarkReadInput) (ports.
 	// Group state is a derived read model; clamp at zero so repeated or repaired reads never create negative unread counts.
 	if _, err := tx.ExecContext(ctx, decrementGroupUnreadSQL, input.RecipientID, groupKey, input.ReadAt); err != nil {
 		return ports.MarkReadResult{}, fmt.Errorf("decrement notification group unread count: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, decrementNotificationStatsSQL, input.RecipientID, category, input.ReadAt); err != nil {
+		return ports.MarkReadResult{}, fmt.Errorf("decrement notification stats unread count: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return ports.MarkReadResult{}, fmt.Errorf("commit notification mark read: %w", err)
@@ -81,6 +84,9 @@ func (s *Store) MarkAllRead(ctx context.Context, input ports.MarkAllReadInput) (
 	if _, err := tx.ExecContext(ctx, resetGroupUnreadSQL, input.RecipientID, input.ReadAt); err != nil {
 		return ports.MarkAllReadResult{}, fmt.Errorf("reset notification group unread count: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, resetNotificationStatsSQL, input.RecipientID, input.ReadAt); err != nil {
+		return ports.MarkAllReadResult{}, fmt.Errorf("reset notification stats unread count: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return ports.MarkAllReadResult{}, fmt.Errorf("commit notification mark all read: %w", err)
 	}
@@ -90,41 +96,29 @@ func (s *Store) MarkAllRead(ctx context.Context, input ports.MarkAllReadInput) (
 func (s *Store) GetUnreadCount(ctx context.Context, recipientID int64) (int64, error) {
 	var count int64
 	if err := s.db.QueryRowContext(ctx, getUnreadCountSQL, recipientID).Scan(&count); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("get notification unread count: %w", err)
 	}
 	return count, nil
 }
 
 func (s *Store) GetUnreadBreakdown(ctx context.Context, recipientID int64) (ports.UnreadBreakdown, error) {
-	rows, err := s.db.QueryContext(ctx, getUnreadBreakdownSQL, recipientID)
+	var result ports.UnreadBreakdown
+	err := s.db.QueryRowContext(ctx, getUnreadBreakdownSQL, recipientID).Scan(
+		&result.Total,
+		&result.Interaction,
+		&result.Content,
+		&result.Social,
+		&result.System,
+		&result.Security,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ports.UnreadBreakdown{}, nil
+	}
 	if err != nil {
 		return ports.UnreadBreakdown{}, fmt.Errorf("get notification unread breakdown: %w", err)
-	}
-	defer rows.Close()
-
-	var result ports.UnreadBreakdown
-	for rows.Next() {
-		var category string
-		var count int64
-		if err := rows.Scan(&category, &count); err != nil {
-			return ports.UnreadBreakdown{}, fmt.Errorf("scan notification unread breakdown: %w", err)
-		}
-		result.Total += count
-		switch category {
-		case "INTERACTION":
-			result.Interaction = count
-		case "CONTENT":
-			result.Content = count
-		case "SOCIAL":
-			result.Social = count
-		case "SYSTEM":
-			result.System = count
-		case "SECURITY":
-			result.Security = count
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return ports.UnreadBreakdown{}, fmt.Errorf("iterate notification unread breakdown: %w", err)
 	}
 	return result, nil
 }

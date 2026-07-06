@@ -1,3 +1,3 @@
-SELECT COUNT(*)
-FROM notifications
-WHERE recipient_id = $1 AND is_read = FALSE
+SELECT unread_total
+FROM notification_stats
+WHERE recipient_id = $1
