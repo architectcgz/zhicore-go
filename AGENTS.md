@@ -4,12 +4,13 @@
 - `~/.agents/AGENTS.md` 是共享全局入口，只放跨项目、跨工作区、跨 agent 都必须生效的总则和路由。
 - `~/.codex/AGENTS.md`、`~/.claude/AGENTS.md` 默认只作为 agent 入口层，应回链到 `~/.agents/AGENTS.md`，不要各自维护一份正文。
 - `~/.codex/CLAUDE.md`、`~/.claude/CLAUDE.md` 默认保持 `CLAUDE.md -> AGENTS.md` 软链接，作为各入口目录内的发现别名。
+- `~/.gemini/AGENTS.md` 是 Antigravity / Gemini 入口层，应回链到 `~/.agents/AGENTS.md`；`~/.gemini/GEMINI.md` 如存在，只作为 `AGENTS.md` 的兼容发现别名，不承载独立正文。
 - `~/AGENTS.md` 只用于在 home 目录本身工作时的轻量说明，不承载全局规则，也不复制本文件内容。
 - `~/workspace/projects/AGENTS.md` 只约束 workspace 根目录和非 Git 子目录；进入具体 Git 项目后，项目根 `AGENTS.md` 才是项目规则入口。
 - 项目内 `AGENTS.md` 只写该项目的事实、命令、架构边界、文档归属和覆盖规则；不要重复全局沟通、Git、安全和输出风格规则。
 - 更深层目录的 `AGENTS.md` 只补充目录局部规则；不要回写与上层相同的通用约束。
 - 共享 skill、共享 harness、共享 agents 的主体默认放在 `~/.agents/` 下维护，例如 `~/.agents/skills/`、`~/.agents/harness/`、`~/.agents/codex-agents/`、`~/.agents/claude-agents/`。
-- `~/.codex/skills/`、`~/.codex/agents/`、`~/.claude/skills/`、`~/.claude/agents/` 默认只作为入口或软链接层；除非某项内容明确只属于单一 agent，否则不要在这些入口层分别维护一份正文。
+- `~/.codex/skills/`、`~/.codex/agents/`、`~/.claude/skills/`、`~/.claude/agents/`、`~/.gemini/skills/` 默认只作为入口或软链接层；除非某项内容明确只属于单一 agent，否则不要在这些入口层分别维护一份正文。
 - 当共享 skill / harness / agent 需要修改时，默认直接修改 `~/.agents/` 下的主体，再检查各入口软链接是否仍然正确；不要先改 `.codex` 再回填。
 
 ## 1. 全局总则
