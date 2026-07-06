@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	contentevents "github.com/architectcgz/zhicore-go/libs/contracts/events/content"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 )
@@ -655,22 +656,10 @@ func hasPostPublishedEvent(events []domain.DomainEvent) bool {
 	return false
 }
 
-type postPublishedOutboxPayload struct {
-	PublicID          string    `json:"publicId"`
-	InternalID        int64     `json:"internalId"`
-	AuthorID          int64     `json:"authorId"`
-	Title             string    `json:"title"`
-	Summary           string    `json:"summary,omitempty"`
-	CoverFileID       string    `json:"coverFileId,omitempty"`
-	PublishedAt       time.Time `json:"publishedAt"`
-	PublishedBodyID   string    `json:"publishedBodyId,omitempty"`
-	PublishedBodyHash string    `json:"publishedBodyHash,omitempty"`
-}
-
 // Application owns the mapping from domain publish facts to the cross-service
 // outbox contract so the domain model stays free of MQ / JSON concerns.
 func newPostPublishedOutboxEvent(current, published ports.PostRecord, publishedBodyID, publishedBodyHash string, publishedAt time.Time) (ports.OutboxEvent, error) {
-	payloadJSON, err := json.Marshal(postPublishedOutboxPayload{
+	payloadJSON, err := json.Marshal(contentevents.PostPublishedPayload{
 		PublicID:          current.PublicID,
 		InternalID:        current.ID,
 		AuthorID:          current.OwnerID,

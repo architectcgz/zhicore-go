@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
-	"time"
 
+	contentevents "github.com/architectcgz/zhicore-go/libs/contracts/events/content"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 )
@@ -290,17 +290,7 @@ func TestPublishPost(t *testing.T) {
 		if !gotEvent.OccurredAt.Equal(deps.clock.now) {
 			t.Fatalf("occurredAt = %s, want %s", gotEvent.OccurredAt, deps.clock.now)
 		}
-		var payload struct {
-			PublicID          string    `json:"publicId"`
-			InternalID        int64     `json:"internalId"`
-			AuthorID          int64     `json:"authorId"`
-			Title             string    `json:"title"`
-			Summary           string    `json:"summary"`
-			CoverFileID       string    `json:"coverFileId"`
-			PublishedAt       time.Time `json:"publishedAt"`
-			PublishedBodyID   string    `json:"publishedBodyId"`
-			PublishedBodyHash string    `json:"publishedBodyHash"`
-		}
+		var payload contentevents.PostPublishedPayload
 		if err := json.Unmarshal(gotEvent.PayloadJSON, &payload); err != nil {
 			t.Fatalf("unmarshal payload: %v", err)
 		}
