@@ -21,6 +21,14 @@ type Service interface {
 	GetUnreadCount(ctx context.Context, query application.GetUnreadCountQuery) (application.UnreadCountResult, error)
 	GetUnreadBreakdown(ctx context.Context, query application.GetUnreadBreakdownQuery) (application.UnreadBreakdownResult, error)
 	ListAggregatedNotifications(ctx context.Context, query application.ListNotificationsQuery) (application.NotificationPage, error)
+	GetNotificationPreferences(ctx context.Context, query application.GetNotificationPreferencesQuery) (application.NotificationPreferencesResult, error)
+	UpdateNotificationPreferences(ctx context.Context, cmd application.UpdateNotificationPreferencesCommand) (application.NotificationPreferencesResult, error)
+	GetNotificationDND(ctx context.Context, query application.GetNotificationDNDQuery) (application.NotificationDNDResult, error)
+	UpdateNotificationDND(ctx context.Context, cmd application.UpdateNotificationDNDCommand) (application.NotificationDNDResult, error)
+	GetAuthorSubscription(ctx context.Context, query application.GetAuthorSubscriptionQuery) (application.AuthorSubscriptionResult, error)
+	UpdateAuthorSubscription(ctx context.Context, cmd application.UpdateAuthorSubscriptionCommand) (application.AuthorSubscriptionResult, error)
+	ListDeliveries(ctx context.Context, query application.ListDeliveriesQuery) (application.DeliveryPage, error)
+	RetryDelivery(ctx context.Context, cmd application.RetryDeliveryCommand) (application.DeliveryRetryResult, error)
 }
 
 type Handler struct {
@@ -42,6 +50,22 @@ func (h *Handler) routes() {
 	h.router.GET("/api/v1/notifications/unread-count", h.getUnreadCount)
 	h.router.GET("/api/v1/notifications/unread/count", h.getUnreadCount)
 	h.router.GET("/api/v1/notifications/unread/breakdown", h.getUnreadBreakdown)
+	h.router.GET("/api/v1/notification-preferences", h.getNotificationPreferences)
+	h.router.PUT("/api/v1/notification-preferences", h.updateNotificationPreferences)
+	h.router.GET("/api/v1/notifications/preferences", h.getNotificationPreferences)
+	h.router.PUT("/api/v1/notifications/preferences", h.updateNotificationPreferences)
+	h.router.GET("/api/v1/notification-dnd", h.getNotificationDND)
+	h.router.PUT("/api/v1/notification-dnd", h.updateNotificationDND)
+	h.router.GET("/api/v1/notifications/dnd", h.getNotificationDND)
+	h.router.PUT("/api/v1/notifications/dnd", h.updateNotificationDND)
+	h.router.GET("/api/v1/author-subscriptions/:authorId", h.getAuthorSubscription)
+	h.router.PUT("/api/v1/author-subscriptions/:authorId", h.updateAuthorSubscription)
+	h.router.GET("/api/v1/notifications/author-subscriptions/:authorId", h.getAuthorSubscription)
+	h.router.PUT("/api/v1/notifications/author-subscriptions/:authorId", h.updateAuthorSubscription)
+	h.router.GET("/api/v1/notification-deliveries", h.listDeliveries)
+	h.router.POST("/api/v1/notification-deliveries/:deliveryId/retry", h.retryDelivery)
+	h.router.GET("/api/v1/notifications/deliveries", h.listDeliveries)
+	h.router.POST("/api/v1/notifications/deliveries/:deliveryId/retry", h.retryDelivery)
 }
 
 func (h *Handler) markNotificationRead(c *gin.Context) {
@@ -151,6 +175,186 @@ func (h *Handler) listNotifications(c *gin.Context) {
 	sharedhttp.WriteSuccess(w, notificationPageResponse(result))
 }
 
+func (h *Handler) getNotificationPreferences(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	result, err := h.service.GetNotificationPreferences(r.Context(), application.GetNotificationPreferencesQuery{Actor: actor})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, notificationPreferencesResponse(result))
+}
+
+func (h *Handler) updateNotificationPreferences(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	var req updateNotificationPreferencesReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.UpdateNotificationPreferences(r.Context(), application.UpdateNotificationPreferencesCommand{
+		Actor:       actor,
+		Preferences: notificationPreferenceInputs(req.Preferences),
+	})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, notificationPreferencesResponse(result))
+}
+
+func (h *Handler) getNotificationDND(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	result, err := h.service.GetNotificationDND(r.Context(), application.GetNotificationDNDQuery{Actor: actor})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, notificationDNDResponse(result))
+}
+
+func (h *Handler) updateNotificationDND(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	var req updateNotificationDNDReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.UpdateNotificationDND(r.Context(), application.UpdateNotificationDNDCommand{
+		Actor:      actor,
+		Enabled:    req.Enabled,
+		StartTime:  req.StartTime,
+		EndTime:    req.EndTime,
+		Timezone:   req.Timezone,
+		Categories: req.Categories,
+		Channels:   req.Channels,
+	})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, notificationDNDResponse(result))
+}
+
+func (h *Handler) getAuthorSubscription(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	authorID, ok := parsePositivePathInt(c.Param("authorId"))
+	if !ok {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.GetAuthorSubscription(r.Context(), application.GetAuthorSubscriptionQuery{Actor: actor, AuthorID: authorID})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, authorSubscriptionResponse(result))
+}
+
+func (h *Handler) updateAuthorSubscription(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	authorID, ok := parsePositivePathInt(c.Param("authorId"))
+	if !ok {
+		writeValidationError(w)
+		return
+	}
+	var req updateAuthorSubscriptionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.UpdateAuthorSubscription(r.Context(), application.UpdateAuthorSubscriptionCommand{
+		Actor:            actor,
+		AuthorID:         authorID,
+		Level:            req.Level,
+		InAppEnabled:     req.InAppEnabled,
+		WebsocketEnabled: req.WebsocketEnabled,
+		EmailEnabled:     req.EmailEnabled,
+		DigestEnabled:    req.DigestEnabled,
+	})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, authorSubscriptionResponse(result))
+}
+
+func (h *Handler) listDeliveries(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	size, err := sharedhttp.ParsePositiveInt(r.URL.Query().Get("size"), 20, 50)
+	if err != nil {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.ListDeliveries(r.Context(), application.ListDeliveriesQuery{
+		Actor:   actor,
+		Channel: strings.TrimSpace(r.URL.Query().Get("channel")),
+		Status:  strings.TrimSpace(r.URL.Query().Get("status")),
+		Cursor:  strings.TrimSpace(r.URL.Query().Get("cursor")),
+		Size:    size,
+	})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, deliveryPageResponse(result))
+}
+
+func (h *Handler) retryDelivery(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	deliveryID := strings.TrimSpace(c.Param("deliveryId"))
+	if deliveryID == "" {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.RetryDelivery(r.Context(), application.RetryDeliveryCommand{Actor: actor, DeliveryID: deliveryID})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, deliveryRetryResp{DeliveryID: result.DeliveryID, Status: result.Status, Retried: result.Retried})
+}
+
 func notificationPageResponse(page application.NotificationPage) notificationPageResp {
 	items := make([]aggregatedNotificationResp, 0, len(page.Items))
 	for _, item := range page.Items {
@@ -183,7 +387,28 @@ func actorFromRequest(r *http.Request) (application.Actor, bool) {
 	if err != nil || userID <= 0 {
 		return application.Actor{}, false
 	}
-	return application.Actor{UserID: userID}, true
+	return application.Actor{UserID: userID, Roles: rolesFromRequest(r)}, true
+}
+
+func rolesFromRequest(r *http.Request) []string {
+	raw := strings.TrimSpace(r.Header.Get("X-User-Roles"))
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	roles := make([]string, 0, len(parts))
+	for _, part := range parts {
+		role := strings.TrimSpace(part)
+		if role != "" {
+			roles = append(roles, role)
+		}
+	}
+	return roles
+}
+
+func parsePositivePathInt(raw string) (int64, bool) {
+	value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	return value, err == nil && value > 0
 }
 
 func writeValidationError(w http.ResponseWriter) {
