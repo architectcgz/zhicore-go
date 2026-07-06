@@ -160,6 +160,31 @@ type fakeContentService struct {
 	batchResult application.BatchGetPublishedPostsResult
 	batchErr    error
 
+	listAuthorPostsCalls  int
+	listAuthorPostsQuery  application.ListAuthorPostsQuery
+	listAuthorPostsResult application.AuthorPostPageResult
+	listAuthorPostsErr    error
+
+	listAuthorDraftsCalls  int
+	listAuthorDraftsQuery  application.ListAuthorDraftsQuery
+	listAuthorDraftsResult application.AuthorPostPageResult
+	listAuthorDraftsErr    error
+
+	getAuthorDraftCalls  int
+	getAuthorDraftQuery  application.GetAuthorDraftQuery
+	getAuthorDraftResult application.AuthorDraftResult
+	getAuthorDraftErr    error
+
+	updateDraftMetaCalls   int
+	updateDraftMetaCommand application.UpdateDraftMetaCommand
+	updateDraftMetaResult  application.DraftMutationResult
+	updateDraftMetaErr     error
+
+	deleteDraftCalls   int
+	deleteDraftCommand application.DeleteAuthorDraftCommand
+	deleteDraftResult  application.DraftMutationResult
+	deleteDraftErr     error
+
 	listOutboxCalls  int
 	listOutboxQuery  application.ListAdminOutboxEventsQuery
 	listOutboxResult application.ListAdminOutboxEventsResult
@@ -233,6 +258,51 @@ func (f *fakeContentService) BatchGetPublishedPosts(ctx context.Context, query a
 		return application.BatchGetPublishedPostsResult{}, f.batchErr
 	}
 	return f.batchResult, nil
+}
+
+func (f *fakeContentService) ListAuthorPosts(ctx context.Context, query application.ListAuthorPostsQuery) (application.AuthorPostPageResult, error) {
+	f.listAuthorPostsCalls++
+	f.listAuthorPostsQuery = query
+	if f.listAuthorPostsErr != nil {
+		return application.AuthorPostPageResult{}, f.listAuthorPostsErr
+	}
+	return f.listAuthorPostsResult, nil
+}
+
+func (f *fakeContentService) ListAuthorDrafts(ctx context.Context, query application.ListAuthorDraftsQuery) (application.AuthorPostPageResult, error) {
+	f.listAuthorDraftsCalls++
+	f.listAuthorDraftsQuery = query
+	if f.listAuthorDraftsErr != nil {
+		return application.AuthorPostPageResult{}, f.listAuthorDraftsErr
+	}
+	return f.listAuthorDraftsResult, nil
+}
+
+func (f *fakeContentService) GetAuthorDraft(ctx context.Context, query application.GetAuthorDraftQuery) (application.AuthorDraftResult, error) {
+	f.getAuthorDraftCalls++
+	f.getAuthorDraftQuery = query
+	if f.getAuthorDraftErr != nil {
+		return application.AuthorDraftResult{}, f.getAuthorDraftErr
+	}
+	return f.getAuthorDraftResult, nil
+}
+
+func (f *fakeContentService) UpdateDraftMeta(ctx context.Context, command application.UpdateDraftMetaCommand) (application.DraftMutationResult, error) {
+	f.updateDraftMetaCalls++
+	f.updateDraftMetaCommand = command
+	if f.updateDraftMetaErr != nil {
+		return application.DraftMutationResult{}, f.updateDraftMetaErr
+	}
+	return f.updateDraftMetaResult, nil
+}
+
+func (f *fakeContentService) DeleteAuthorDraft(ctx context.Context, command application.DeleteAuthorDraftCommand) (application.DraftMutationResult, error) {
+	f.deleteDraftCalls++
+	f.deleteDraftCommand = command
+	if f.deleteDraftErr != nil {
+		return application.DraftMutationResult{}, f.deleteDraftErr
+	}
+	return f.deleteDraftResult, nil
 }
 
 func (f *fakeContentService) ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error) {

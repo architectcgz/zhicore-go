@@ -31,6 +31,11 @@ type Service interface {
 	ListPublishedPosts(ctx context.Context, query application.ListPublishedPostsQuery) (application.ListPublishedPostsResult, error)
 	GetPostDetail(ctx context.Context, query application.GetPostDetailQuery) (application.GetPostDetailResult, error)
 	BatchGetPublishedPosts(ctx context.Context, query application.BatchGetPublishedPostsQuery) (application.BatchGetPublishedPostsResult, error)
+	ListAuthorPosts(ctx context.Context, query application.ListAuthorPostsQuery) (application.AuthorPostPageResult, error)
+	ListAuthorDrafts(ctx context.Context, query application.ListAuthorDraftsQuery) (application.AuthorPostPageResult, error)
+	GetAuthorDraft(ctx context.Context, query application.GetAuthorDraftQuery) (application.AuthorDraftResult, error)
+	UpdateDraftMeta(ctx context.Context, command application.UpdateDraftMetaCommand) (application.DraftMutationResult, error)
+	DeleteAuthorDraft(ctx context.Context, command application.DeleteAuthorDraftCommand) (application.DraftMutationResult, error)
 	ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error)
 	RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error)
 }
@@ -50,12 +55,140 @@ func (h *Handler) routes() {
 	h.router.POST("/api/v1/posts", h.createPost)
 	h.router.GET("/api/v1/posts", h.listPublishedPosts)
 	h.router.POST("/api/v1/posts/batch-get", h.batchGetPublishedPosts)
+	h.router.GET("/api/v1/me/posts", h.listAuthorPosts)
+	h.router.GET("/api/v1/me/drafts", h.listAuthorDrafts)
 	h.router.GET("/api/v1/posts/:postId", h.getPostDetail)
+	h.router.GET("/api/v1/posts/:postId/draft", h.getAuthorDraft)
+	h.router.PATCH("/api/v1/posts/:postId/draft/meta", h.updateDraftMeta)
+	h.router.DELETE("/api/v1/posts/:postId/draft", h.deleteAuthorDraft)
 	h.router.PUT("/api/v1/posts/:postId/draft/body", h.saveDraftBody)
 	h.router.POST("/api/v1/posts/:postId/publish", h.publishPost)
 	h.router.GET("/api/v1/posts/:postId/body", h.getPostBody)
 	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
 	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
+}
+
+func (h *Handler) listAuthorPosts(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	limit, ok := optionalPositiveIntQuery(w, c, "limit")
+	if !ok {
+		return
+	}
+	result, err := h.service.ListAuthorPosts(r.Context(), application.ListAuthorPostsQuery{
+		Actor:  actor,
+		Status: c.Query("status"),
+		Cursor: c.Query("cursor"),
+		Limit:  limit,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAuthorWorkbench)
+		return
+	}
+	writePostPage(w, result)
+}
+
+func (h *Handler) listAuthorDrafts(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	limit, ok := optionalPositiveIntQuery(w, c, "limit")
+	if !ok {
+		return
+	}
+	result, err := h.service.ListAuthorDrafts(r.Context(), application.ListAuthorDraftsQuery{
+		Actor:  actor,
+		Cursor: c.Query("cursor"),
+		Limit:  limit,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAuthorWorkbench)
+		return
+	}
+	writePostPage(w, result)
+}
+
+func (h *Handler) getAuthorDraft(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	result, err := h.service.GetAuthorDraft(r.Context(), application.GetAuthorDraftQuery{Actor: actor, PostID: postID})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAuthorWorkbench)
+		return
+	}
+	resp := mapAuthorDraftResponse(result)
+	sharedhttp.WriteSuccess(w, resp)
+}
+
+func (h *Handler) updateDraftMeta(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	var req updateDraftMetaReq
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if req.BasePostVersion <= 0 {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.UpdateDraftMeta(r.Context(), application.UpdateDraftMetaCommand{
+		Actor:           actor,
+		PostID:          postID,
+		BasePostVersion: req.BasePostVersion,
+		Title:           req.Title,
+		Summary:         req.Summary,
+		CoverFileID:     req.CoverFileID,
+		TopicID:         req.TopicID,
+		CategoryID:      req.CategoryID,
+		Tags:            req.Tags,
+	})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAuthorWorkbench)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapDraftMutationResponse(result))
+}
+
+func (h *Handler) deleteAuthorDraft(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, errLoginRequired)
+		return
+	}
+	postID, ok := postIDFromPath(w, c)
+	if !ok {
+		return
+	}
+	result, err := h.service.DeleteAuthorDraft(r.Context(), application.DeleteAuthorDraftCommand{Actor: actor, PostID: postID})
+	if err != nil {
+		writeMappedError(w, err, errorOperationAuthorWorkbench)
+		return
+	}
+	sharedhttp.WriteSuccess(w, mapDraftMutationResponse(result))
 }
 
 func (h *Handler) listPublishedPosts(c *gin.Context) {
@@ -420,6 +553,16 @@ type batchGetPostsReq struct {
 	IncludeDeleted bool     `json:"includeDeleted"`
 }
 
+type updateDraftMetaReq struct {
+	BasePostVersion int64     `json:"basePostVersion"`
+	Title           *string   `json:"title"`
+	Summary         *string   `json:"summary"`
+	CoverFileID     *string   `json:"coverFileId"`
+	TopicID         *string   `json:"topicId"`
+	CategoryID      *string   `json:"categoryId"`
+	Tags            *[]string `json:"tags"`
+}
+
 type createPostResp struct {
 	PostID      string `json:"postId"`
 	PostVersion int64  `json:"postVersion"`
@@ -489,6 +632,29 @@ type postStatsResp struct {
 type batchGetPostsResp struct {
 	Items          []postSummaryResp `json:"items"`
 	MissingPostIDs []string          `json:"missingPostIds"`
+}
+
+type authorDraftResp struct {
+	PostID        string        `json:"postId"`
+	PostVersion   int64         `json:"postVersion"`
+	Title         string        `json:"title"`
+	Summary       string        `json:"summary,omitempty"`
+	CoverFileID   string        `json:"coverFileId,omitempty"`
+	Status        string        `json:"status"`
+	DraftBodyID   string        `json:"draftBodyId,omitempty"`
+	DraftBodyHash string        `json:"draftBodyHash,omitempty"`
+	Body          *postBodyResp `json:"body,omitempty"`
+	CreatedAt     string        `json:"createdAt"`
+	UpdatedAt     string        `json:"updatedAt"`
+}
+
+type draftMutationResp struct {
+	PostID      string `json:"postId"`
+	PostVersion int64  `json:"postVersion"`
+	Title       string `json:"title,omitempty"`
+	Summary     string `json:"summary,omitempty"`
+	CoverFileID string `json:"coverFileId,omitempty"`
+	UpdatedAt   string `json:"updatedAt,omitempty"`
 }
 
 type adminOutboxRetryReq struct {
@@ -622,6 +788,7 @@ const (
 	errorOperationPublishPost     errorOperation = "publishPost"
 	errorOperationGetPostBody     errorOperation = "getPostBody"
 	errorOperationPublicPostQuery errorOperation = "publicPostQuery"
+	errorOperationAuthorWorkbench errorOperation = "authorWorkbench"
 	errorOperationAdminOutbox     errorOperation = "adminOutbox"
 )
 
@@ -737,6 +904,48 @@ func mapPostSummaryResponse(item application.PostSummary) postSummaryResp {
 			FavoriteCount: item.Stats.FavoriteCount,
 			CommentCount:  item.Stats.CommentCount,
 		},
+	}
+}
+
+func writePostPage(w http.ResponseWriter, result application.AuthorPostPageResult) {
+	sharedhttp.WriteSuccess(w, cursorPageResp[postSummaryResp]{
+		Items:      mapPostSummaryResponses(result.Items),
+		NextCursor: result.NextCursor,
+		HasMore:    result.HasMore,
+		Limit:      result.Limit,
+	})
+}
+
+func mapAuthorDraftResponse(item application.AuthorDraftResult) authorDraftResp {
+	resp := authorDraftResp{
+		PostID:        item.PostID,
+		PostVersion:   item.PostVersion,
+		Title:         item.Title,
+		Summary:       item.Summary,
+		CoverFileID:   item.CoverFileID,
+		Status:        item.Status,
+		DraftBodyID:   item.DraftBodyID,
+		DraftBodyHash: item.DraftBodyHash,
+		CreatedAt:     formatTime(item.CreatedAt),
+		UpdatedAt:     formatTime(item.UpdatedAt),
+	}
+	if item.Body != nil {
+		body, ok := mapPostBodyResponse(*item.Body)
+		if ok {
+			resp.Body = &body
+		}
+	}
+	return resp
+}
+
+func mapDraftMutationResponse(item application.DraftMutationResult) draftMutationResp {
+	return draftMutationResp{
+		PostID:      item.PostID,
+		PostVersion: item.PostVersion,
+		Title:       item.Title,
+		Summary:     item.Summary,
+		CoverFileID: item.CoverFileID,
+		UpdatedAt:   formatTime(item.UpdatedAt),
 	}
 }
 
