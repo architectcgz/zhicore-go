@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	authevents "github.com/architectcgz/zhicore-go/libs/contracts/events/auth"
 	"github.com/architectcgz/zhicore-go/services/zhicore-auth/internal/auth/domain"
 	"github.com/architectcgz/zhicore-go/services/zhicore-auth/internal/auth/ports"
 )
@@ -160,11 +161,11 @@ func (s *Service) RegisterAccount(ctx context.Context, cmd RegisterAccountComman
 			return fmt.Errorf("assign default role: %w", err)
 		}
 
-		payload, err := json.Marshal(map[string]any{
-			"accountId":  created.ID,
-			"userId":     createdProfile.UserID,
-			"email":      created.Email.Normalized(),
-			"occurredAt": activatedAt.UTC().Format(time.RFC3339),
+		payload, err := json.Marshal(authevents.AccountRegisteredPayload{
+			AccountID:  int64(created.ID),
+			UserID:     int64(createdProfile.UserID),
+			Email:      created.Email.Normalized(),
+			OccurredAt: activatedAt.UTC().Format(time.RFC3339),
 		})
 		if err != nil {
 			return fmt.Errorf("marshal registered event: %w", err)
