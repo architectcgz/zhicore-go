@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 )
 
 func lookupRequiredEnv(lookup func(string) (string, bool), name string) (string, bool, error) {
@@ -41,6 +43,9 @@ func missingRequiredEnv(cfg ContentServerConfig) []string {
 	if cfg.Mongo.URI == "" {
 		missing = append(missing, envMongoURI)
 	}
+	if cfg.Redis.Addr == "" {
+		missing = append(missing, envRedisAddr)
+	}
 	if cfg.RabbitMQ.URL == "" {
 		missing = append(missing, envRabbitMQURL)
 	}
@@ -64,6 +69,18 @@ func validateContentServerConfig(cfg ContentServerConfig) error {
 	if err := validateURLWithSchemes(envRabbitMQURL, cfg.RabbitMQ.URL, "amqp", "amqps"); err != nil {
 		return err
 	}
+	if cfg.Redis.DialTimeout <= 0 {
+		return fmt.Errorf("%s: duration must be greater than zero", envRedisDialTimeout)
+	}
+	if cfg.Redis.ReadTimeout <= 0 {
+		return fmt.Errorf("%s: duration must be greater than zero", envRedisReadTimeout)
+	}
+	if cfg.Redis.WriteTimeout <= 0 {
+		return fmt.Errorf("%s: duration must be greater than zero", envRedisWriteTimeout)
+	}
+	if cfg.Redis.PoolSize <= 0 {
+		return fmt.Errorf("%s: value must be greater than zero", envRedisPoolSize)
+	}
 	if err := validateURLWithSchemes(envUserServiceBaseURL, cfg.UserService.BaseURL, "http", "https"); err != nil {
 		return err
 	}
@@ -71,6 +88,41 @@ func validateContentServerConfig(cfg ContentServerConfig) error {
 		return err
 	}
 	return nil
+}
+
+func parsePositiveIntEnv(name, raw string) (int, error) {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse int: %w", name, err)
+	}
+	if value <= 0 {
+		return 0, fmt.Errorf("%s: value must be greater than zero", name)
+	}
+	return value, nil
+}
+
+func parseNonNegativeIntEnv(name, raw string) (int, error) {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse int: %w", name, err)
+	}
+	if value < 0 {
+		return 0, fmt.Errorf("%s: value must be greater than or equal to zero", name)
+	}
+	return value, nil
+}
+
+func parseRateLimitFallbackEnv(name, raw string) (ports.RateLimitFallback, error) {
+	switch ports.RateLimitFallback(strings.TrimSpace(raw)) {
+	case ports.RateLimitFallbackNone:
+		return ports.RateLimitFallbackNone, nil
+	case ports.RateLimitFallbackLocalMemory:
+		return ports.RateLimitFallbackLocalMemory, nil
+	case ports.RateLimitFallbackGatewayOnly:
+		return ports.RateLimitFallbackGatewayOnly, nil
+	default:
+		return "", fmt.Errorf("%s: value must be none, local_memory, or gateway_only", name)
+	}
 }
 
 func parseDurationEnv(name, raw string) (time.Duration, error) {

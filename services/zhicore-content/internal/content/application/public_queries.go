@@ -112,6 +112,9 @@ func (s *Service) ListPublishedPosts(ctx context.Context, query ListPublishedPos
 		return ListPublishedPostsResult{}, err
 	}
 	limit := normalizePublicPostLimit(query.Limit)
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest("posts", "list_published_posts")); err != nil {
+		return ListPublishedPostsResult{}, err
+	}
 	records, err := s.queries.ListPublishedPosts(ctx, ports.PostListQuery{
 		AuthorID: authorID,
 		Cursor:   cursor,
@@ -141,6 +144,9 @@ func (s *Service) GetPostDetail(ctx context.Context, query GetPostDetailQuery) (
 	if postID == "" {
 		return GetPostDetailResult{}, ErrInvalidArgument
 	}
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(postID, "get_post_detail")); err != nil {
+		return GetPostDetailResult{}, err
+	}
 	detail, err := s.queries.GetPublishedPostDetail(ctx, postID)
 	if err != nil {
 		if errors.Is(err, domain.ErrPostNotFound) {
@@ -161,6 +167,9 @@ func (s *Service) BatchGetPublishedPosts(ctx context.Context, query BatchGetPubl
 	}
 	ids, err := normalizeBatchPostIDs(query.PostIDs)
 	if err != nil {
+		return BatchGetPublishedPostsResult{}, err
+	}
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest("batch", "batch_get_published_posts")); err != nil {
 		return BatchGetPublishedPostsResult{}, err
 	}
 	records, err := s.queries.BatchGetPublishedPostSummaries(ctx, ids)

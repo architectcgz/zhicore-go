@@ -18,6 +18,9 @@ func (s *Service) CreatePost(ctx context.Context, cmd CreatePostCommand) (Create
 	if err != nil {
 		return CreatePostResult{}, err
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeDraftWrite, cmd.Actor, "post", "create_post")); err != nil {
+		return CreatePostResult{}, err
+	}
 
 	owner, err := s.users.GetOwnerSnapshot(ctx, cmd.Actor.UserID)
 	if err != nil {

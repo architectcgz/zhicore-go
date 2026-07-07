@@ -24,8 +24,11 @@ func TestBuildRejectsMissingRuntimeDependencies(t *testing.T) {
 		{name: "config", mutate: func(deps *Deps) { deps.Config = nil }, want: "Config"},
 		{name: "postgres", mutate: func(deps *Deps) { deps.PostgresDB = nil }, want: "PostgresDB"},
 		{name: "mongo", mutate: func(deps *Deps) { deps.BodyCollection = nil }, want: "BodyCollection"},
+		{name: "redis health", mutate: func(deps *Deps) { deps.Health.Redis = nil }, want: "Redis health"},
 		{name: "parser", mutate: func(deps *Deps) { deps.Parser = nil }, want: "Parser"},
 		{name: "outbox", mutate: func(deps *Deps) { deps.Outbox = nil }, want: "Outbox"},
+		{name: "rate limiter", mutate: func(deps *Deps) { deps.RateLimiter = nil }, want: "RateLimiter"},
+		{name: "observer", mutate: func(deps *Deps) { deps.Observer = nil }, want: "Observer"},
 		{name: "clock", mutate: func(deps *Deps) { deps.Clock = nil }, want: "Clock"},
 		{name: "users", mutate: func(deps *Deps) { deps.Users = nil }, want: "Users"},
 		{name: "files", mutate: func(deps *Deps) { deps.Files = nil }, want: "Files"},
@@ -52,7 +55,7 @@ func TestBuildReturnsHTTPHandlerWorkerDescriptionsAndHealthDetails(t *testing.T)
 		t.Fatal("HTTPHandler = nil")
 	}
 	if module.HealthDetails.Service != "zhicore-content" || module.HealthDetails.Postgres != "configured" ||
-		module.HealthDetails.Mongo != "configured" || module.HealthDetails.BodyParser != "v1" {
+		module.HealthDetails.Mongo != "configured" || module.HealthDetails.Redis != "configured" || module.HealthDetails.BodyParser != "v1" {
 		t.Fatalf("health details = %#v", module.HealthDetails)
 	}
 	if len(module.Workers) != 3 {
@@ -93,6 +96,39 @@ func TestBuildWiresAdminOutboxRepository(t *testing.T) {
 	}
 }
 
+func TestBuildWiresObserverIntoRateLimitedService(t *testing.T) {
+	limiter := &recordingRateLimiter{
+		decision: ports.RateLimitDecision{
+			Outcome:   ports.RateLimitOutcomeAllow,
+			LimitType: ports.RateLimitTypePublicRead,
+			Reason:    "allow",
+			Fallback:  ports.RateLimitFallbackNone,
+		},
+	}
+	observer := &recordingContentObserver{}
+	deps := validDeps(t)
+	deps.RateLimiter = limiter
+	deps.Observer = observer
+
+	module, err := Build(deps)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	module.HTTPHandler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/posts?limit=1", nil))
+
+	if limiter.calls != 1 {
+		t.Fatalf("rate limiter calls = %d, want 1", limiter.calls)
+	}
+	if limiter.lastRequest.LimitType != ports.RateLimitTypePublicRead {
+		t.Fatalf("rate limiter request = %#v, want public_read", limiter.lastRequest)
+	}
+	if len(observer.decisions) != 1 || observer.decisions[0].LimitType != ports.RateLimitTypePublicRead {
+		t.Fatalf("observer decisions = %#v, want public_read decision", observer.decisions)
+	}
+}
+
 func validDeps(t *testing.T) Deps {
 	t.Helper()
 	db, _, err := sqlmock.New()
@@ -108,11 +144,14 @@ func validDeps(t *testing.T) Deps {
 		Health: HealthCheckers{
 			Postgres: healthyCheck("postgres"),
 			Mongo:    healthyCheck("mongo"),
+			Redis:    healthyCheck("redis"),
 			RabbitMQ: healthyCheck("rabbitmq"),
 		},
 		Parser:            stubBodyParser{},
 		Outbox:            store,
 		IntegrationEvents: stubIntegrationEvents{},
+		RateLimiter:       &recordingRateLimiter{decision: ports.RateLimitDecision{Outcome: ports.RateLimitOutcomeAllow, Reason: "allow"}},
+		Observer:          &recordingContentObserver{},
 		Clock:             fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
 		Users:             stubUsers{},
 		Files:             stubFiles{},
@@ -133,6 +172,30 @@ type stubIntegrationEvents struct{}
 
 func (stubIntegrationEvents) PublishIntegrationEvent(context.Context, ports.OutboxEvent) error {
 	return nil
+}
+
+type recordingRateLimiter struct {
+	decision    ports.RateLimitDecision
+	calls       int
+	lastRequest ports.RateLimitRequest
+}
+
+func (r *recordingRateLimiter) Check(ctx context.Context, request ports.RateLimitRequest) ports.RateLimitDecision {
+	r.calls++
+	r.lastRequest = request
+	decision := r.decision
+	if decision.LimitType == "" {
+		decision.LimitType = request.LimitType
+	}
+	return decision
+}
+
+type recordingContentObserver struct {
+	decisions []ports.RateLimitDecision
+}
+
+func (o *recordingContentObserver) ObserveRateLimitDecision(ctx context.Context, decision ports.RateLimitDecision) {
+	o.decisions = append(o.decisions, decision)
 }
 
 type stubUsers struct{}
@@ -157,5 +220,7 @@ var _ ports.Clock = fixedClock{}
 var _ ports.BodyParserRegistry = stubBodyParser{}
 var _ ports.OutboxPublisher = stubOutbox{}
 var _ ports.IntegrationEventPublisher = stubIntegrationEvents{}
+var _ ports.RateLimiter = (*recordingRateLimiter)(nil)
+var _ ports.ContentObserver = (*recordingContentObserver)(nil)
 var _ ports.UserProfileClient = stubUsers{}
 var _ ports.FileResourceClient = stubFiles{}

@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
+	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
 
 func TestLoadContentServerConfigRequiresRuntimeDependencies(t *testing.T) {
@@ -14,6 +17,7 @@ func TestLoadContentServerConfigRequiresRuntimeDependencies(t *testing.T) {
 	for _, want := range []string{
 		"ZHICORE_CONTENT_POSTGRES_DSN",
 		"ZHICORE_CONTENT_MONGO_URI",
+		"ZHICORE_CONTENT_REDIS_ADDR",
 		"ZHICORE_CONTENT_RABBITMQ_URL",
 		"ZHICORE_CONTENT_USER_SERVICE_BASE_URL",
 		"ZHICORE_CONTENT_FILE_SERVICE_BASE_URL",
@@ -28,6 +32,7 @@ func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 	cfg, err := LoadContentServerConfig(mapLookup(map[string]string{
 		"ZHICORE_CONTENT_POSTGRES_DSN":                     "postgres://content:secret@127.0.0.1:5432/content",
 		"ZHICORE_CONTENT_MONGO_URI":                        "mongodb://content:secret@127.0.0.1:27017",
+		"ZHICORE_CONTENT_REDIS_ADDR":                       "127.0.0.1:6379",
 		"ZHICORE_CONTENT_RABBITMQ_URL":                     "amqp://content:secret@127.0.0.1:5672/",
 		"ZHICORE_CONTENT_RABBITMQ_EXCHANGE":                "zhicore.content.events",
 		"ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT": "4s",
@@ -72,6 +77,11 @@ func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 	if cfg.Mongo.Database != "zhicore_content" || cfg.Mongo.BodyCollection != "post_bodies" {
 		t.Fatalf("mongo defaults = (%q, %q), want zhicore_content/post_bodies", cfg.Mongo.Database, cfg.Mongo.BodyCollection)
 	}
+	if cfg.Redis.Addr != "127.0.0.1:6379" || cfg.Redis.DialTimeout != 200*time.Millisecond ||
+		cfg.Redis.ReadTimeout != 200*time.Millisecond || cfg.Redis.WriteTimeout != 200*time.Millisecond ||
+		cfg.Redis.PoolSize != 10 {
+		t.Fatalf("redis config = %#v, want addr override and timeout/pool defaults", cfg.Redis)
+	}
 	if cfg.RabbitMQ.Exchange != "zhicore.content.events" || cfg.RabbitMQ.PublishConfirmTimeout != 4*time.Second {
 		t.Fatalf("rabbitmq config = %#v, want overridden exchange and confirm timeout", cfg.RabbitMQ)
 	}
@@ -109,6 +119,12 @@ func TestLoadContentServerConfigRejectsNonPositiveDuration(t *testing.T) {
 		{name: "shutdown timeout negative", envName: "ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT", value: "-1s"},
 		{name: "rabbitmq publish confirm timeout zero", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT", value: "0s"},
 		{name: "rabbitmq publish confirm timeout negative", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT", value: "-1s"},
+		{name: "redis dial timeout zero", envName: "ZHICORE_CONTENT_REDIS_DIAL_TIMEOUT", value: "0s"},
+		{name: "redis dial timeout negative", envName: "ZHICORE_CONTENT_REDIS_DIAL_TIMEOUT", value: "-1s"},
+		{name: "redis read timeout zero", envName: "ZHICORE_CONTENT_REDIS_READ_TIMEOUT", value: "0s"},
+		{name: "redis read timeout negative", envName: "ZHICORE_CONTENT_REDIS_READ_TIMEOUT", value: "-1s"},
+		{name: "redis write timeout zero", envName: "ZHICORE_CONTENT_REDIS_WRITE_TIMEOUT", value: "0s"},
+		{name: "redis write timeout negative", envName: "ZHICORE_CONTENT_REDIS_WRITE_TIMEOUT", value: "-1s"},
 	}
 
 	for _, tc := range testCases {
@@ -175,6 +191,14 @@ func TestLoadContentServerConfigRejectsPresentButEmptyEnv(t *testing.T) {
 		{name: "outbox enabled", envName: "ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"},
 		{name: "postgres dsn", envName: "ZHICORE_CONTENT_POSTGRES_DSN"},
 		{name: "mongo uri", envName: "ZHICORE_CONTENT_MONGO_URI"},
+		{name: "redis addr", envName: "ZHICORE_CONTENT_REDIS_ADDR"},
+		{name: "redis username", envName: "ZHICORE_CONTENT_REDIS_USERNAME"},
+		{name: "redis password", envName: "ZHICORE_CONTENT_REDIS_PASSWORD"},
+		{name: "redis db", envName: "ZHICORE_CONTENT_REDIS_DB"},
+		{name: "redis dial timeout", envName: "ZHICORE_CONTENT_REDIS_DIAL_TIMEOUT"},
+		{name: "redis read timeout", envName: "ZHICORE_CONTENT_REDIS_READ_TIMEOUT"},
+		{name: "redis write timeout", envName: "ZHICORE_CONTENT_REDIS_WRITE_TIMEOUT"},
+		{name: "redis pool size", envName: "ZHICORE_CONTENT_REDIS_POOL_SIZE"},
 		{name: "rabbitmq url", envName: "ZHICORE_CONTENT_RABBITMQ_URL"},
 		{name: "rabbitmq exchange", envName: "ZHICORE_CONTENT_RABBITMQ_EXCHANGE"},
 		{name: "rabbitmq publish confirm timeout", envName: "ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT"},
@@ -319,10 +343,80 @@ func TestLoadContentServerConfigAppliesHTTPTimeoutDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadContentServerConfigAppliesRateLimitDefaults(t *testing.T) {
+	cfg, err := LoadContentServerConfig(mapLookup(validRequiredConfigValues()))
+	if err != nil {
+		t.Fatalf("LoadContentServerConfig() error = %v", err)
+	}
+
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublicRead, 120, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeDraftWrite, 30, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublishLifecycle, 5, time.Minute, ports.RateLimitFallbackNone, true)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeEngagementWrite, 60, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeEngagementRead, 120, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeAdminCommand, 10, time.Minute, ports.RateLimitFallbackNone, true)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeInternalClient, 120, time.Minute, ports.RateLimitFallbackNone, true)
+}
+
+func TestLoadContentServerConfigAppliesRateLimitEnvOverrides(t *testing.T) {
+	values := validRequiredConfigValues()
+	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_LIMIT"] = "42"
+	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW"] = "30s"
+	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK"] = "gateway_only"
+	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FAIL_CLOSED"] = "true"
+
+	cfg, err := LoadContentServerConfig(mapLookup(values))
+	if err != nil {
+		t.Fatalf("LoadContentServerConfig() error = %v", err)
+	}
+
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublicRead, 42, 30*time.Second, ports.RateLimitFallbackGatewayOnly, true)
+	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeDraftWrite, 30, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+}
+
+func TestLoadContentServerConfigRejectsInvalidRateLimitEnv(t *testing.T) {
+	testCases := []struct {
+		name    string
+		envName string
+		value   string
+	}{
+		{name: "limit not int", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_LIMIT", value: "many"},
+		{name: "limit zero", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_LIMIT", value: "0"},
+		{name: "window invalid", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW", value: "soon"},
+		{name: "window zero", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW", value: "0s"},
+		{name: "fallback invalid", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK", value: "redis"},
+		{name: "fail closed non canonical", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FAIL_CLOSED", value: "TRUE"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			values := validRequiredConfigValues()
+			values[tc.envName] = tc.value
+
+			_, err := LoadContentServerConfig(mapLookup(values))
+			if err == nil || !strings.Contains(err.Error(), tc.envName) {
+				t.Fatalf("LoadContentServerConfig() error = %v, want mention %s", err, tc.envName)
+			}
+		})
+	}
+}
+
+func assertRateLimitRule(t *testing.T, cfg contentruntime.RateLimitConfig, limitType ports.RateLimitType, limit int, window time.Duration, fallback ports.RateLimitFallback, failClosed bool) {
+	t.Helper()
+	rule, ok := cfg.Rules[limitType]
+	if !ok {
+		t.Fatalf("rate limit rule %s missing", limitType)
+	}
+	if rule.Limit != limit || rule.Window != window || rule.Fallback != fallback || rule.FailClosed != failClosed {
+		t.Fatalf("rate limit rule %s = %#v, want limit=%d window=%s fallback=%s failClosed=%t", limitType, rule, limit, window, fallback, failClosed)
+	}
+}
+
 func validRequiredConfigValues() map[string]string {
 	return map[string]string{
 		"ZHICORE_CONTENT_POSTGRES_DSN":          "postgres://content:secret@127.0.0.1:5432/content",
 		"ZHICORE_CONTENT_MONGO_URI":             "mongodb://content:secret@127.0.0.1:27017",
+		"ZHICORE_CONTENT_REDIS_ADDR":            "127.0.0.1:6379",
 		"ZHICORE_CONTENT_RABBITMQ_URL":          "amqp://content:secret@127.0.0.1:5672/",
 		"ZHICORE_CONTENT_USER_SERVICE_BASE_URL": "http://127.0.0.1:18081",
 		"ZHICORE_CONTENT_FILE_SERVICE_BASE_URL": "http://127.0.0.1:18082",

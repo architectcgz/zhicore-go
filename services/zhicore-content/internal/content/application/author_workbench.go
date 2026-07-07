@@ -173,6 +173,9 @@ func (s *Service) UpdateDraftMeta(ctx context.Context, cmd UpdateDraftMetaComman
 	if cmd.TopicID != nil || cmd.CategoryID != nil || cmd.Tags != nil {
 		return DraftMutationResult{}, ErrInvalidArgument
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeDraftWrite, cmd.Actor, cmd.PostID, "update_draft_meta")); err != nil {
+		return DraftMutationResult{}, err
+	}
 	current, err := s.loadPostForDraftWrite(ctx, cmd.PostID)
 	if err != nil {
 		return DraftMutationResult{}, err
@@ -242,6 +245,9 @@ func (s *Service) UpdateDraftMeta(ctx context.Context, cmd UpdateDraftMetaComman
 func (s *Service) DeleteAuthorDraft(ctx context.Context, cmd DeleteAuthorDraftCommand) (DraftMutationResult, error) {
 	if cmd.Actor == nil || cmd.Actor.UserID == 0 {
 		return DraftMutationResult{}, ErrLoginRequired
+	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeDraftWrite, cmd.Actor, cmd.PostID, "delete_draft")); err != nil {
+		return DraftMutationResult{}, err
 	}
 
 	now := s.clock.Now()

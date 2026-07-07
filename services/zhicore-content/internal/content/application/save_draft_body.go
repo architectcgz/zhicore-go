@@ -13,6 +13,9 @@ func (s *Service) SaveDraftBody(ctx context.Context, cmd SaveDraftBodyCommand) (
 	if cmd.Actor == nil || cmd.Actor.UserID == 0 {
 		return SaveDraftBodyResult{}, ErrLoginRequired
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeDraftWrite, cmd.Actor, cmd.PostID, "save_draft_body")); err != nil {
+		return SaveDraftBodyResult{}, err
+	}
 
 	current, err := s.loadPostForDraftWrite(ctx, cmd.PostID)
 	if err != nil {

@@ -47,6 +47,13 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		return openedContentRuntime{}, fmt.Errorf("ping mongo dependency: %w", err)
 	}
 
+	rateLimitDependency, err := contentruntime.OpenRedisRateLimitDependency(ctx, cfg.Redis, cfg.RateLimit)
+	if err != nil {
+		closeNamedClosers(closers)
+		return openedContentRuntime{}, fmt.Errorf("open redis rate limit dependency: %w", err)
+	}
+	closers = append(closers, namedCloser{name: "redis rate limit", closer: rateLimitDependency.Closer})
+
 	rabbitConn, err := amqp.Dial(cfg.RabbitMQ.URL)
 	if err != nil {
 		closeNamedClosers(closers)
@@ -80,11 +87,14 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 			Lifecycle: readiness,
 			Postgres:  postgresPingChecker{db: postgresDB},
 			Mongo:     mongoPingChecker{client: mongoClient},
+			Redis:     rateLimitDependency.Health,
 			RabbitMQ:  rabbitmq,
 		},
 		Parser:            contentruntime.NewDefaultBodyParser(),
 		Outbox:            contentruntime.NewPostgresOutboxPublisher(postgresDB),
 		IntegrationEvents: contentruntime.NewRabbitMQIntegrationEventPublisher(rabbitChannel, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.PublishConfirmTimeout),
+		RateLimiter:       rateLimitDependency.Limiter,
+		Observer:          contentruntime.NewNoopObserver(),
 		Clock:             systemClock{},
 		Users:             contentruntime.NewUserProfileClient(cfg.UserService.BaseURL, cfg.HTTP.ReadTimeout),
 		Files:             contentruntime.NewFileResourceClient(cfg.FileService.BaseURL, cfg.HTTP.ReadTimeout, 2),

@@ -38,6 +38,7 @@ type HealthCheckers struct {
 	Lifecycle HealthChecker
 	Postgres  HealthChecker
 	Mongo     HealthChecker
+	Redis     HealthChecker
 	RabbitMQ  HealthChecker
 }
 
@@ -50,6 +51,8 @@ type Deps struct {
 	Parser            ports.BodyParserRegistry
 	Outbox            ports.OutboxPublisher
 	IntegrationEvents ports.IntegrationEventPublisher
+	RateLimiter       ports.RateLimiter
+	Observer          ports.ContentObserver
 	Clock             ports.Clock
 	Users             ports.UserProfileClient
 	Files             ports.FileResourceClient
@@ -77,6 +80,7 @@ type HealthDetails struct {
 	Service    string             `json:"service"`
 	Postgres   string             `json:"postgres"`
 	Mongo      string             `json:"mongo"`
+	Redis      string             `json:"redis"`
 	BodyParser string             `json:"bodyParser"`
 	Workers    []WorkerDescriptor `json:"workers"`
 }
@@ -104,6 +108,8 @@ func Build(deps Deps) (*Module, error) {
 		Files:   deps.Files,
 		Tx:      contentpostgres.NewTransactionRunner(deps.PostgresDB),
 		Parser:  deps.Parser,
+		Limiter: deps.RateLimiter,
+		Observe: deps.Observer,
 		Clock:   deps.Clock,
 	})
 
@@ -112,6 +118,7 @@ func Build(deps Deps) (*Module, error) {
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
 		Mongo:      "configured",
+		Redis:      "configured",
 		BodyParser: "v1",
 		Workers:    workers,
 	}
@@ -142,6 +149,9 @@ func validateDeps(deps Deps) error {
 	if deps.Health.Mongo == nil {
 		return fmt.Errorf("content runtime Mongo health checker dependency is required")
 	}
+	if deps.Health.Redis == nil {
+		return fmt.Errorf("content runtime Redis health checker dependency is required")
+	}
 	if deps.Health.RabbitMQ == nil {
 		return fmt.Errorf("content runtime RabbitMQ health checker dependency is required")
 	}
@@ -150,6 +160,12 @@ func validateDeps(deps Deps) error {
 	}
 	if deps.Outbox == nil {
 		return fmt.Errorf("content runtime Outbox dependency is required")
+	}
+	if deps.RateLimiter == nil {
+		return fmt.Errorf("content runtime RateLimiter dependency is required")
+	}
+	if deps.Observer == nil {
+		return fmt.Errorf("content runtime Observer dependency is required")
 	}
 	if deps.Config.Workers.OutboxEnabled && deps.IntegrationEvents == nil {
 		return fmt.Errorf("content runtime IntegrationEvents dependency is required when outbox worker is enabled")
@@ -343,6 +359,9 @@ func readinessFailures(ctx context.Context, checks HealthCheckers, workers []Wor
 	}
 	if checkFailed(ctx, checks.Mongo) {
 		failures = append(failures, "mongo unavailable")
+	}
+	if checkFailed(ctx, checks.Redis) {
+		failures = append(failures, "redis unavailable")
 	}
 	if checkFailed(ctx, checks.RabbitMQ) {
 		failures = append(failures, "rabbitmq unavailable")

@@ -13,6 +13,9 @@ func (s *Service) PublishPost(ctx context.Context, cmd PublishPostCommand) (Publ
 	if cmd.Actor == nil || cmd.Actor.UserID == 0 {
 		return PublishPostResult{}, ErrLoginRequired
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypePublishLifecycle, cmd.Actor, cmd.PostID, "publish_post")); err != nil {
+		return PublishPostResult{}, err
+	}
 
 	current, err := s.loadPostForDraftWrite(ctx, cmd.PostID)
 	if err != nil {

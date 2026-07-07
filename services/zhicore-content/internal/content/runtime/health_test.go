@@ -12,10 +12,11 @@ import (
 func TestHealthReadinessChecksRequiredDependencies(t *testing.T) {
 	postgres := &recordingHealthChecker{name: "postgres"}
 	mongo := &recordingHealthChecker{name: "mongo"}
+	redis := &recordingHealthChecker{name: "redis"}
 	rabbitmq := &recordingHealthChecker{name: "rabbitmq"}
 	worker := &recordingHealthChecker{name: "worker"}
 	deps := validDeps(t)
-	deps.Health = HealthCheckers{Postgres: postgres, Mongo: mongo, RabbitMQ: rabbitmq}
+	deps.Health = HealthCheckers{Postgres: postgres, Mongo: mongo, Redis: redis, RabbitMQ: rabbitmq}
 	deps.Workers = []WorkerDescriptor{{Name: "content-outbox-dispatcher", Enabled: true, Checker: worker}}
 
 	module, err := Build(deps)
@@ -28,8 +29,8 @@ func TestHealthReadinessChecksRequiredDependencies(t *testing.T) {
 	if live.Code != http.StatusOK {
 		t.Fatalf("/health/live status = %d, want 200", live.Code)
 	}
-	if postgres.calls != 0 || mongo.calls != 0 || rabbitmq.calls != 0 || worker.calls != 0 {
-		t.Fatalf("live health called dependencies: postgres=%d mongo=%d rabbitmq=%d worker=%d", postgres.calls, mongo.calls, rabbitmq.calls, worker.calls)
+	if postgres.calls != 0 || mongo.calls != 0 || redis.calls != 0 || rabbitmq.calls != 0 || worker.calls != 0 {
+		t.Fatalf("live health called dependencies: postgres=%d mongo=%d redis=%d rabbitmq=%d worker=%d", postgres.calls, mongo.calls, redis.calls, rabbitmq.calls, worker.calls)
 	}
 
 	ready := httptest.NewRecorder()
@@ -37,8 +38,8 @@ func TestHealthReadinessChecksRequiredDependencies(t *testing.T) {
 	if ready.Code != http.StatusOK {
 		t.Fatalf("/health/ready status = %d body = %s, want 200", ready.Code, ready.Body.String())
 	}
-	if postgres.calls != 1 || mongo.calls != 1 || rabbitmq.calls != 1 || worker.calls != 1 {
-		t.Fatalf("ready health calls = postgres=%d mongo=%d rabbitmq=%d worker=%d, want all once", postgres.calls, mongo.calls, rabbitmq.calls, worker.calls)
+	if postgres.calls != 1 || mongo.calls != 1 || redis.calls != 1 || rabbitmq.calls != 1 || worker.calls != 1 {
+		t.Fatalf("ready health calls = postgres=%d mongo=%d redis=%d rabbitmq=%d worker=%d, want all once", postgres.calls, mongo.calls, redis.calls, rabbitmq.calls, worker.calls)
 	}
 }
 
@@ -68,6 +69,13 @@ func TestHealthReadinessReturnsUnavailableForDependencyFailure(t *testing.T) {
 				deps.Health.Mongo = failingCheck("mongo", "mongodb://content:secret@mongo.internal:27017")
 			},
 			want: "mongo",
+		},
+		{
+			name: "redis",
+			mutate: func(deps *Deps) {
+				deps.Health.Redis = failingCheck("redis", "redis://:secret@redis.internal:6379/0")
+			},
+			want: "redis",
 		},
 		{
 			name: "rabbitmq",

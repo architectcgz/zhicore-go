@@ -1,6 +1,10 @@
 package main
 
-import "time"
+import (
+	"time"
+
+	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
+)
 
 func DefaultContentServerConfig() ContentServerConfig {
 	return ContentServerConfig{
@@ -18,9 +22,11 @@ func DefaultContentServerConfig() ContentServerConfig {
 			Database:       "zhicore_content",
 			BodyCollection: "post_bodies",
 		},
+		Redis: contentruntime.DefaultRedisConfig(),
 		RabbitMQ: ContentRabbitMQConfig{
 			Exchange:              "zhicore.events",
 			PublishConfirmTimeout: 3 * time.Second,
 		},
+		RateLimit: contentruntime.DefaultRateLimitConfig(),
 	}
 }

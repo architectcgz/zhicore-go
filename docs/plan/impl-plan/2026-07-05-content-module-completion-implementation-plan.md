@@ -625,29 +625,34 @@
 
 **测试立场：** TDD - 高副作用写路径 fail-closed、降级语义、metrics/log 字段和 policy owner 属于 R4。
 
-- [ ] **步骤 1：定义 rate limiter port 和 outcome**
+- [x] **步骤 1：定义 rate limiter port 和 outcome**
 
   Outcome 至少覆盖 `ALLOW`、`REJECT_TOO_FREQUENT`、`DEGRADED_ALLOW_LOCAL`、`DEGRADED_DENY_UNAVAILABLE`、`NOOP_SUCCESS`。
 
 - [ ] **步骤 2：补 application 限流测试**
 
   覆盖草稿保存、发布、互动写、presence、admin retry 和内部 body read 的 fail-open / fail-closed / no-op 分支。
+  已完成本轮 review fix 的 runtime 接线覆盖：`Build` 缺少 `RateLimiter` / `ContentObserver` 会失败，公开读路径会调用 limiter 并上报 observer。互动、presence、内部 body read 和 no-op 分支仍待后续 API 切片补齐。
 
-- [ ] **步骤 3：实现 Redis rate limit adapter**
+- [x] **步骤 3：实现 Redis rate limit adapter**
 
   Redis adapter 只返回 typed outcome；application 选择业务降级，不由 adapter 构造 HTTP response。
+  已完成：Redis fixed-window adapter 落在 `internal/content/infrastructure/redis`，runtime 只负责创建 Redis client、ping、health checker 和规则配置映射。
 
 - [ ] **步骤 4：接入 runtime resilience policy**
 
   为 postgres、mongo、redis、user-service、file-service、rabbitmq 的 provider + operation 固定 timeout、retry、breaker key、max-in-flight 配置和默认值。
+  已完成本轮 review fix 的子集：`redis.rate_limit.check` 由 Redis 配置驱动并进入 readiness；其他 provider 的 retry、breaker 和 max-in-flight 仍未落地。
 
 - [ ] **步骤 5：补观测测试或结构检查**
 
   覆盖关键日志字段、operation 名称、错误脱敏和 worker result counters。若 metrics kit 尚未存在，先以明确接口和测试 fake 固定调用点，不引入无 owner 的全局 metrics helper。
+  已完成本轮 review fix 的子集：`ContentObserver` 端口和 runtime/application 接线已由测试 fake 固定；真实 metrics/log 字段和 worker counters 仍未落地。
 
-- [ ] **步骤 6：更新 docs 和 configs**
+- [x] **步骤 6：更新 docs 和 configs**
 
   同步 `runtime-resilience.md`、`rate-limiting.md` 或服务 README 中“已落地 / 待落地”状态，避免设计文档宣称代码已实现。
+  已完成：`configs/local.example.env` 补 Redis 与 7 类限流示例，`rate-limiting.md` 只声明本轮已落地的 `limit/window/fallback/failClosed`、Redis fixed-window 和 noop observer 接线。
 
 - [ ] **步骤 7：提交限流和 resilience 切片**
 

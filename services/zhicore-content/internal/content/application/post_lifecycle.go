@@ -56,6 +56,9 @@ func (s *Service) mutatePostLifecycle(ctx context.Context, cmd PostLifecycleComm
 	if cmd.Actor == nil || cmd.Actor.UserID == 0 {
 		return PostLifecycleResult{}, ErrLoginRequired
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypePublishLifecycle, cmd.Actor, cmd.PostID, "post_lifecycle")); err != nil {
+		return PostLifecycleResult{}, err
+	}
 
 	current, err := s.loadPostForDraftWrite(ctx, cmd.PostID)
 	if err != nil {

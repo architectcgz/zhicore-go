@@ -17,6 +17,9 @@ func (s *Service) SchedulePost(ctx context.Context, cmd SchedulePostCommand) (Sc
 	if !cmd.ScheduledAt.After(now) {
 		return SchedulePostResult{}, ErrInvalidArgument
 	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypePublishLifecycle, cmd.Actor, cmd.PostID, "schedule_post")); err != nil {
+		return SchedulePostResult{}, err
+	}
 
 	current, err := s.loadPostForDraftWrite(ctx, cmd.PostID)
 	if err != nil {

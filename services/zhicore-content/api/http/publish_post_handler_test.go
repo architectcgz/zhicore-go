@@ -49,6 +49,7 @@ func TestPublishPostMapsBusinessErrors(t *testing.T) {
 		{name: "duplicate publish", err: domain.ErrPostAlreadyPublished, wantStatus: http.StatusConflict, wantCode: 4002},
 		{name: "media reference invalid", err: application.ErrMediaRefInvalid, wantStatus: http.StatusBadRequest, wantCode: 4021},
 		{name: "cover unavailable", err: application.ErrCoverUnavailable, wantStatus: http.StatusBadRequest, wantCode: 4023},
+		{name: "rate limited", err: application.ErrRateLimited, wantStatus: http.StatusTooManyRequests, wantCode: 1003},
 		{name: "dependency unavailable", err: application.ErrDependencyUnavailable, wantStatus: http.StatusServiceUnavailable, wantCode: 1004},
 	}
 

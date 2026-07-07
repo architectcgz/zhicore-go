@@ -11,6 +11,7 @@ var (
 	ErrLoginRequired             = errors.New("login required")
 	ErrInvalidArgument           = errors.New("invalid argument")
 	ErrDependencyUnavailable     = errors.New("dependency unavailable")
+	ErrRateLimited               = errors.New("rate limited")
 	ErrRoleRequired              = errors.New("role required")
 	ErrBodySchemaUnsupported     = errors.New("body schema unsupported")
 	ErrTaxonomyReferenceNotFound = ports.ErrTaxonomyReferenceNotFound
@@ -57,6 +58,8 @@ type Service struct {
 	files   ports.FileResourceClient
 	tx      ports.TransactionRunner
 	parser  ports.BodyParserRegistry
+	limiter ports.RateLimiter
+	observe ports.ContentObserver
 	clock   ports.Clock
 }
 
@@ -72,6 +75,8 @@ type Deps struct {
 	Files   ports.FileResourceClient
 	Tx      ports.TransactionRunner
 	Parser  ports.BodyParserRegistry
+	Limiter ports.RateLimiter
+	Observe ports.ContentObserver
 	Clock   ports.Clock
 }
 
@@ -88,6 +93,8 @@ func NewService(deps Deps) *Service {
 		files:   deps.Files,
 		tx:      deps.Tx,
 		parser:  deps.Parser,
+		limiter: deps.Limiter,
+		observe: deps.Observe,
 		clock:   deps.Clock,
 	}
 }

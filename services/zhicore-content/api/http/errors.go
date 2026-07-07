@@ -61,6 +61,8 @@ func errorMapping(err error, operation errorOperation) (int, int, string, []shar
 		return http.StatusBadRequest, 4023, "Cover unavailable", nil
 	case errors.Is(err, application.ErrDependencyUnavailable):
 		return http.StatusServiceUnavailable, 1004, "Service unavailable", nil
+	case errors.Is(err, application.ErrRateLimited):
+		return http.StatusTooManyRequests, 1003, "Request too frequent", nil
 	case errors.Is(err, application.ErrRoleRequired):
 		return http.StatusForbidden, 2007, "Role required", nil
 	case errors.Is(err, application.ErrBodySchemaUnsupported):

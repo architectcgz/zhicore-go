@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
 
 type ContentServerConfig struct {
@@ -12,10 +14,12 @@ type ContentServerConfig struct {
 	HTTP        ContentHTTPConfig
 	Postgres    ContentPostgresConfig
 	Mongo       ContentMongoConfig
+	Redis       contentruntime.RedisConfig
 	RabbitMQ    ContentRabbitMQConfig
 	UserService ContentDependencyConfig
 	FileService ContentDependencyConfig
 	Workers     ContentWorkersConfig
+	RateLimit   contentruntime.RateLimitConfig
 }
 
 type ContentHTTPConfig struct {
@@ -93,7 +97,7 @@ func (c ContentDependencyConfig) GoString() string {
 
 func (c ContentServerConfig) RedactedSummary() string {
 	return fmt.Sprintf(
-		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t",
+		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s redis.addr=%s redis.db=%d redis.dialTimeout=%s redis.readTimeout=%s redis.writeTimeout=%s redis.poolSize=%d rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t",
 		c.ServiceName,
 		c.HTTP.Addr,
 		c.HTTP.ReadHeaderTimeout,
@@ -106,6 +110,12 @@ func (c ContentServerConfig) RedactedSummary() string {
 		redactedURLSummary(c.Mongo.URI),
 		c.Mongo.Database,
 		c.Mongo.BodyCollection,
+		c.Redis.Addr,
+		c.Redis.DB,
+		c.Redis.DialTimeout,
+		c.Redis.ReadTimeout,
+		c.Redis.WriteTimeout,
+		c.Redis.PoolSize,
 		redactedURLSummary(c.RabbitMQ.URL),
 		c.RabbitMQ.Exchange,
 		c.RabbitMQ.PublishConfirmTimeout,

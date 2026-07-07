@@ -25,6 +25,7 @@ func TestContentServerConfigExposesRedactedSummary(t *testing.T) {
 		"user.internal:18081",
 		"file.internal:18082",
 		"mongo.local:27017",
+		"redis.local:6379",
 		"mq.local:5672",
 		"zhicore_content",
 		"post_bodies",
@@ -52,6 +53,9 @@ func TestContentServerConfigFormattingIsRedacted(t *testing.T) {
 		fmt.Sprint(cfg.Mongo),
 		fmt.Sprintf("%+v", cfg.Mongo),
 		fmt.Sprintf("%#v", cfg.Mongo),
+		fmt.Sprint(cfg.Redis),
+		fmt.Sprintf("%+v", cfg.Redis),
+		fmt.Sprintf("%#v", cfg.Redis),
 		fmt.Sprint(cfg.RabbitMQ),
 		fmt.Sprintf("%+v", cfg.RabbitMQ),
 		fmt.Sprintf("%#v", cfg.RabbitMQ),
@@ -72,6 +76,8 @@ func sensitiveConfigValues() map[string]string {
 	return map[string]string{
 		"ZHICORE_CONTENT_POSTGRES_DSN":             "postgres://content:secret@127.0.0.1:5432/content",
 		"ZHICORE_CONTENT_MONGO_URI":                "mongodb://content:secret@mongo.local:27017",
+		"ZHICORE_CONTENT_REDIS_ADDR":               "redis.local:6379",
+		"ZHICORE_CONTENT_REDIS_PASSWORD":           "redis-secret",
 		"ZHICORE_CONTENT_RABBITMQ_URL":             "amqp://content:secret@mq.local:5672/",
 		"ZHICORE_CONTENT_USER_SERVICE_BASE_URL":    "https://user:secret@user.internal:18081/base",
 		"ZHICORE_CONTENT_FILE_SERVICE_BASE_URL":    "http://file:secret@file.internal:18082/api",
@@ -91,6 +97,7 @@ func assertNoSensitiveConfigLeak(t *testing.T, rendered string) {
 
 	for _, forbidden := range []string{
 		"secret",
+		"redis-secret",
 		"postgres://content:secret@127.0.0.1:5432/content",
 		"mongodb://content:secret@mongo.local:27017",
 		"amqp://content:secret@mq.local:5672/",

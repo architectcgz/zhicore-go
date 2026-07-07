@@ -73,6 +73,9 @@ func (s *Service) ListAdminOutboxEvents(ctx context.Context, query ListAdminOutb
 		return ListAdminOutboxEventsResult{}, err
 	}
 	page, size := normalizeAdminOutboxPage(query.Page, query.Size)
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeAdminCommand, query.Actor, "outbox_events", "list_admin_outbox_events")); err != nil {
+		return ListAdminOutboxEventsResult{}, err
+	}
 	result, err := s.admin.ListOutboxEvents(ctx, ports.OutboxEventQuery{
 		Status:    status,
 		EventType: strings.TrimSpace(query.EventType),
@@ -117,6 +120,9 @@ func (s *Service) RetryAdminOutboxEvent(ctx context.Context, command RetryAdminO
 	reason := strings.TrimSpace(command.Reason)
 	if eventID == "" || reason == "" {
 		return RetryAdminOutboxEventResult{}, ErrInvalidArgument
+	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeAdminCommand, command.Actor, eventID, "retry_admin_outbox_event")); err != nil {
+		return RetryAdminOutboxEventResult{}, err
 	}
 	result, err := s.admin.RetryOutboxEvent(ctx, ports.OutboxRetryCommand{
 		EventID:     eventID,
