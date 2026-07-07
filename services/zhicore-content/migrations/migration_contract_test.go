@@ -132,6 +132,37 @@ func TestContentTaxonomyMigrationContract(t *testing.T) {
 	}
 }
 
+func TestContentEngagementMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_content_engagement", ".up.sql")
+	down := readNamedMigration(t, "add_content_engagement", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE post_likes",
+		"post_id BIGINT NOT NULL REFERENCES posts (id)",
+		"user_id BIGINT NOT NULL",
+		"UNIQUE (post_id, user_id)",
+		"CREATE INDEX ix_post_likes_user_post",
+		"CREATE TABLE post_favorites",
+		"CREATE UNIQUE INDEX ux_post_favorites_post_user",
+		"CREATE INDEX ix_post_favorites_user_post",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("engagement up migration missing %q", fragment)
+		}
+	}
+
+	for _, fragment := range []string{
+		"DROP TABLE IF EXISTS post_favorites",
+		"DROP TABLE IF EXISTS post_likes",
+	} {
+		if !strings.Contains(down, fragment) {
+			t.Fatalf("engagement down migration missing %q", fragment)
+		}
+	}
+}
+
 func readContentPublishCoreMigration(t *testing.T, suffix string) string {
 	return readNamedMigration(t, "create_content_publish_core", suffix)
 }
