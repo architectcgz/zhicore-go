@@ -10,11 +10,41 @@ func TestInternalHTTPContractPaths(t *testing.T) {
 		"availability": BatchAvailabilityPath,
 		"simple":       BatchSimplePath,
 		"blocked":      BatchCheckBlockedPath,
+		"followers":    ListFollowerShardPath,
 	}
 	for name, path := range tests {
 		if path == "" || path[0] != '/' {
 			t.Fatalf("%s path = %q, want absolute path", name, path)
 		}
+	}
+}
+
+func TestListFollowerShardContractJSONShape(t *testing.T) {
+	payload, err := json.Marshal(ListFollowerShardRequest{
+		FollowingID:   77,
+		AudienceClass: "HOT",
+		ActiveSince:   "2026-07-01T00:00:00Z",
+		Cursor:        "42",
+		Limit:         200,
+	})
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if string(payload) != `{"followingId":77,"audienceClass":"HOT","activeSince":"2026-07-01T00:00:00Z","cursor":"42","limit":200}` {
+		t.Fatalf("payload = %s", payload)
+	}
+
+	response, err := json.Marshal(ListFollowerShardResponse{
+		FollowerIDs: []int64{101, 99},
+		NextCursor:  "99",
+		HasMore:     true,
+	})
+	if err != nil {
+		t.Fatalf("Marshal(response) error = %v", err)
+	}
+	want := `{"followerIds":[101,99],"nextCursor":"99","hasMore":true}`
+	if string(response) != want {
+		t.Fatalf("response = %s, want %s", response, want)
 	}
 }
 

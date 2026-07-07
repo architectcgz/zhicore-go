@@ -1,26 +1,6 @@
 package application
 
-import (
-	"time"
-)
-
-type CreateCommentCommand struct {
-	ActorUserID     UserID
-	PostID          PostID
-	ParentCommentID PublicCommentID
-	Content         string
-	ImageFileIDs    []string
-	VoiceFileID     string
-	VoiceDuration   int
-}
-
-type CreateCommentResult struct {
-	PostID          PostID
-	CommentID       PublicCommentID
-	RootCommentID   PublicCommentID
-	ParentCommentID PublicCommentID
-	CreatedAt       time.Time
-}
+import "time"
 
 type ListTopLevelCommentsQuery struct {
 	PostID       PostID
@@ -43,57 +23,6 @@ type ListRepliesByPageQuery struct {
 	Page          int
 	Size          int
 	Sort          CommentSort
-}
-
-type DeleteCommentCommand struct {
-	ActorUserID UserID
-	PostID      PostID
-	CommentID   PublicCommentID
-}
-
-type AdminDeleteCommentCommand struct {
-	ActorUserID UserID
-	PostID      PostID
-	CommentID   PublicCommentID
-	Reason      string
-}
-
-type DeleteCommentResult struct {
-	PostID         PostID
-	CommentID      PublicCommentID
-	RootCommentID  PublicCommentID
-	DeletedAt      time.Time
-	DeletedByRole  DeletedByRole
-	AffectedCount  int
-	AlreadyDeleted bool
-}
-
-type LikeCommentCommand struct {
-	ActorUserID UserID
-	PostID      PostID
-	CommentID   PublicCommentID
-}
-
-type UnlikeCommentCommand = LikeCommentCommand
-
-type LikeCommentResult struct {
-	PostID     PostID
-	CommentID  PublicCommentID
-	Liked      bool
-	Changed    bool
-	OccurredAt time.Time
-}
-
-type GetLikeStatusQuery struct {
-	PostID       PostID
-	CommentID    PublicCommentID
-	ViewerUserID UserID
-}
-
-type LikeStatusResult struct {
-	PostID    PostID
-	CommentID PublicCommentID
-	Liked     bool
 }
 
 type TopLevelCommentPage struct {

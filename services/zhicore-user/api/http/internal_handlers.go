@@ -93,3 +93,35 @@ func (h *Handler) batchCheckBlocked(c *gin.Context) {
 	}
 	sharedhttp.WriteSuccess(c.Writer, resp)
 }
+
+func (h *Handler) listFollowerShard(c *gin.Context) {
+	if err := requireInternalCaller(c, usercontract.OperationNotificationListFollowerShard); err != nil {
+		writeMappedError(c, err)
+		return
+	}
+	var req usercontract.ListFollowerShardRequest
+	if err := decodeJSONBody(c, &req); err != nil {
+		writeValidationError(c)
+		return
+	}
+	page, err := h.service.ListFollowerShard(c.Request.Context(), application.ListFollowerShardQuery{
+		FollowingID:   application.UserID(req.FollowingID),
+		AudienceClass: req.AudienceClass,
+		ActiveSince:   req.ActiveSince,
+		Cursor:        req.Cursor,
+		Limit:         req.Limit,
+	})
+	if err != nil {
+		writeMappedError(c, err)
+		return
+	}
+	resp := usercontract.ListFollowerShardResponse{
+		FollowerIDs: make([]int64, 0, len(page.FollowerIDs)),
+		NextCursor:  page.NextCursor,
+		HasMore:     page.HasMore,
+	}
+	for _, followerID := range page.FollowerIDs {
+		resp.FollowerIDs = append(resp.FollowerIDs, int64(followerID))
+	}
+	sharedhttp.WriteSuccess(c.Writer, resp)
+}

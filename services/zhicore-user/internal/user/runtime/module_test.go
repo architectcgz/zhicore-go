@@ -113,6 +113,10 @@ func (s stubService) BatchCheckBlocked(context.Context, []application.UserPair) 
 	return map[application.UserPair]bool{}, nil
 }
 
+func (s stubService) ListFollowerShard(context.Context, application.ListFollowerShardQuery) (application.FollowerShardPage, error) {
+	return application.FollowerShardPage{}, nil
+}
+
 func testProfile() application.Profile {
 	profile, err := application.NewProfile(application.ProfileSeed{
 		UserID:                 42,

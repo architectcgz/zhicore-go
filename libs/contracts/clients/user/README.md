@@ -2,7 +2,7 @@
 
 本目录放 `zhicore-user` 作为 provider 拥有的同步 typed client contract。
 
-当前状态：已提供第一批 Go contract 常量和 DTO，用于内部 HTTP path、caller operation、批量用户摘要、可用性和拉黑关系检查。HTTP adapter 仍由 consumer 服务实现，User provider 后续注册 internal route 时必须复用本目录的 path / DTO。
+当前状态：已提供第一批 Go contract 常量和 DTO，用于内部 HTTP path、caller operation、批量用户摘要、可用性、拉黑关系检查和 Notification 活跃粉丝分片。HTTP adapter 仍由 consumer 服务实现，User provider 后续注册 internal route 时必须复用本目录的 path / DTO。
 
 ## 使用场景
 
@@ -11,7 +11,7 @@
 - Comment 写路径校验作者 availability 和拉黑关系。
 - Comment 查询路径批量获取作者摘要。
 - Message 查询拉黑、关注和陌生人私信设置。
-- Notification fanout 查询粉丝分片。
+- Notification fanout 查询活跃粉丝分片。
 - Content 刷新或展示作者快照时获取 User 摘要。
 
 ## Caller Identity
@@ -48,6 +48,15 @@ type Client interface {
 
 ## DTO 规则
 
+内部 HTTP path：
+
+| 能力 | Path | Caller operation |
+| --- | --- | --- |
+| 批量用户可用性 | `/api/v1/internal/users/batch-availability` | `comment.check_user_availability` |
+| 批量用户摘要 | `/api/v1/internal/users/batch-simple` | `comment.batch_get_author_summaries` |
+| 批量拉黑关系检查 | `/api/v1/internal/users/blocks/batch-check` | `comment.batch_check_blocked` |
+| 活跃粉丝分片 | `/api/v1/internal/users/follower-shard` | `notification.list_follower_shard` |
+
 `BatchGetUserSimple` 入参使用内部 `userId`。返回 DTO 至少包含：
 
 | 字段 | 类型 | 说明 |
@@ -63,6 +72,20 @@ type Client interface {
 需要稳定展示 URL 的前端聚合接口应由 owning service 调 Upload/File Service 批量解析；`avatarUrl` 只能作为 provider 已解析时的可选快照字段。
 
 批量查询中缺失用户不让整体失败，结果省略缺失项并返回 `missingUserIds`。
+
+`ListFollowerShard` 入参使用内部 `followingId`、`audienceClass`、可选 `activeSince`、内部 cursor 和 `limit`；返回 `followerIds`、`nextCursor`、`hasMore`。该 contract 服务 Notification fanout，只返回 follower ID 分片，不返回 profile 摘要、头像或公开 `publicId`，避免高 fanout 路径放大 User profile 查询。
+
+受众分层语义由 User provider 拥有，Notification 只声明本次 fanout 需要的 audience：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `followingId` | int64 | 被关注者 / 作者的 User 内部 ID。 |
+| `audienceClass` | string | `HOT`、`WARM`、`COLD`、`ALL`；发文通知第一阶段只使用 `HOT`。 |
+| `activeSince` | time/null | 活跃窗口下界；User 可按最近登录、打开 App、互动或 User 拥有的活跃读模型解释。 |
+| `cursor` | string | User 内部 cursor，不复用前端 cursor。 |
+| `limit` | int | 每页数量，必须有 provider 上限。 |
+
+`HOT` 表示可以立即物化到 Notification inbox 的活跃粉丝。`WARM` 可用于后续摘要或延迟 fanout，`COLD` 默认不在发文时物化收件箱。`ALL` 只允许受控 backfill、repair 或管理任务使用，不得作为普通发文 fanout 的默认值。User degraded、cursor 非法、caller 超配额或活跃读模型不可用时必须返回明确错误；provider 不能用空 shard 伪装成功，也不能从 `HOT` 静默 fallback 到 `ALL`。
 
 ## 错误语义
 
@@ -86,7 +109,7 @@ type Client interface {
 - 查询类调用可以在配置内重试；`CreateProfileForAccount`、`DeactivateUserProfile` 等写路径只允许依靠 `accountId`、状态条件、唯一约束或明确幂等键收敛，不做盲重试。
 - typed client adapter 不得伪造 `UserSimple`、availability、blocked、following 或 stranger message setting 作为降级结果；降级选择由 consumer application 决定。
 - 写路径 guard 调用 User degraded 时必须 fail closed。Comment、Message 等 consumer 不得把 `SERVICE_DEGRADED` 当成“用户可用”“未拉黑”或“允许陌生人消息”。
-- Notification fanout 的 `ListFollowerShard` degraded 时应 retry / DLQ；不能把空 shard 当成 fanout 成功。
+- Notification fanout 的 `ListFollowerShard` degraded 时应 retry / DLQ；不能把空 shard 当成 fanout 成功，也不能自动改查 `ALL` 粉丝。
 
 ## 约束
 

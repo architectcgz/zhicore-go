@@ -23,7 +23,7 @@
 | `postgres` | `user.command_tx` | profile 初始化、资料更新、状态变更、Admin 删除 / 恢复 | `1s..3s` | 不在事务外盲重试；仅依靠 `accountId`、`nickname`、状态条件和 outbox 唯一键处理幂等 | `postgres.user.command_tx` | 按 DB pool 和写路径并发配置保护 | `fail-fast` -> 业务错误或 `SERVICE_DEGRADED` | 事务内更新 users 和 outbox；失败不能承诺成功。 |
 | `postgres` | `user.query` | `GetMe`、公开 profile、UserSimple、availability、Admin 查询 | `1s..3s` | 对连接抖动最多 2 次总尝试 | `postgres.user.query` | 按查询族限制，保护公开 profile 热点 | DB 失败返回 `SERVICE_DEGRADED`；不得伪装成 404 / 空列表 | 缺失用户和依赖失败必须区分。 |
 | `postgres` | `relationship.command_tx` | follow、unfollow、block、unblock、统计同步 | `1s..3s` | 不盲重试；依靠唯一约束和幂等删除处理重复请求 | `postgres.relationship.command_tx` | 关系写路径独立限并发 | `fail-fast` -> 业务错误或 `SERVICE_DEGRADED` | 同事务写关系、统计和 outbox。 |
-| `postgres` | `relationship.query` | followers、following、blocked list、blocked pair、follow check、follower shard | `1s..3s` | 对连接抖动最多 2 次总尝试 | `postgres.relationship.query` | 列表和内部 fanout 查询分别限并发 | DB 失败返回 `SERVICE_DEGRADED`；不得伪装成未关注 / 未拉黑 | cursor 查询必须稳定排序。 |
+| `postgres` | `relationship.query` | followers、following、blocked list、blocked pair、follow check、active follower shard | `1s..3s` | 对连接抖动最多 2 次总尝试 | `postgres.relationship.query` | 列表和内部 fanout 查询分别限并发 | DB 失败返回 `SERVICE_DEGRADED`；不得伪装成未关注 / 未拉黑 | cursor 查询必须稳定排序；活跃受众不可用时不能降级成全量粉丝。 |
 | `postgres` | `check_in.command_tx` | 后续签到写入、连续签到统计 | `1s..3s` | 不盲重试；依靠日期唯一键幂等 | `postgres.check_in.command_tx` | check-in 写路径独立限并发 | Redis bitmap 不可用时仍以 PG 为准；PG 失败返回失败 | Check-in 后续实现时补测试。 |
 | `redis` | `rate_limit.check` | User 业务限流 | `100ms..300ms` | 不重试放大延迟；按 `rate-limiting.md` 可短时本机 fallback | `redis.rate_limit.check` | 独立于缓存连接池 | 按 `rate-limiting.md` 决定 `ALLOW` / `1003` / `1004` | 高副作用路径不能 fail-open。 |
 | `redis` | `user.cache` | profile、UserSimple、availability、`publicId -> userId` cache-aside | `100ms..300ms` | 不阻塞主查询重试 | `redis.user.cache` | cache 操作独立限并发 | cache miss / error 后受控回源 DB；写缓存失败 best-effort | cache 不是事实源。 |
@@ -47,7 +47,7 @@ User 作为 provider 的 typed client endpoint 必须区分“业务不存在”
 | `BatchCheckBlocked` | Comment、Message | 任一用户缺失可返回 `blocked=false`；DB 不可用返回 `SERVICE_DEGRADED` | 写路径 guard 在 degraded 时 fail closed，不能当成未拉黑。 |
 | `CheckFollowing` | Message、Notification | 任一用户缺失返回 `false`；DB 不可用返回 `SERVICE_DEGRADED` | Message 可按业务拒绝陌生互动；Notification fanout 应 retry / DLQ 或跳过本次任务。 |
 | `GetStrangerMessageSetting` | Message | 用户不存在或设置缺失返回 `false`；DB 不可用返回 `SERVICE_DEGRADED` | Message 在 degraded 时 fail closed，不允许把不可确认设置当成允许。 |
-| `ListFollowerShard` | Notification | cursor 合法时返回稳定 shard；DB 不可用返回 `SERVICE_DEGRADED` | fanout job retry / DLQ；不能把空 shard 当成 fanout 成功。 |
+| `ListFollowerShard` | Notification | cursor 合法时按 `audienceClass` / `activeSince` 返回稳定 shard；DB、活跃读模型或限流不可用返回 `SERVICE_DEGRADED` | fanout job retry / DLQ；不能把空 shard 当成 fanout 成功，不能从 `HOT` 自动 fallback 到 `ALL`。 |
 
 服务间 endpoint 必须要求可信 `X-Caller-Service` / `X-Caller-Operation`。缺少 caller identity、operation 非白名单或 caller 超配额时，按内部认证 / 限流错误处理，不进入匿名公开查询分支。
 

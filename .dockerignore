@@ -1,0 +1,14 @@
+.git
+.gitignore
+.DS_Store
+**/__pycache__/
+**/.pytest_cache/
+**/.idea/
+**/.vscode/
+**/tmp/
+**/bin/
+**/dist/
+**/coverage/
+**/*.test
+**/*.out
+**/*.log

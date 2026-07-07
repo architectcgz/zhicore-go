@@ -24,6 +24,7 @@ type Service interface {
 	BatchGetUserSimple(ctx context.Context, userIDs []application.UserID) (application.BatchUserSimpleResult, error)
 	BatchGetUserAvailability(ctx context.Context, userIDs []application.UserID) ([]application.UserAvailability, error)
 	BatchCheckBlocked(ctx context.Context, pairs []application.UserPair) (map[application.UserPair]bool, error)
+	ListFollowerShard(ctx context.Context, query application.ListFollowerShardQuery) (application.FollowerShardPage, error)
 }
 
 type AvatarURLResolver interface {
@@ -60,4 +61,5 @@ func (h *Handler) routes() {
 	h.router.POST(usercontract.BatchAvailabilityPath, h.batchAvailability)
 	h.router.POST(usercontract.BatchSimplePath, h.batchSimple)
 	h.router.POST(usercontract.BatchCheckBlockedPath, h.batchCheckBlocked)
+	h.router.POST(usercontract.ListFollowerShardPath, h.listFollowerShard)
 }
