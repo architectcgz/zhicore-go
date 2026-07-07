@@ -566,7 +566,7 @@
   - `GET /api/v1/posts/{postId}/engagement`
   - `POST /api/v1/posts/engagement/batch-status`
 
-- [ ] **步骤 2：实现 engagement application**
+- [x] **步骤 2：实现 engagement application**
 
   点赞 / 收藏幂等；重复请求不重复写 delta / outbox；Redis 不可用时不能把 unknown 伪装成 `false`。
 

@@ -522,6 +522,90 @@ func (f *fakeOutboxPublisher) Append(ctx context.Context, tx ports.Tx, event por
 	return f.err
 }
 
+type fakeEngagementRepository struct {
+	mutateCalls   int
+	mutateTx      ports.Tx
+	mutateInput   ports.EngagementMutationInput
+	mutateResult  ports.EngagementMutationRecord
+	mutateErr     error
+	statsCalls    int
+	statsPostID   string
+	statsResult   ports.PostEngagementRecord
+	statsErr      error
+	statusCalls   int
+	statusUserID  int64
+	statusPostIDs []string
+	statusResult  []ports.EngagementStatusRecord
+	statusErr     error
+}
+
+func (f *fakeEngagementRepository) MutateEngagement(ctx context.Context, tx ports.Tx, input ports.EngagementMutationInput) (ports.EngagementMutationRecord, error) {
+	f.mutateCalls++
+	f.mutateTx = tx
+	f.mutateInput = input
+	if f.mutateErr != nil {
+		return ports.EngagementMutationRecord{}, f.mutateErr
+	}
+	return f.mutateResult, nil
+}
+
+func (f *fakeEngagementRepository) GetPostEngagement(ctx context.Context, postID string) (ports.PostEngagementRecord, error) {
+	f.statsCalls++
+	f.statsPostID = postID
+	if f.statsErr != nil {
+		return ports.PostEngagementRecord{}, f.statsErr
+	}
+	return f.statsResult, nil
+}
+
+func (f *fakeEngagementRepository) BatchGetViewerStatus(ctx context.Context, userID int64, postIDs []string) ([]ports.EngagementStatusRecord, error) {
+	f.statusCalls++
+	f.statusUserID = userID
+	f.statusPostIDs = append([]string(nil), postIDs...)
+	if f.statusErr != nil {
+		return nil, f.statusErr
+	}
+	return append([]ports.EngagementStatusRecord(nil), f.statusResult...), nil
+}
+
+type fakeEngagementCache struct {
+	readCalls    int
+	readUserID   int64
+	readPostIDs  []string
+	readResult   []ports.EngagementStatusRecord
+	readErr      error
+	writeCalls   int
+	writeRecord  ports.EngagementMutationRecord
+	writeErr     error
+	storeCalls   int
+	storeUserID  int64
+	storeRecords []ports.EngagementStatusRecord
+	storeErr     error
+}
+
+func (f *fakeEngagementCache) BatchGetViewerStatus(ctx context.Context, userID int64, postIDs []string) ([]ports.EngagementStatusRecord, error) {
+	f.readCalls++
+	f.readUserID = userID
+	f.readPostIDs = append([]string(nil), postIDs...)
+	if f.readErr != nil {
+		return nil, f.readErr
+	}
+	return append([]ports.EngagementStatusRecord(nil), f.readResult...), nil
+}
+
+func (f *fakeEngagementCache) StoreMutation(ctx context.Context, record ports.EngagementMutationRecord) error {
+	f.writeCalls++
+	f.writeRecord = record
+	return f.writeErr
+}
+
+func (f *fakeEngagementCache) StoreViewerStatus(ctx context.Context, userID int64, records []ports.EngagementStatusRecord) error {
+	f.storeCalls++
+	f.storeUserID = userID
+	f.storeRecords = append([]ports.EngagementStatusRecord(nil), records...)
+	return f.storeErr
+}
+
 func (f *fakeCleanupTaskStore) Append(ctx context.Context, tx ports.Tx, task ports.BodyCleanupTask) error {
 	f.appendCalls++
 	f.appendTxs = append(f.appendTxs, tx)
