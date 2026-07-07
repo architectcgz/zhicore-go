@@ -289,6 +289,20 @@ type fakeContentService struct {
 	batchEngagementQuery  application.BatchGetEngagementStatusQuery
 	batchEngagementResult application.BatchEngagementStatusResult
 	batchEngagementErr    error
+
+	upsertPresenceCalls  int
+	upsertPresenceCmd    application.ReaderSessionCommand
+	upsertPresenceResult application.ReaderPresenceResult
+	upsertPresenceErr    error
+
+	deletePresenceCalls int
+	deletePresenceCmd   application.ReaderSessionCommand
+	deletePresenceErr   error
+
+	getPresenceCalls  int
+	getPresenceQuery  application.ReaderPresenceQuery
+	getPresenceResult application.ReaderPresenceResult
+	getPresenceErr    error
 }
 
 func (f *fakeContentService) CreatePost(ctx context.Context, cmd application.CreatePostCommand) (application.CreatePostResult, error) {
@@ -587,6 +601,30 @@ func (f *fakeContentService) BatchGetEngagementStatus(ctx context.Context, query
 		return application.BatchEngagementStatusResult{}, f.batchEngagementErr
 	}
 	return f.batchEngagementResult, nil
+}
+
+func (f *fakeContentService) UpsertReaderSession(ctx context.Context, command application.ReaderSessionCommand) (application.ReaderPresenceResult, error) {
+	f.upsertPresenceCalls++
+	f.upsertPresenceCmd = command
+	if f.upsertPresenceErr != nil {
+		return application.ReaderPresenceResult{}, f.upsertPresenceErr
+	}
+	return f.upsertPresenceResult, nil
+}
+
+func (f *fakeContentService) DeleteReaderSession(ctx context.Context, command application.ReaderSessionCommand) error {
+	f.deletePresenceCalls++
+	f.deletePresenceCmd = command
+	return f.deletePresenceErr
+}
+
+func (f *fakeContentService) GetReaderPresence(ctx context.Context, query application.ReaderPresenceQuery) (application.ReaderPresenceResult, error) {
+	f.getPresenceCalls++
+	f.getPresenceQuery = query
+	if f.getPresenceErr != nil {
+		return application.ReaderPresenceResult{}, f.getPresenceErr
+	}
+	return f.getPresenceResult, nil
 }
 
 type envelope[T any] struct {

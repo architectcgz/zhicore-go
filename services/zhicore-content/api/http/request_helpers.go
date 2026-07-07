@@ -64,6 +64,14 @@ func postIDFromPath(c *gin.Context) (string, error) {
 	return postID, nil
 }
 
+func sessionIDFromPath(c *gin.Context) (string, error) {
+	sessionID := strings.TrimSpace(c.Param("sessionId"))
+	if sessionID == "" {
+		return "", application.ErrInvalidArgument
+	}
+	return sessionID, nil
+}
+
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
 	return sharedhttp.DecodeJSONBodyLimited(w, r, maxJSONRequestBodyBytes, target)
 }

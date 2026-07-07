@@ -585,7 +585,7 @@
   - `DELETE /api/v1/posts/{postId}/reader-sessions/{sessionId}`
   - `GET /api/v1/posts/{postId}/reader-presence`
 
-- [ ] **步骤 6：实现 presence application / Redis adapter / handler**
+- [x] **步骤 6：实现 presence application / Redis adapter / handler**
 
   Presence 是附加能力；Redis 不可用时按 `rate-limiting.md` 返回空成功或 degraded 摘要，不能影响文章详情和正文读取。
 
