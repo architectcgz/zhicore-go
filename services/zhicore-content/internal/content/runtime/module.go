@@ -93,19 +93,20 @@ func Build(deps Deps) (*Module, error) {
 	outboxDispatch := contentpostgres.NewOutboxDispatchRepository(deps.PostgresDB)
 	outboxAdmin := contentpostgres.NewOutboxAdminRepository(deps.PostgresDB)
 	service := application.NewService(application.Deps{
-		Posts:    store,
-		Queries:  store,
-		Bodies:   bodyStore,
-		Cleanup:  cleanupStore,
-		Repair:   repairStore,
-		Outbox:   deps.Outbox,
-		Admin:    outboxAdmin,
-		Taxonomy: store,
-		Users:    deps.Users,
-		Files:    deps.Files,
-		Tx:       contentpostgres.NewTransactionRunner(deps.PostgresDB),
-		Parser:   deps.Parser,
-		Clock:    deps.Clock,
+		Posts:      store,
+		Queries:    store,
+		Bodies:     bodyStore,
+		Cleanup:    cleanupStore,
+		Repair:     repairStore,
+		Outbox:     deps.Outbox,
+		Admin:      outboxAdmin,
+		Taxonomy:   store,
+		Engagement: store,
+		Users:      deps.Users,
+		Files:      deps.Files,
+		Tx:         contentpostgres.NewTransactionRunner(deps.PostgresDB),
+		Parser:     deps.Parser,
+		Clock:      deps.Clock,
 	})
 
 	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock)
