@@ -29,7 +29,7 @@ func TestLoginCreatesSessionFromGeneratedRefreshMaterialBeforeIssuingAccessToken
 		trace: trace,
 		material: ports.GeneratedRefreshTokenMaterial{
 			SessionID: "session-1", TokenID: "refresh-token-id", Plaintext: "refresh-token-plaintext",
-			TokenHash: "refresh-token-hash", ExpiresAt: now.Add(30 * 24 * time.Hour),
+			TokenHash: "refresh-token-hash", ExpiresAt: now.Add(7 * 24 * time.Hour),
 		},
 	}
 	sessionStore := &fakeRefreshSessionStore{trace: trace}
@@ -70,6 +70,119 @@ func TestLoginCreatesSessionFromGeneratedRefreshMaterialBeforeIssuingAccessToken
 	}
 	if !result.AccessTokenExpiresAt.Equal(now.Add(2*time.Hour)) || !result.RefreshTokenExpiresAt.Equal(refreshTokens.material.ExpiresAt) {
 		t.Fatalf("login expirations = %#v", result)
+	}
+}
+
+func TestLoginUsesRememberMeToChooseRefreshSessionPolicy(t *testing.T) {
+	now := time.Date(2026, 7, 4, 10, 45, 0, 0, time.UTC)
+	tests := []struct {
+		name       string
+		rememberMe bool
+		wantPolicy domain.RefreshSessionPersistencePolicy
+		wantTTL    time.Duration
+	}{
+		{name: "standard session", wantPolicy: domain.RefreshSessionPersistenceStandard, wantTTL: 7 * 24 * time.Hour},
+		{name: "remembered session", rememberMe: true, wantPolicy: domain.RefreshSessionPersistenceRemembered, wantTTL: 30 * 24 * time.Hour},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			refreshTokens := &fakeRefreshTokenMaterialIssuer{}
+			sessionStore := &fakeRefreshSessionStore{}
+			service := mustNewService(t, Dependencies{
+				Accounts: &fakeAccountRepository{found: domain.Account{
+					ID:               42,
+					UserID:           501,
+					Email:            mustEmail(t, "user@example.com"),
+					Status:           domain.AccountStatusActive,
+					SessionVersion:   3,
+					PrincipalVersion: 5,
+				}},
+				Credentials:   &fakeCredentialRepository{stored: domain.Credential{AccountID: 42, PasswordHash: "stored-hash"}},
+				Roles:         &fakeRoleRepository{roles: []domain.RoleName{domain.RoleUser}},
+				Sessions:      sessionStore,
+				Tokens:        &fakeTokenIssuer{token: ports.IssuedAccessToken{Token: "access-token", ExpiresAt: now.Add(2 * time.Hour)}},
+				RefreshTokens: refreshTokens,
+				Hasher:        &fakePasswordHasher{verifyOK: true},
+				Blacklist:     &fakeAccessTokenBlacklist{},
+				Cache:         &fakeAuthCacheStore{},
+				TxRunner:      &fakeTransactionRunner{},
+				Outbox:        &fakeOutboxPublisher{},
+				UserProfiles:  &fakeUserProfileClient{},
+				Clock:         fixedClock{now: now},
+				RateLimiter:   allowRateLimiter(),
+			})
+
+			result, err := service.Login(context.Background(), LoginCommand{Email: "user@example.com", Password: "Password123", RememberMe: tt.rememberMe})
+			if err != nil {
+				t.Fatalf("Login() error = %v", err)
+			}
+			if refreshTokens.request.PersistencePolicy != tt.wantPolicy {
+				t.Fatalf("refresh material policy = %q, want %q", refreshTokens.request.PersistencePolicy, tt.wantPolicy)
+			}
+			if refreshTokens.request.TTL != tt.wantTTL {
+				t.Fatalf("refresh material ttl = %s, want %s", refreshTokens.request.TTL, tt.wantTTL)
+			}
+			if sessionStore.createInput.PersistencePolicy != tt.wantPolicy {
+				t.Fatalf("session policy = %q, want %q", sessionStore.createInput.PersistencePolicy, tt.wantPolicy)
+			}
+			if !sessionStore.createInput.ExpiresAt.Equal(now.Add(tt.wantTTL)) {
+				t.Fatalf("session expiresAt = %s, want %s", sessionStore.createInput.ExpiresAt, now.Add(tt.wantTTL))
+			}
+			if !result.RefreshTokenExpiresAt.Equal(now.Add(tt.wantTTL)) {
+				t.Fatalf("result refresh expiresAt = %s, want %s", result.RefreshTokenExpiresAt, now.Add(tt.wantTTL))
+			}
+		})
+	}
+}
+
+func TestLoginRejectsRefreshMaterialWithUnexpectedExpiresAt(t *testing.T) {
+	now := time.Date(2026, 7, 4, 10, 55, 0, 0, time.UTC)
+	trace := &callTrace{}
+	sessionStore := &fakeRefreshSessionStore{trace: trace}
+	tokenIssuer := &fakeTokenIssuer{trace: trace}
+	service := mustNewService(t, Dependencies{
+		Accounts: &fakeAccountRepository{found: domain.Account{
+			ID:               42,
+			UserID:           501,
+			Email:            mustEmail(t, "user@example.com"),
+			Status:           domain.AccountStatusActive,
+			SessionVersion:   3,
+			PrincipalVersion: 5,
+		}},
+		Credentials: &fakeCredentialRepository{stored: domain.Credential{AccountID: 42, PasswordHash: "stored-hash"}},
+		Roles:       &fakeRoleRepository{roles: []domain.RoleName{domain.RoleUser}},
+		Sessions:    sessionStore,
+		Tokens:      tokenIssuer,
+		RefreshTokens: &fakeRefreshTokenMaterialIssuer{
+			trace: trace,
+			material: ports.GeneratedRefreshTokenMaterial{
+				SessionID: "session-1",
+				TokenID:   "refresh-token-id",
+				Plaintext: "refresh-token",
+				TokenHash: "refresh-token-hash",
+				ExpiresAt: now.Add(30 * 24 * time.Hour),
+			},
+		},
+		Hasher:       &fakePasswordHasher{verifyOK: true},
+		Blacklist:    &fakeAccessTokenBlacklist{},
+		Cache:        &fakeAuthCacheStore{},
+		TxRunner:     &fakeTransactionRunner{},
+		Outbox:       &fakeOutboxPublisher{},
+		UserProfiles: &fakeUserProfileClient{},
+		Clock:        fixedClock{now: now},
+		RateLimiter:  allowRateLimiter(),
+	})
+
+	_, err := service.Login(context.Background(), LoginCommand{Email: "user@example.com", Password: "Password123", RememberMe: false})
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "expiresat") {
+		t.Fatalf("Login() error = %v, want unexpected expiresAt contract violation", err)
+	}
+	if sessionStore.createOrder != 0 {
+		t.Fatalf("session store called with order %d for unexpected refresh material expiry", sessionStore.createOrder)
+	}
+	if tokenIssuer.issueOrder != 0 {
+		t.Fatalf("token issuer called with order %d for unexpected refresh material expiry", tokenIssuer.issueOrder)
 	}
 }
 
@@ -120,7 +233,7 @@ func TestLoginReturnsErrorWhenSessionMetadataCreationFails(t *testing.T) {
 		trace: &callTrace{},
 		material: ports.GeneratedRefreshTokenMaterial{
 			SessionID: "session-1", TokenID: "refresh-token-id", Plaintext: "refresh-token",
-			TokenHash: "refresh-token-hash", ExpiresAt: now.Add(30 * 24 * time.Hour),
+			TokenHash: "refresh-token-hash", ExpiresAt: now.Add(7 * 24 * time.Hour),
 		},
 	}
 	sessionStore := &fakeRefreshSessionStore{trace: refreshTokens.trace, createErr: errors.New("session store unavailable")}

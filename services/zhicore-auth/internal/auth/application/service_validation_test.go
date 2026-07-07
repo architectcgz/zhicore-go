@@ -65,6 +65,24 @@ func TestNewServiceAllowsNilTaskOneOptionalDependencies(t *testing.T) {
 	}
 }
 
+func TestNewServiceRejectsInvalidRefreshSessionPolicy(t *testing.T) {
+	now := time.Date(2026, 7, 4, 12, 41, 0, 0, time.UTC)
+	_, err := NewService(Dependencies{
+		Accounts: &fakeAccountRepository{}, Credentials: &fakeCredentialRepository{}, Roles: &fakeRoleRepository{},
+		Sessions: &fakeRefreshSessionStore{}, Tokens: &fakeTokenIssuer{}, RefreshTokens: &fakeRefreshTokenMaterialIssuer{},
+		Hasher:   &fakePasswordHasher{hash: "hashed-password"},
+		TxRunner: &fakeTransactionRunner{}, Outbox: &fakeOutboxPublisher{}, UserProfiles: &fakeUserProfileClient{}, Clock: fixedClock{now: now},
+		RateLimiter: allowRateLimiter(),
+		RefreshPolicy: RefreshSessionPolicy{
+			StandardTTL:   30 * 24 * time.Hour,
+			RememberedTTL: 7 * 24 * time.Hour,
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "remembered refresh ttl") {
+		t.Fatalf("NewService() error = %v, want remembered ttl validation", err)
+	}
+}
+
 func TestRegisterAccountRejectsEmptyRateLimiterOutcome(t *testing.T) {
 	now := time.Date(2026, 7, 4, 12, 41, 0, 0, time.UTC)
 	service, err := NewService(Dependencies{

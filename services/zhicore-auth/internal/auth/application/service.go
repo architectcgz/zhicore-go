@@ -30,6 +30,7 @@ type Dependencies struct {
 	UserProfiles  ports.UserProfileClient
 	Clock         ports.Clock
 	RateLimiter   ports.RateLimiter
+	RefreshPolicy RefreshSessionPolicy
 }
 
 type Service struct {
@@ -47,6 +48,7 @@ type Service struct {
 	userProfiles  ports.UserProfileClient
 	clock         ports.Clock
 	rateLimiter   ports.RateLimiter
+	refreshPolicy RefreshSessionPolicy
 }
 
 func NewService(deps Dependencies) (*Service, error) {
@@ -68,7 +70,40 @@ func NewService(deps Dependencies) (*Service, error) {
 		userProfiles:  deps.UserProfiles,
 		clock:         deps.Clock,
 		rateLimiter:   deps.RateLimiter,
+		refreshPolicy: normalizeRefreshSessionPolicy(deps.RefreshPolicy),
 	}, nil
+}
+
+type RefreshSessionPolicy struct {
+	StandardTTL   time.Duration
+	RememberedTTL time.Duration
+}
+
+func DefaultRefreshSessionPolicy() RefreshSessionPolicy {
+	return RefreshSessionPolicy{
+		StandardTTL:   7 * 24 * time.Hour,
+		RememberedTTL: 30 * 24 * time.Hour,
+	}
+}
+
+func normalizeRefreshSessionPolicy(policy RefreshSessionPolicy) RefreshSessionPolicy {
+	if policy.StandardTTL == 0 && policy.RememberedTTL == 0 {
+		return DefaultRefreshSessionPolicy()
+	}
+	return policy
+}
+
+func (p RefreshSessionPolicy) Validate() error {
+	if p.StandardTTL <= 0 {
+		return fmt.Errorf("standard refresh ttl must be positive")
+	}
+	if p.RememberedTTL <= 0 {
+		return fmt.Errorf("remembered refresh ttl must be positive")
+	}
+	if p.RememberedTTL < p.StandardTTL {
+		return fmt.Errorf("remembered refresh ttl must be greater than or equal to standard refresh ttl")
+	}
+	return nil
 }
 
 type RegisterAccountCommand struct {
@@ -83,8 +118,9 @@ type RegisterAccountResult struct {
 }
 
 type LoginCommand struct {
-	Email    string
-	Password string
+	Email      string
+	Password   string
+	RememberMe bool
 }
 
 type LoginResult struct {
@@ -227,24 +263,32 @@ func (s *Service) Login(ctx context.Context, cmd LoginCommand) (LoginResult, err
 		return LoginResult{}, fmt.Errorf("list roles: %w", err)
 	}
 
+	selectedPolicy := persistencePolicyForRememberMe(cmd.RememberMe)
+	selectedTTL := s.refreshTTLForRememberMe(cmd.RememberMe)
+	expectedRefreshExpiresAt := now.Add(selectedTTL)
+
+	// rememberMe 只选择 refresh session 的持久化窗口；access token TTL 仍由 TokenIssuer 自己的配置控制。
 	refreshMaterial, err := s.refreshTokens.GenerateLoginMaterial(ctx, ports.GenerateRefreshTokenMaterialInput{
-		AccountID: account.ID,
-		IssuedAt:  now,
+		AccountID:         account.ID,
+		IssuedAt:          now,
+		PersistencePolicy: selectedPolicy,
+		TTL:               selectedTTL,
 	})
 	if err != nil {
 		return LoginResult{}, fmt.Errorf("generate refresh token material: %w", err)
 	}
-	if err := validateRefreshTokenMaterial(refreshMaterial, now); err != nil {
+	if err := validateRefreshTokenMaterial(refreshMaterial, now, expectedRefreshExpiresAt); err != nil {
 		return LoginResult{}, err
 	}
 
 	if err := s.sessions.Create(ctx, ports.CreateRefreshSessionInput{
-		AccountID:        account.ID,
-		SessionID:        refreshMaterial.SessionID,
-		CurrentTokenID:   refreshMaterial.TokenID,
-		CurrentTokenHash: refreshMaterial.TokenHash,
-		ExpiresAt:        refreshMaterial.ExpiresAt,
-		CreatedAt:        now,
+		AccountID:         account.ID,
+		SessionID:         refreshMaterial.SessionID,
+		CurrentTokenID:    refreshMaterial.TokenID,
+		CurrentTokenHash:  refreshMaterial.TokenHash,
+		PersistencePolicy: selectedPolicy,
+		ExpiresAt:         expectedRefreshExpiresAt,
+		CreatedAt:         now,
 	}); err != nil {
 		return LoginResult{}, fmt.Errorf("create refresh session: %w", err)
 	}
@@ -267,9 +311,23 @@ func (s *Service) Login(ctx context.Context, cmd LoginCommand) (LoginResult, err
 		AccessToken:           accessToken.Token,
 		AccessTokenExpiresAt:  accessToken.ExpiresAt,
 		RefreshToken:          refreshMaterial.Plaintext,
-		RefreshTokenExpiresAt: refreshMaterial.ExpiresAt,
+		RefreshTokenExpiresAt: expectedRefreshExpiresAt,
 		SessionID:             refreshMaterial.SessionID,
 	}, nil
+}
+
+func persistencePolicyForRememberMe(rememberMe bool) domain.RefreshSessionPersistencePolicy {
+	if rememberMe {
+		return domain.RefreshSessionPersistenceRemembered
+	}
+	return domain.RefreshSessionPersistenceStandard
+}
+
+func (s *Service) refreshTTLForRememberMe(rememberMe bool) time.Duration {
+	if rememberMe {
+		return s.refreshPolicy.RememberedTTL
+	}
+	return s.refreshPolicy.StandardTTL
 }
 
 func (s *Service) rateLimit(ctx context.Context, operation domain.SecurityOperation, key string) error {
@@ -317,10 +375,13 @@ func validateDependencies(deps Dependencies) error {
 			return fmt.Errorf("%s dependency is required", dep.name)
 		}
 	}
+	if err := normalizeRefreshSessionPolicy(deps.RefreshPolicy).Validate(); err != nil {
+		return fmt.Errorf("RefreshPolicy config is invalid: %w", err)
+	}
 	return nil
 }
 
-func validateRefreshTokenMaterial(material ports.GeneratedRefreshTokenMaterial, now time.Time) error {
+func validateRefreshTokenMaterial(material ports.GeneratedRefreshTokenMaterial, now time.Time, expectedExpiresAt time.Time) error {
 	fields := []struct {
 		name  string
 		value string
@@ -337,6 +398,9 @@ func validateRefreshTokenMaterial(material ports.GeneratedRefreshTokenMaterial, 
 	}
 	if !material.ExpiresAt.After(now) {
 		return fmt.Errorf("refresh token material contract violation: expiresAt must be after issued time")
+	}
+	if !material.ExpiresAt.Equal(expectedExpiresAt) {
+		return fmt.Errorf("refresh token material contract violation: expiresAt %s does not match expected %s", material.ExpiresAt, expectedExpiresAt)
 	}
 	return nil
 }

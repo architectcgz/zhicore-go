@@ -571,7 +571,7 @@ func (f *fakeRefreshTokenMaterialIssuer) GenerateLoginMaterial(ctx context.Conte
 			TokenID:   "token-id-default",
 			Plaintext: "refresh-token-default",
 			TokenHash: "token-hash-default",
-			ExpiresAt: input.IssuedAt.Add(30 * 24 * time.Hour),
+			ExpiresAt: input.IssuedAt.Add(input.TTL),
 		}
 	}
 	return f.material, nil
