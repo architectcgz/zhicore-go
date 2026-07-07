@@ -95,11 +95,11 @@
 ```text
 单个 PostgreSQL 事务：
   post_likes 表（插入）
-  + post_stats.like_count（原子 +1）
   + outbox_event（集成事件）
+  + domain_event_tasks（Content 内部 LIKE +1 stats delta）
 ```
 
-该事务不修改 `Post` 聚合，`Post` 的乐观锁版本号不会因点赞递增。
+该事务不修改 `Post` 聚合，也不直接更新 `post_stats`。`Post` 的乐观锁版本号不会因点赞递增，`post_stats.like_count` / `favorite_count` 由 Content 内部 worker 最终一致投影。
 
 ### `PostLike` / `PostFavorite`
 
@@ -108,7 +108,7 @@
 - `PostLike`
 - `PostFavorite`
 
-这些关系总是由 application 在同一个 PostgreSQL 事务里和 `PostStats` 聚合一起修改。`PostStats` 只维护计数不能为负等统计不变量，不拥有 `likedBy` / `favoritedBy` 这类操作者事实；带操作者的集成事件由 application 在关系表插入或删除确认成功后映射并写入 outbox。这样可以避免重复点赞只改统计、却仍误发 `content.post.liked`。
+这些关系总是由 application 在同一个 PostgreSQL 事务里和跨服务 outbox、内部 stats delta task 一起修改。`PostStats` 只维护计数不能为负等统计不变量，不拥有 `likedBy` / `favoritedBy` 这类操作者事实；带操作者的集成事件由 application 在关系表插入或删除确认成功后映射并写入 outbox。这样可以避免重复点赞只改统计、却仍误发 `content.post.liked`。
 
 Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best-effort 更新，失败不回滚业务事务。
 

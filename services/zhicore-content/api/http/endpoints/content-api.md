@@ -506,6 +506,8 @@ Body：
 
 ## 互动和 presence API
 
+点赞 / 收藏命令返回确定的当前用户状态；计数字段如果返回，只是当前统计快照，`post_stats` 由 Content 内部 stats delta worker 最终一致投影，不承诺包含本次写入后的强一致最新值。
+
 ### `PUT /api/v1/posts/{postId}/like`
 
 幂等点赞。已点赞时返回成功，不报冲突。

@@ -62,7 +62,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | --- | --- | --- |
 | `PostRepository` | Post 聚合持久化 | 加载、保存、按作者校验所有权、乐观锁更新 |
 | `PostQueryRepository` | Post 查询 | 详情、列表、批量、作者文章、管理端查询 |
-| `PostStatsRepository` | PostStats 聚合持久化 | 初始化、原子增减计数、读取统计 |
+| `PostStatsRepository` | PostStats 统计读模型 | 初始化、读取统计；点赞 / 收藏计数由内部 stats delta worker 原子投影 |
 | `PostContentStore` | 正文和草稿存储 | 保存、读取、删除 MongoDB 正文和草稿 |
 | `TagRepository` | Tag 聚合持久化和查询 | 按 slug 查找、创建、批量查询 |
 | `PostTagRepository` | 文章标签关系 | 替换、删除、批量查询文章标签 |
@@ -75,7 +75,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | --- | --- | --- |
 | `TransactionRunner` | 显式事务边界 | 避免 handler 或 repository 偷偷拥有业务事务 |
 | `OutboxPublisher` | 跨服务事件发布 | 业务事务内追加 outbox 记录 |
-| `InternalEventPublisher` | 内部投影任务发布 | 业务事务内追加内部事件任务 |
+| `EngagementStatsTaskStore` | 互动统计内部任务 | 业务事务内追加 stats delta task，worker claim 后投影到 `post_stats` |
 | `ConsumedEventStore` | 消费幂等 | 记录消费过的事件 ID |
 | `BodyCleanupTaskStore` | 正文清理任务 | 创建和查询未引用 MongoDB body 的清理任务；发布事务失败后可用独立短事务记录 orphan snapshot cleanup |
 | `BodyRepairTaskStore` | 正文修复任务 | 记录正文缺失、hash 不一致等数据一致性事故 |
@@ -128,14 +128,15 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 ```text
 单个 PostgreSQL 事务：
   post_likes / post_favorites（关系表）
-  + post_stats（PostStats 聚合，原子增减计数）
   + outbox_event（集成事件）
+  + domain_event_tasks（内部 stats delta task）
 
 事务提交后：
+  content-engagement-stats worker 投影 post_stats
   best-effort 更新 Redis 缓存（失败不回滚）
 ```
 
-点赞/收藏事务不修改 `Post` 聚合，避免热点聚合和乐观锁冲突。
+点赞/收藏事务不修改 `Post` 聚合，也不直接更新 `post_stats`，避免热点聚合、统计行同步写和乐观锁冲突。
 
 ### 标签事务
 

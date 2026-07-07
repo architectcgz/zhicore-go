@@ -18,7 +18,7 @@
 | 兼容别名 | 无 |
 | Content-Type | 无 |
 | 鉴权 | 登录用户 |
-| 幂等 | 是；未收藏时取消收藏返回当前确定状态，不重复减少统计或写 outbox。 |
+| 幂等 | 是；未收藏时取消收藏返回当前确定状态，不重复写 stats delta 或 outbox。 |
 
 ## Path 参数
 
@@ -33,7 +33,7 @@
 | `postId` | string | 是 | 文章公开 ID。 |
 | `liked` | bool | 是 | 当前用户点赞状态；必须是确定值。 |
 | `favorited` | bool | 是 | 固定为 `false`。 |
-| `stats` | `PostStats` | 是 | 最新互动统计。 |
+| `stats` | `PostStats` | 是 | 当前互动统计快照；计数由内部 worker 最终一致投影，不承诺包含本次写入后的强一致最新值。 |
 
 `PostStats`：`viewCount`、`likeCount`、`favoriteCount`、`commentCount`。
 
@@ -49,12 +49,12 @@
 
 ## 副作用
 
-- 已收藏时在同一 PostgreSQL 事务内删除 `post_favorites`、减少 `post_stats.favorite_count`、写 `content.post.unfavorited` outbox。
+- 已收藏时在同一 PostgreSQL 事务内删除 `post_favorites`、写 `content.post.unfavorited` outbox，并追加 Content 内部 `FAVORITE -1` stats delta task。
 - 未收藏时不写统计 delta，不写 outbox。
-- `favorite_count` 不允许减成负数。
+- 内部 worker 应用 delta 时保证 `favorite_count` 不减成负数。
 
 ## 测试要求
 
-- Application test：重复取消收藏幂等成功，不重复减少统计或写 outbox。
-- Repository test：删除关系、统计 delta 和 outbox 写入在同一事务内。
+- Application test：重复取消收藏幂等成功，不重复写 stats delta 或 outbox。
+- Repository test：删除关系、内部 stats delta task 和 outbox 写入在同一事务内。
 - Handler contract test：登录态、成功 envelope、文章不存在、限流/依赖错误。
