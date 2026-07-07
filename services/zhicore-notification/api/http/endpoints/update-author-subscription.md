@@ -25,4 +25,5 @@
 
 - `DIGEST_ONLY` 只允许摘要投递。
 - `MUTED` 禁用所有主动和摘要通道。
+- 用户通知偏好是全局 gate；`EMAIL` 默认为关闭，只有用户在 `notification-preferences` 显式开启对应通知类型的 `EMAIL`，作者订阅的 `DIGEST_ONLY` 才会生成摘要投递。
 - 提交成功后失效 `notification:{userId}:author:{authorId}:subscription`。
