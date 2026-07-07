@@ -211,8 +211,22 @@ func (s *EngagementStatsTaskStore) ApplyClaimed(ctx context.Context, task ports.
 	}
 	defer tx.Rollback()
 
-	if err := execTaskStatusUpdate(ctx, tx, applyEngagementStatsTaskSQL, task.ID, workerID, task.PostInternalID, task.Metric, task.Delta, appliedAt); err != nil {
-		return err
+	var claimed, statsUpdated, marked bool
+	if err := tx.QueryRowContext(ctx, applyEngagementStatsTaskSQL, task.ID, workerID, task.PostInternalID, task.Metric, task.Delta, appliedAt).
+		Scan(&claimed, &statsUpdated, &marked); err != nil {
+		return fmt.Errorf("apply content engagement stats task: %w", err)
+	}
+	// Only a missing claim means a stale worker lost ownership. A claimed task
+	// whose delta cannot touch post_stats must fail through retry/dead-letter
+	// so data drift or malformed metrics stay visible to operators.
+	if !claimed {
+		return ports.ErrTaskClaimLost
+	}
+	if !statsUpdated {
+		return fmt.Errorf("apply content engagement stats task: post stats row missing or unsupported metric")
+	}
+	if !marked {
+		return fmt.Errorf("apply content engagement stats task: mark task done returned no row")
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit content engagement stats task transaction: %w", err)

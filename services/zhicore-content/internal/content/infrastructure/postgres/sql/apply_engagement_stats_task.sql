@@ -22,10 +22,17 @@ updated_stats AS (
     WHERE stats.post_id = $3
       AND $4 IN ('LIKE', 'FAVORITE')
     RETURNING stats.post_id
+),
+marked AS (
+    UPDATE domain_event_tasks AS task
+    SET status = 'DONE',
+        processed_at = $6,
+        updated_at = $6
+    FROM claimed, updated_stats
+    WHERE task.id = claimed.id
+    RETURNING task.id
 )
-UPDATE domain_event_tasks AS task
-SET status = 'DONE',
-    processed_at = $6,
-    updated_at = $6
-FROM claimed, updated_stats
-WHERE task.id = claimed.id
+SELECT
+    EXISTS (SELECT 1 FROM claimed) AS claimed,
+    EXISTS (SELECT 1 FROM updated_stats) AS stats_updated,
+    EXISTS (SELECT 1 FROM marked) AS marked

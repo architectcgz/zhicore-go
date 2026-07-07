@@ -81,9 +81,9 @@ func TestEngagementStatsTaskApplyUpdatesPostStatsAndMarksDoneAtomically(t *testi
 	appliedAt := time.Date(2026, 7, 7, 13, 10, 0, 0, time.UTC)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(applyEngagementStatsTaskSQL)).
+	mock.ExpectQuery(regexp.QuoteMeta(applyEngagementStatsTaskSQL)).
 		WithArgs(int64(41), "worker-a", int64(10), "LIKE", 1, appliedAt).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(engagementStatsApplyRows(true, true, true))
 	mock.ExpectCommit()
 
 	err := store.ApplyClaimed(ctx(), ports.EngagementStatsDeltaClaim{
@@ -106,9 +106,9 @@ func TestEngagementStatsTaskApplyDetectsLostClaim(t *testing.T) {
 	appliedAt := time.Date(2026, 7, 7, 13, 15, 0, 0, time.UTC)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(applyEngagementStatsTaskSQL)).
+	mock.ExpectQuery(regexp.QuoteMeta(applyEngagementStatsTaskSQL)).
 		WithArgs(int64(41), "stale-worker", int64(10), "LIKE", 1, appliedAt).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+		WillReturnRows(engagementStatsApplyRows(false, false, false))
 	mock.ExpectRollback()
 
 	err := store.ApplyClaimed(ctx(), ports.EngagementStatsDeltaClaim{
@@ -121,6 +121,53 @@ func TestEngagementStatsTaskApplyDetectsLostClaim(t *testing.T) {
 		t.Fatalf("ApplyClaimed() error = %v, want ErrTaskClaimLost", err)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestEngagementStatsTaskApplyReportsStatsDeltaMissAsFailure(t *testing.T) {
+	cases := []struct {
+		name   string
+		metric string
+	}{
+		{
+			name:   "missing post stats row",
+			metric: "LIKE",
+		},
+		{
+			name:   "unsupported metric",
+			metric: "SHARE",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock := newMockDB(t)
+			store := NewEngagementStatsTaskStore(NewStore(db, StoreConfig{}))
+			appliedAt := time.Date(2026, 7, 7, 13, 17, 0, 0, time.UTC)
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(applyEngagementStatsTaskSQL)).
+				WithArgs(int64(41), "worker-a", int64(10), tc.metric, 1, appliedAt).
+				WillReturnRows(engagementStatsApplyRows(true, false, false))
+			mock.ExpectRollback()
+
+			err := store.ApplyClaimed(ctx(), ports.EngagementStatsDeltaClaim{
+				ID:             41,
+				PostInternalID: 10,
+				Metric:         tc.metric,
+				Delta:          1,
+			}, "worker-a", appliedAt)
+			if err == nil {
+				t.Fatal("ApplyClaimed() error = nil, want stats delta apply failure")
+			}
+			if errors.Is(err, ports.ErrTaskClaimLost) {
+				t.Fatalf("ApplyClaimed() error = %v, want ordinary apply failure", err)
+			}
+			if !strings.Contains(err.Error(), "apply content engagement stats task") {
+				t.Fatalf("ApplyClaimed() error = %v, want engagement stats apply context", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
 }
 
 func TestEngagementStatsTaskMarkFailedUsesDomainEventTaskStatus(t *testing.T) {
@@ -164,4 +211,9 @@ func TestEngagementMutationSQLDoesNotLockPostsOrSynchronouslyUpdateStats(t *test
 			t.Fatalf("%s mutation SQL must not bump posts.post_version", name)
 		}
 	}
+}
+
+func engagementStatsApplyRows(claimed, statsUpdated, marked bool) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"claimed", "stats_updated", "marked"}).
+		AddRow(claimed, statsUpdated, marked)
 }
