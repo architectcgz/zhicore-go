@@ -570,7 +570,7 @@
 
   点赞 / 收藏幂等；重复请求不重复写 delta / outbox；Redis 不可用时不能把 unknown 伪装成 `false`。
 
-- [ ] **步骤 3：实现 engagement repository 和缓存 adapter**
+- [x] **步骤 3：实现 engagement repository 和缓存 adapter**
 
   PostgreSQL 是事实源，Redis 只是缓存和受控 fallback 协调。
 
