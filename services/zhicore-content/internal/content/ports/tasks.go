@@ -24,6 +24,13 @@ type BodyRepairTaskStore interface {
 	MarkFailed(ctx context.Context, failure TaskFailure) error
 }
 
+type EngagementStatsTaskStore interface {
+	Append(ctx context.Context, tx Tx, task EngagementStatsDeltaTask) error
+	Claim(ctx context.Context, request TaskClaimRequest) ([]EngagementStatsDeltaClaim, error)
+	ApplyClaimed(ctx context.Context, task EngagementStatsDeltaClaim, workerID string, appliedAt time.Time) error
+	MarkFailed(ctx context.Context, failure TaskFailure) error
+}
+
 type BodyCleanupTask struct {
 	PostID    int64
 	BodyID    string
@@ -39,6 +46,15 @@ type BodyRepairTask struct {
 	ExpectedHash string
 	ObservedHash string
 	CreatedAt    time.Time
+}
+
+type EngagementStatsDeltaTask struct {
+	TaskID         string
+	PostInternalID int64
+	PostID         string
+	Metric         string
+	Delta          int
+	OccurredAt     time.Time
 }
 
 type TaskClaimRequest struct {
@@ -74,4 +90,14 @@ type BodyRepairTaskClaim struct {
 	ExpectedHash string
 	ObservedHash string
 	AttemptCount int
+}
+
+type EngagementStatsDeltaClaim struct {
+	ID             int64
+	TaskID         string
+	PostInternalID int64
+	PostID         string
+	Metric         string
+	Delta          int
+	AttemptCount   int
 }

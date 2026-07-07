@@ -55,6 +55,7 @@ type Service struct {
 	admin           ports.OutboxAdminRepository
 	taxonomy        ports.TaxonomyRepository
 	engagement      ports.EngagementRepository
+	engagementStats ports.EngagementStatsTaskStore
 	engagementCache ports.EngagementCacheStore
 	presence        ports.ReaderPresenceStore
 	users           ports.UserProfileClient
@@ -74,6 +75,7 @@ type Deps struct {
 	Admin           ports.OutboxAdminRepository
 	Taxonomy        ports.TaxonomyRepository
 	Engagement      ports.EngagementRepository
+	EngagementStats ports.EngagementStatsTaskStore
 	EngagementCache ports.EngagementCacheStore
 	Presence        ports.ReaderPresenceStore
 	Users           ports.UserProfileClient
@@ -91,10 +93,11 @@ func NewService(deps Deps) *Service {
 		cleanup:         deps.Cleanup,
 		repair:          deps.Repair,
 		outbox:          deps.Outbox,
-		admin:           deps.Admin,
-		taxonomy:        deps.Taxonomy,
-		engagement:      deps.Engagement,
-		engagementCache: deps.EngagementCache,
+			admin:           deps.Admin,
+			taxonomy:        deps.Taxonomy,
+			engagement:      deps.Engagement,
+			engagementStats: deps.EngagementStats,
+			engagementCache: deps.EngagementCache,
 		presence:        deps.Presence,
 		users:           deps.Users,
 		files:           deps.Files,

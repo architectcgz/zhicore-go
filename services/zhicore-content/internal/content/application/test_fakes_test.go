@@ -568,6 +568,41 @@ func (f *fakeEngagementRepository) BatchGetViewerStatus(ctx context.Context, use
 	return append([]ports.EngagementStatusRecord(nil), f.statusResult...), nil
 }
 
+type fakeEngagementStatsTaskStore struct {
+	appendCalls int
+	appended    []ports.EngagementStatsDeltaTask
+	appendErr   error
+	claims      []ports.EngagementStatsDeltaClaim
+	claimCalls  int
+	applied     []ports.EngagementStatsDeltaClaim
+	applyErr    error
+	failed      []ports.TaskFailure
+	failErr     error
+}
+
+func (f *fakeEngagementStatsTaskStore) Append(ctx context.Context, tx ports.Tx, task ports.EngagementStatsDeltaTask) error {
+	f.appendCalls++
+	f.appended = append(f.appended, task)
+	return f.appendErr
+}
+
+func (f *fakeEngagementStatsTaskStore) Claim(ctx context.Context, request ports.TaskClaimRequest) ([]ports.EngagementStatsDeltaClaim, error) {
+	f.claimCalls++
+	claims := append([]ports.EngagementStatsDeltaClaim(nil), f.claims...)
+	f.claims = nil
+	return claims, nil
+}
+
+func (f *fakeEngagementStatsTaskStore) ApplyClaimed(ctx context.Context, task ports.EngagementStatsDeltaClaim, workerID string, appliedAt time.Time) error {
+	f.applied = append(f.applied, task)
+	return f.applyErr
+}
+
+func (f *fakeEngagementStatsTaskStore) MarkFailed(ctx context.Context, failure ports.TaskFailure) error {
+	f.failed = append(f.failed, failure)
+	return f.failErr
+}
+
 type fakeEngagementCache struct {
 	readCalls    int
 	readUserID   int64

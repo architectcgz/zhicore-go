@@ -262,6 +262,7 @@ type createPostDeps struct {
 	outboxAdmin     *fakeOutboxAdminRepository
 	taxonomy        *fakeTaxonomyRepository
 	engagement      *fakeEngagementRepository
+	engagementStats *fakeEngagementStatsTaskStore
 	engagementCache *fakeEngagementCache
 	presence        *fakeReaderPresenceStore
 	users           *fakeUserProfileClient
@@ -281,6 +282,7 @@ func newCreatePostDeps() createPostDeps {
 		outboxAdmin:     &fakeOutboxAdminRepository{},
 		taxonomy:        &fakeTaxonomyRepository{},
 		engagement:      &fakeEngagementRepository{},
+		engagementStats: &fakeEngagementStatsTaskStore{},
 		engagementCache: &fakeEngagementCache{},
 		presence:        &fakeReaderPresenceStore{},
 		files:           &fakeFileResourceClient{},
@@ -306,6 +308,7 @@ func (d createPostDeps) asDeps() Deps {
 		Admin:           d.outboxAdmin,
 		Taxonomy:        d.taxonomy,
 		Engagement:      d.engagement,
+		EngagementStats: d.engagementStats,
 		EngagementCache: d.engagementCache,
 		Presence:        d.presence,
 		Users:           d.users,
