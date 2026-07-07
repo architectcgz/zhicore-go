@@ -578,7 +578,7 @@
 
   覆盖 `liked/favorited=true/false/null`、`degraded=true`、登录态、匿名读取和错误码。
 
-- [ ] **步骤 5：拆 reader presence endpoint contract**
+- [x] **步骤 5：拆 reader presence endpoint contract**
 
   固定：
   - `PUT /api/v1/posts/{postId}/reader-sessions/{sessionId}`
