@@ -24,10 +24,11 @@ type Config struct {
 }
 
 type WorkerConfig struct {
-	CleanupEnabled bool
-	RepairEnabled  bool
-	OutboxEnabled  bool
-	PollInterval   time.Duration
+	CleanupEnabled         bool
+	RepairEnabled          bool
+	OutboxEnabled          bool
+	EngagementStatsEnabled bool
+	PollInterval           time.Duration
 }
 
 type HealthChecker interface {
@@ -90,26 +91,28 @@ func Build(deps Deps) (*Module, error) {
 	bodyStore := contentmongo.NewBodyStore(deps.BodyCollection, nil)
 	cleanupStore := contentpostgres.NewCleanupTaskStore(store)
 	repairStore := contentpostgres.NewRepairTaskStore(store)
+	engagementStatsStore := contentpostgres.NewEngagementStatsTaskStore(store)
 	outboxDispatch := contentpostgres.NewOutboxDispatchRepository(deps.PostgresDB)
 	outboxAdmin := contentpostgres.NewOutboxAdminRepository(deps.PostgresDB)
 	service := application.NewService(application.Deps{
-		Posts:      store,
-		Queries:    store,
-		Bodies:     bodyStore,
-		Cleanup:    cleanupStore,
-		Repair:     repairStore,
-		Outbox:     deps.Outbox,
-		Admin:      outboxAdmin,
-		Taxonomy:   store,
-		Engagement: store,
-		Users:      deps.Users,
-		Files:      deps.Files,
-		Tx:         contentpostgres.NewTransactionRunner(deps.PostgresDB),
-		Parser:     deps.Parser,
-		Clock:      deps.Clock,
+		Posts:           store,
+		Queries:         store,
+		Bodies:          bodyStore,
+		Cleanup:         cleanupStore,
+		Repair:          repairStore,
+		Outbox:          deps.Outbox,
+		Admin:           outboxAdmin,
+		Taxonomy:        store,
+		Engagement:      store,
+		EngagementStats: engagementStatsStore,
+		Users:           deps.Users,
+		Files:           deps.Files,
+		Tx:              contentpostgres.NewTransactionRunner(deps.PostgresDB),
+		Parser:          deps.Parser,
+		Clock:           deps.Clock,
 	})
 
-	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock)
+	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock)
 	health := HealthDetails{
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
@@ -180,13 +183,14 @@ func configuredWorkerDescriptors(
 	config WorkerConfig,
 	cleanupStore ports.BodyCleanupTaskStore,
 	repairStore ports.BodyRepairTaskStore,
+	engagementStatsStore ports.EngagementStatsTaskStore,
 	outboxDispatch ports.OutboxDispatchRepository,
 	integrationEvents ports.IntegrationEventPublisher,
 	bodyStore ports.PostContentStore,
 	references ports.BodyReferenceChecker,
 	clock ports.Clock,
 ) []WorkerDescriptor {
-	workers := configuredContentWorkers(config, cleanupStore, repairStore, outboxDispatch, integrationEvents, bodyStore, references, clock)
+	workers := configuredContentWorkers(config, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, integrationEvents, bodyStore, references, clock)
 	if len(extra) == 0 {
 		return workers
 	}
@@ -200,6 +204,7 @@ func configuredContentWorkers(
 	config WorkerConfig,
 	cleanupStore ports.BodyCleanupTaskStore,
 	repairStore ports.BodyRepairTaskStore,
+	engagementStatsStore ports.EngagementStatsTaskStore,
 	outboxDispatch ports.OutboxDispatchRepository,
 	integrationEvents ports.IntegrationEventPublisher,
 	bodyStore ports.PostContentStore,
@@ -209,6 +214,7 @@ func configuredContentWorkers(
 	workers := []WorkerDescriptor{
 		disabledWorkerDescriptor("content-body-cleanup", "disabled by configuration"),
 		disabledWorkerDescriptor("content-body-repair", "disabled by configuration"),
+		disabledWorkerDescriptor("content-engagement-stats", "disabled by configuration"),
 		disabledWorkerDescriptor("content-outbox-dispatcher", "disabled until outbox dispatcher is implemented"),
 	}
 	interval := config.PollInterval
@@ -243,6 +249,19 @@ func configuredContentWorkers(
 		})
 		workers[1] = enabledWorkerDescriptor("content-body-repair", pollingWorker{name: "content-body-repair", interval: interval, runUntilIdle: repair.RunUntilIdle})
 	}
+	if config.EngagementStatsEnabled {
+		engagementStats := application.NewEngagementStatsWorker(application.EngagementStatsWorkerDeps{
+			Tasks: engagementStatsStore,
+			Clock: clock,
+		}, application.EngagementStatsWorkerConfig{
+			WorkerID:        "content-engagement-stats",
+			BatchSize:       100,
+			StaleClaimAfter: 5 * time.Minute,
+			RetryBackoff:    time.Minute,
+			DeadThreshold:   5,
+		})
+		workers[2] = enabledWorkerDescriptor("content-engagement-stats", pollingWorker{name: "content-engagement-stats", interval: interval, runUntilIdle: engagementStats.RunUntilIdle})
+	}
 	if config.OutboxEnabled {
 		outbox := application.NewOutboxDispatcher(application.OutboxDispatcherDeps{
 			Repository: outboxDispatch,
@@ -255,7 +274,7 @@ func configuredContentWorkers(
 			RetryBackoff:    time.Minute,
 			DeadThreshold:   5,
 		})
-		workers[2] = enabledWorkerDescriptor("content-outbox-dispatcher", pollingWorker{name: "content-outbox-dispatcher", interval: interval, runUntilIdle: outbox.RunUntilIdle})
+		workers[3] = enabledWorkerDescriptor("content-outbox-dispatcher", pollingWorker{name: "content-outbox-dispatcher", interval: interval, runUntilIdle: outbox.RunUntilIdle})
 	}
 	return workers
 }

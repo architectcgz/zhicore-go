@@ -117,14 +117,20 @@ func (s *Service) mutateEngagement(ctx context.Context, cmd EngagementCommand, a
 			Action:     action,
 			OccurredAt: now,
 		})
-		if err != nil || !record.Changed || s.outbox == nil {
+		if err != nil || !record.Changed {
 			return err
+		}
+		if s.outbox == nil || s.engagementStats == nil {
+			return ErrDependencyUnavailable
 		}
 		event, err := newEngagementOutboxEvent(record, action, now)
 		if err != nil {
 			return err
 		}
-		return s.outbox.Append(ctx, tx, event)
+		if err := s.outbox.Append(ctx, tx, event); err != nil {
+			return err
+		}
+		return s.engagementStats.Append(ctx, tx, newEngagementStatsDeltaTask(record, action, now))
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrPostNotFound) {
@@ -256,6 +262,30 @@ func mapPostStats(record ports.PostStatsRecord) PostStats {
 		LikeCount:     record.LikeCount,
 		FavoriteCount: record.FavoriteCount,
 		CommentCount:  record.CommentCount,
+	}
+}
+
+func newEngagementStatsDeltaTask(record ports.EngagementMutationRecord, action ports.EngagementAction, occurredAt time.Time) ports.EngagementStatsDeltaTask {
+	metric, delta := engagementStatsDelta(action)
+	return ports.EngagementStatsDeltaTask{
+		PostInternalID: record.PostInternalID,
+		PostID:         record.PostID,
+		Metric:         metric,
+		Delta:          delta,
+		OccurredAt:     occurredAt,
+	}
+}
+
+func engagementStatsDelta(action ports.EngagementAction) (string, int) {
+	switch action {
+	case ports.EngagementActionUnlike:
+		return "LIKE", -1
+	case ports.EngagementActionFavorite:
+		return "FAVORITE", 1
+	case ports.EngagementActionUnfavorite:
+		return "FAVORITE", -1
+	default:
+		return "LIKE", 1
 	}
 }
 

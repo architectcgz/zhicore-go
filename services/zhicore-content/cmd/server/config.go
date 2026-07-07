@@ -49,9 +49,10 @@ type ContentDependencyConfig struct {
 }
 
 type ContentWorkersConfig struct {
-	CleanupEnabled bool
-	RepairEnabled  bool
-	OutboxEnabled  bool
+	CleanupEnabled         bool
+	RepairEnabled          bool
+	OutboxEnabled          bool
+	EngagementStatsEnabled bool
 }
 
 func (c ContentPostgresConfig) String() string {
@@ -93,7 +94,7 @@ func (c ContentDependencyConfig) GoString() string {
 
 func (c ContentServerConfig) RedactedSummary() string {
 	return fmt.Sprintf(
-		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t",
+		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t workers.engagementStats=%t",
 		c.ServiceName,
 		c.HTTP.Addr,
 		c.HTTP.ReadHeaderTimeout,
@@ -114,6 +115,7 @@ func (c ContentServerConfig) RedactedSummary() string {
 		c.Workers.CleanupEnabled,
 		c.Workers.RepairEnabled,
 		c.Workers.OutboxEnabled,
+		c.Workers.EngagementStatsEnabled,
 	)
 }
 

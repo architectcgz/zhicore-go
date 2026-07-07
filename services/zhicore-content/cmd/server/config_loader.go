@@ -18,6 +18,7 @@ const (
 	envCleanupEnabled         = "ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED"
 	envRepairEnabled          = "ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED"
 	envOutboxEnabled          = "ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"
+	envEngagementStatsEnabled = "ZHICORE_CONTENT_WORKERS_ENGAGEMENT_STATS_ENABLED"
 )
 
 func LoadContentServerConfig(lookup func(string) (string, bool)) (ContentServerConfig, error) {
@@ -176,6 +177,15 @@ func overlayWorkerConfig(cfg *ContentServerConfig, lookup func(string) (string, 
 			return err
 		}
 		cfg.Workers.OutboxEnabled = parsed
+	}
+	if value, ok, err := lookupOptionalEnv(lookup, envEngagementStatsEnabled); err != nil {
+		return err
+	} else if ok {
+		parsed, err := parseBoolEnv(envEngagementStatsEnabled, value)
+		if err != nil {
+			return err
+		}
+		cfg.Workers.EngagementStatsEnabled = parsed
 	}
 	return nil
 }

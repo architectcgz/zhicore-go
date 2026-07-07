@@ -69,9 +69,10 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		Config: &contentruntime.Config{
 			ServiceName: cfg.ServiceName,
 			Workers: contentruntime.WorkerConfig{
-				CleanupEnabled: cfg.Workers.CleanupEnabled,
-				RepairEnabled:  cfg.Workers.RepairEnabled,
-				OutboxEnabled:  cfg.Workers.OutboxEnabled,
+				CleanupEnabled:         cfg.Workers.CleanupEnabled,
+				RepairEnabled:          cfg.Workers.RepairEnabled,
+				OutboxEnabled:          cfg.Workers.OutboxEnabled,
+				EngagementStatsEnabled: cfg.Workers.EngagementStatsEnabled,
 			},
 		},
 		PostgresDB:     postgresDB,

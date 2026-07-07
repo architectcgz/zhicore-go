@@ -3,7 +3,6 @@ WITH target_post AS (
     FROM posts
     WHERE public_id = $1
       AND status = 'PUBLISHED'
-    FOR UPDATE
 ),
 inserted AS (
     INSERT INTO post_favorites (post_id, user_id, created_at)
@@ -15,21 +14,10 @@ inserted AS (
 delta AS (
     SELECT EXISTS (SELECT 1 FROM inserted) AS changed
 ),
-updated_stats AS (
-    UPDATE post_stats AS ps
-    SET favorite_count = ps.favorite_count + CASE WHEN delta.changed THEN 1 ELSE 0 END,
-        updated_at = CASE WHEN delta.changed THEN $3 ELSE ps.updated_at END
-    FROM target_post, delta
-    WHERE ps.post_id = target_post.id
-    RETURNING ps.view_count, ps.like_count, ps.favorite_count, ps.comment_count
-),
-updated_post AS (
-    UPDATE posts AS p
-    SET post_version = p.post_version + CASE WHEN delta.changed THEN 1 ELSE 0 END,
-        updated_at = CASE WHEN delta.changed THEN $3 ELSE p.updated_at END
-    FROM target_post, delta
-    WHERE p.id = target_post.id
-    RETURNING p.post_version
+current_stats AS (
+    SELECT ps.view_count, ps.like_count, ps.favorite_count, ps.comment_count
+    FROM post_stats AS ps
+    JOIN target_post ON target_post.id = ps.post_id
 )
 SELECT
     target_post.id AS post_internal_id,
@@ -44,9 +32,9 @@ SELECT
           AND user_id = $2
     ) AS liked,
     TRUE AS favorited,
-    updated_post.post_version AS aggregate_version,
-    updated_stats.view_count,
-    updated_stats.like_count,
-    updated_stats.favorite_count,
-    updated_stats.comment_count
-FROM target_post, delta, updated_stats, updated_post;
+    target_post.post_version AS aggregate_version,
+    current_stats.view_count,
+    current_stats.like_count,
+    current_stats.favorite_count,
+    current_stats.comment_count
+FROM target_post, delta, current_stats;

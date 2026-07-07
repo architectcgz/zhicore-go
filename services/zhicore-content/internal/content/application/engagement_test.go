@@ -40,6 +40,12 @@ func TestLikePostIsIdempotentAndAppendsOutboxOnlyOnFirstMutation(t *testing.T) {
 	if deps.outbox.appendCalls != 1 {
 		t.Fatalf("outbox calls = %d, want 1", deps.outbox.appendCalls)
 	}
+	if deps.engagementStats.appendCalls != 1 {
+		t.Fatalf("engagement stats task calls = %d, want 1", deps.engagementStats.appendCalls)
+	}
+	if gotTask := deps.engagementStats.appended[0]; gotTask.PostInternalID != 10 || gotTask.PostID != "post_1" || gotTask.Metric != "LIKE" || gotTask.Delta != 1 {
+		t.Fatalf("engagement stats task = %+v, want LIKE +1 for post", gotTask)
+	}
 	var payload map[string]any
 	if err := json.Unmarshal(deps.outbox.events[0].PayloadJSON, &payload); err != nil {
 		t.Fatalf("payload json error = %v", err)
@@ -69,6 +75,9 @@ func TestLikePostIsIdempotentAndAppendsOutboxOnlyOnFirstMutation(t *testing.T) {
 	}
 	if deps.outbox.appendCalls != 0 {
 		t.Fatalf("duplicate outbox calls = %d, want 0", deps.outbox.appendCalls)
+	}
+	if deps.engagementStats.appendCalls != 0 {
+		t.Fatalf("duplicate stats task calls = %d, want 0", deps.engagementStats.appendCalls)
 	}
 }
 
