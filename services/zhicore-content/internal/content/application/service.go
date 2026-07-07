@@ -56,6 +56,7 @@ type Service struct {
 	taxonomy        ports.TaxonomyRepository
 	engagement      ports.EngagementRepository
 	engagementCache ports.EngagementCacheStore
+	presence        ports.ReaderPresenceStore
 	users           ports.UserProfileClient
 	files           ports.FileResourceClient
 	tx              ports.TransactionRunner
@@ -74,6 +75,7 @@ type Deps struct {
 	Taxonomy        ports.TaxonomyRepository
 	Engagement      ports.EngagementRepository
 	EngagementCache ports.EngagementCacheStore
+	Presence        ports.ReaderPresenceStore
 	Users           ports.UserProfileClient
 	Files           ports.FileResourceClient
 	Tx              ports.TransactionRunner
@@ -93,6 +95,7 @@ func NewService(deps Deps) *Service {
 		taxonomy:        deps.Taxonomy,
 		engagement:      deps.Engagement,
 		engagementCache: deps.EngagementCache,
+		presence:        deps.Presence,
 		users:           deps.Users,
 		files:           deps.Files,
 		tx:              deps.Tx,

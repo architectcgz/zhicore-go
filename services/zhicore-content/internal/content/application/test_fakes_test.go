@@ -606,6 +606,42 @@ func (f *fakeEngagementCache) StoreViewerStatus(ctx context.Context, userID int6
 	return f.storeErr
 }
 
+type fakeReaderPresenceStore struct {
+	upsertCalls  int
+	upsertInput  ports.ReaderSessionInput
+	upsertResult ports.ReaderPresenceRecord
+	deleteCalls  int
+	deleteInput  ports.ReaderSessionInput
+	getCalls     int
+	getPostID    string
+	getResult    ports.ReaderPresenceRecord
+	err          error
+}
+
+func (f *fakeReaderPresenceStore) UpsertReaderSession(ctx context.Context, input ports.ReaderSessionInput) (ports.ReaderPresenceRecord, error) {
+	f.upsertCalls++
+	f.upsertInput = input
+	if f.err != nil {
+		return ports.ReaderPresenceRecord{}, f.err
+	}
+	return f.upsertResult, nil
+}
+
+func (f *fakeReaderPresenceStore) DeleteReaderSession(ctx context.Context, input ports.ReaderSessionInput) error {
+	f.deleteCalls++
+	f.deleteInput = input
+	return f.err
+}
+
+func (f *fakeReaderPresenceStore) GetReaderPresence(ctx context.Context, postID string) (ports.ReaderPresenceRecord, error) {
+	f.getCalls++
+	f.getPostID = postID
+	if f.err != nil {
+		return ports.ReaderPresenceRecord{}, f.err
+	}
+	return f.getResult, nil
+}
+
 func (f *fakeCleanupTaskStore) Append(ctx context.Context, tx ports.Tx, task ports.BodyCleanupTask) error {
 	f.appendCalls++
 	f.appendTxs = append(f.appendTxs, tx)
