@@ -87,12 +87,12 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `PUT` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等点赞。 |
-| `DELETE` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等取消点赞。 |
-| `PUT` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等收藏。 |
-| `DELETE` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等取消收藏。 |
-| `GET` | `/api/v1/posts/{postId}/engagement` | 匿名 / 登录用户 | 互动计数和当前用户状态。 |
-| `POST` | `/api/v1/posts/engagement/batch-status` | 登录用户 | 批量查询点赞 / 收藏状态。 |
+| `PUT` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等点赞；字段级 schema 见 [endpoints/like-post.md](endpoints/like-post.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等取消点赞；字段级 schema 见 [endpoints/unlike-post.md](endpoints/unlike-post.md)。 |
+| `PUT` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等收藏；字段级 schema 见 [endpoints/favorite-post.md](endpoints/favorite-post.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等取消收藏；字段级 schema 见 [endpoints/unfavorite-post.md](endpoints/unfavorite-post.md)。 |
+| `GET` | `/api/v1/posts/{postId}/engagement` | 匿名 / 登录用户 | 互动计数和当前用户状态；字段级 schema 见 [endpoints/get-post-engagement.md](endpoints/get-post-engagement.md)。 |
+| `POST` | `/api/v1/posts/engagement/batch-status` | 登录用户 | 批量查询点赞 / 收藏状态；字段级 schema 见 [endpoints/batch-get-engagement-status.md](endpoints/batch-get-engagement-status.md)。 |
 | `PUT` | `/api/v1/posts/{postId}/reader-sessions/{sessionId}` | 匿名 / 登录用户 | 注册或刷新阅读 presence session。 |
 | `DELETE` | `/api/v1/posts/{postId}/reader-sessions/{sessionId}` | 匿名 / 登录用户 | 离开阅读 presence session。 |
 | `GET` | `/api/v1/posts/{postId}/reader-presence` | 匿名 | 查询阅读 presence 摘要。 |

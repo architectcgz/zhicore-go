@@ -556,7 +556,7 @@
 
 **测试立场：** TDD - 幂等写、计数一致性、unknown viewer 状态、Redis 降级和 presence no-op 属于 R4。
 
-- [ ] **步骤 1：拆 engagement endpoint contract**
+- [x] **步骤 1：拆 engagement endpoint contract**
 
   固定：
   - `PUT /api/v1/posts/{postId}/like`
