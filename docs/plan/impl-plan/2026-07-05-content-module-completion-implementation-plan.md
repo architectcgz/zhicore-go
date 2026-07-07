@@ -586,7 +586,7 @@
 
 **测试立场：** TDD - admin 鉴权、审计字段、查询过滤、删除可见性和 outbox retry 属于 R4。
 
-- [ ] **步骤 1：拆 admin endpoint contract**
+- [x] **步骤 1：拆 admin endpoint contract**
 
   固定：
   - `GET /api/v1/admin/content/posts`
@@ -594,19 +594,19 @@
   - `GET /api/v1/admin/content/outbox-events`
   - `POST /api/v1/admin/content/outbox-events/{eventId}/retry`
 
-- [ ] **步骤 2：编写 admin application 测试**
+- [x] **步骤 2：编写 admin application 测试**
 
   覆盖缺少 admin role、查询过滤、管理删除、重复删除、outbox retry 冷却窗口和审计字段。
 
-- [ ] **步骤 3：实现 admin application / repository**
+- [x] **步骤 3：实现 admin application / repository**
 
   Admin 删除文章必须写 visibility event；outbox retry 不能绕过 rate limit 和状态条件。
 
-- [ ] **步骤 4：补 handler contract test 和实现**
+- [x] **步骤 4：补 handler contract test 和实现**
 
   使用 `X-User-Id` + `X-User-Roles`；客户端伪造 body actor 不生效。
 
-- [ ] **步骤 5：提交 admin 切片**
+- [x] **步骤 5：提交 admin 切片**
 
   posts 管理和 outbox 管理分开提交。
 

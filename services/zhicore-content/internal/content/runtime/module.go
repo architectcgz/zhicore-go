@@ -102,6 +102,7 @@ func Build(deps Deps) (*Module, error) {
 		Repair:          repairStore,
 		Outbox:          deps.Outbox,
 		Admin:           outboxAdmin,
+		AdminPosts:      store,
 		Taxonomy:        store,
 		Engagement:      store,
 		EngagementStats: engagementStatsStore,

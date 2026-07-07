@@ -108,8 +108,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/admin/content/posts` | 管理员 | 管理端文章查询。 |
-| `DELETE` | `/api/v1/admin/content/posts/{postId}` | 管理员 | 管理端删除文章。 |
+| `GET` | `/api/v1/admin/content/posts` | 管理员 | 管理端文章查询；字段级 schema 见 [endpoints/list-admin-posts.md](endpoints/list-admin-posts.md)。 |
+| `DELETE` | `/api/v1/admin/content/posts/{postId}` | 管理员 | 管理端删除文章；字段级 schema 见 [endpoints/delete-admin-post.md](endpoints/delete-admin-post.md)。 |
 | `GET` | `/api/v1/admin/content/outbox-events` | 管理员 | 查询 dead / failed outbox 事件。 |
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | 管理员 | 手动重试 outbox 事件。 |
 
@@ -146,6 +146,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `GET` | `/api/v1/posts/{postId}/tags` | [endpoints/get-post-tags.md](endpoints/get-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/tags` | [endpoints/update-post-tags.md](endpoints/update-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
 | `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | [endpoints/delete-post-tag.md](endpoints/delete-post-tag.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/admin/content/posts` | [endpoints/list-admin-posts.md](endpoints/list-admin-posts.md) | `services/zhicore-content/api/http/admin_posts_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/admin/content/posts/{postId}` | [endpoints/delete-admin-post.md](endpoints/delete-admin-post.md) | `services/zhicore-content/api/http/admin_posts_handler_test.go` | 已验证 |
 
 ## 已验证依赖语义错误映射
 
