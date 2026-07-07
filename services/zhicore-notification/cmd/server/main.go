@@ -70,11 +70,17 @@ func runNotificationServerProcess(ctx context.Context, deps notificationProcessD
 		closeNamedClosers(opened.Closers)
 		return fmt.Errorf("listen notification HTTP server: %w", err)
 	}
+	if err := opened.Module.Start(ctx); err != nil {
+		closeNamedClosers(opened.Closers)
+		_ = listener.Close()
+		return fmt.Errorf("start notification runtime module: %w", err)
+	}
 
 	fmt.Fprintf(deps.Log, "starting %s\n", cfg.RedactedSummary())
 	return deps.RunServer(ctx, cfg, listener, NotificationServerRuntime{
-		Handler: opened.Module.HTTPHandler,
-		Closers: opened.Closers,
+		Handler:     opened.Module.HTTPHandler,
+		Closers:     opened.Closers,
+		StopRuntime: opened.Module.Stop,
 	}, deps.Signals)
 }
 

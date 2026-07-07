@@ -10,8 +10,9 @@ import (
 )
 
 type NotificationServerRuntime struct {
-	Handler http.Handler
-	Closers []namedCloser
+	Handler     http.Handler
+	Closers     []namedCloser
+	StopRuntime func(context.Context) error
 }
 
 type namedCloser struct {
@@ -58,6 +59,14 @@ func runNotificationServer(ctx context.Context, cfg NotificationServerConfig, li
 
 	select {
 	case err := <-serveErr:
+		if runtime.StopRuntime != nil {
+			stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cfg.HTTP.ShutdownTimeout)
+			stopErr := runtime.StopRuntime(stopCtx)
+			cancel()
+			if stopErr != nil {
+				err = errors.Join(err, fmt.Errorf("stop notification runtime: %w", stopErr))
+			}
+		}
 		closeNamedClosers(runtime.Closers)
 		return err
 	case <-signals:
@@ -76,6 +85,11 @@ func shutdownNotificationServer(ctx context.Context, cfg NotificationServerConfi
 	var errs []error
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		errs = append(errs, fmt.Errorf("shutdown HTTP server: %w", err))
+	}
+	if runtime.StopRuntime != nil {
+		if err := runtime.StopRuntime(shutdownCtx); err != nil {
+			errs = append(errs, fmt.Errorf("stop notification runtime: %w", err))
+		}
 	}
 	if err := <-serveErr; err != nil {
 		errs = append(errs, fmt.Errorf("serve HTTP: %w", err))
