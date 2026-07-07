@@ -574,7 +574,7 @@
 
   PostgreSQL 是事实源，Redis 只是缓存和受控 fallback 协调。
 
-- [ ] **步骤 4：补 handler contract test 和实现**
+- [x] **步骤 4：补 handler contract test 和实现**
 
   覆盖 `liked/favorited=true/false/null`、`degraded=true`、登录态、匿名读取和错误码。
 

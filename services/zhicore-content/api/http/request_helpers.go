@@ -23,6 +23,13 @@ func actorFromRequest(r *http.Request) (*application.Actor, error) {
 	return &application.Actor{UserID: userID, Roles: rolesFromRequest(r)}, nil
 }
 
+func optionalActorFromRequest(r *http.Request) (*application.Actor, error) {
+	if strings.TrimSpace(r.Header.Get(userIDHeaderName)) == "" {
+		return nil, nil
+	}
+	return actorFromRequest(r)
+}
+
 func requireAdminActorFromRequest(r *http.Request) (*application.Actor, error) {
 	actor, err := actorFromRequest(r)
 	if err != nil {

@@ -132,6 +132,52 @@ func mapPostTagsMutationResponse(result application.PostTagsMutationResult) post
 	}
 }
 
+func mapEngagementMutationResponse(result application.EngagementResult) engagementMutationResp {
+	return engagementMutationResp{
+		PostID:    result.PostID,
+		Liked:     result.Liked,
+		Favorited: result.Favorited,
+		Stats:     mapPostStatsResponse(result.Stats),
+	}
+}
+
+func mapPostEngagementResponse(result application.PostEngagementResult) postEngagementResp {
+	resp := postEngagementResp{
+		PostID: result.PostID,
+		Stats:  mapPostStatsResponse(result.Stats),
+	}
+	if result.Viewer != nil {
+		resp.Viewer = &engagementViewerResp{
+			Liked:     result.Viewer.Liked.Ptr(),
+			Favorited: result.Viewer.Favorited.Ptr(),
+			Degraded:  result.Viewer.Degraded,
+		}
+	}
+	return resp
+}
+
+func mapBatchEngagementStatusResponse(result application.BatchEngagementStatusResult) batchEngagementStatusResp {
+	items := make([]engagementStatusItemResp, 0, len(result.Items))
+	for _, item := range result.Items {
+		items = append(items, engagementStatusItemResp{
+			PostID:    item.PostID,
+			Liked:     item.Liked.Ptr(),
+			Favorited: item.Favorited.Ptr(),
+			Degraded:  item.Degraded,
+		})
+	}
+	return batchEngagementStatusResp{Items: items}
+}
+
+func mapPostStatsResponse(stats application.PostStats) postStatsResp {
+	return postStatsResp{
+		ViewCount:     stats.ViewCount,
+		LikeCount:     stats.LikeCount,
+		FavoriteCount: stats.FavoriteCount,
+		CommentCount:  stats.CommentCount,
+	}
+}
+
 func formatTime(value time.Time) string {
 	return sharedhttp.FormatRFC3339UTC(value)
 }

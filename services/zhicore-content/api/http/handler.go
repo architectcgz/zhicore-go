@@ -41,6 +41,12 @@ type Service interface {
 	GetPostTags(ctx context.Context, query application.GetPostTagsQuery) ([]application.Tag, error)
 	UpdatePostTags(ctx context.Context, command application.UpdatePostTagsCommand) (application.PostTagsMutationResult, error)
 	DeletePostTag(ctx context.Context, command application.DeletePostTagCommand) (application.PostTagsMutationResult, error)
+	LikePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error)
+	UnlikePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error)
+	FavoritePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error)
+	UnfavoritePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error)
+	GetPostEngagement(ctx context.Context, query application.GetPostEngagementQuery) (application.PostEngagementResult, error)
+	BatchGetEngagementStatus(ctx context.Context, query application.BatchGetEngagementStatusQuery) (application.BatchEngagementStatusResult, error)
 }
 
 type Handler struct {
@@ -58,9 +64,15 @@ func (h *Handler) routes() {
 	h.router.POST("/api/v1/posts", h.createPost)
 	h.router.GET("/api/v1/posts", h.listPublishedPosts)
 	h.router.POST("/api/v1/posts/batch-get", h.batchGetPublishedPosts)
+	h.router.POST("/api/v1/posts/engagement/batch-status", h.batchGetEngagementStatus)
 	h.router.GET("/api/v1/posts/:postId/tags", h.getPostTags)
 	h.router.PUT("/api/v1/posts/:postId/tags", h.updatePostTags)
 	h.router.DELETE("/api/v1/posts/:postId/tags/:slug", h.deletePostTag)
+	h.router.PUT("/api/v1/posts/:postId/like", h.likePost)
+	h.router.DELETE("/api/v1/posts/:postId/like", h.unlikePost)
+	h.router.PUT("/api/v1/posts/:postId/favorite", h.favoritePost)
+	h.router.DELETE("/api/v1/posts/:postId/favorite", h.unfavoritePost)
+	h.router.GET("/api/v1/posts/:postId/engagement", h.getPostEngagement)
 	h.router.GET("/api/v1/me/posts", h.listAuthorPosts)
 	h.router.GET("/api/v1/me/drafts", h.listAuthorDrafts)
 	h.router.GET("/api/v1/posts/:postId", h.getPostDetail)

@@ -1,6 +1,6 @@
 # get-post-engagement
 
-状态：草案。
+状态：已验证（handler contract test）。
 
 ## 来源
 

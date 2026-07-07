@@ -52,6 +52,10 @@ type batchGetPostsReq struct {
 	IncludeDeleted bool     `json:"includeDeleted"`
 }
 
+type batchGetEngagementStatusReq struct {
+	PostIDs []string `json:"postIds"`
+}
+
 type updateDraftMetaReq struct {
 	BasePostVersion int64     `json:"basePostVersion"`
 	Title           *string   `json:"title"`
@@ -210,7 +214,7 @@ type tagResp struct {
 }
 
 type updatePostTagsReq struct {
-	BasePostVersion int64    `json:"basePostVersion"`
+	BasePostVersion int64     `json:"basePostVersion"`
 	Tags            *[]string `json:"tags"`
 }
 
@@ -219,4 +223,34 @@ type postTagsMutationResp struct {
 	PostVersion int64     `json:"postVersion"`
 	Tags        []tagResp `json:"tags"`
 	UpdatedAt   string    `json:"updatedAt"`
+}
+
+type engagementMutationResp struct {
+	PostID    string        `json:"postId"`
+	Liked     bool          `json:"liked"`
+	Favorited bool          `json:"favorited"`
+	Stats     postStatsResp `json:"stats"`
+}
+
+type postEngagementResp struct {
+	PostID string                `json:"postId"`
+	Stats  postStatsResp         `json:"stats"`
+	Viewer *engagementViewerResp `json:"viewer,omitempty"`
+}
+
+type engagementViewerResp struct {
+	Liked     *bool `json:"liked"`
+	Favorited *bool `json:"favorited"`
+	Degraded  bool  `json:"degraded"`
+}
+
+type batchEngagementStatusResp struct {
+	Items []engagementStatusItemResp `json:"items"`
+}
+
+type engagementStatusItemResp struct {
+	PostID    string `json:"postId"`
+	Liked     *bool  `json:"liked"`
+	Favorited *bool  `json:"favorited"`
+	Degraded  bool   `json:"degraded"`
 }
