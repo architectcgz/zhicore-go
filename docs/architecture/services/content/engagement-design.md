@@ -19,7 +19,6 @@ Engagement 不覆盖：
 - 评论点赞。评论点赞归 `zhicore-comment`。
 - 热榜分数。热榜由 Ranking 消费 Content 事件后计算。
 - 通知收件箱。Notification 只消费点赞事件并维护自己的投递事实。
-- Reader presence。Presence 是短生命周期在线状态，单独按 Redis 附加能力处理。
 
 ## 产品语义
 

@@ -254,10 +254,3 @@ type engagementStatusItemResp struct {
 	Favorited *bool  `json:"favorited"`
 	Degraded  bool   `json:"degraded"`
 }
-
-type readerPresenceResp struct {
-	PostID      string `json:"postId"`
-	OnlineCount int    `json:"onlineCount"`
-	Degraded    bool   `json:"degraded"`
-	TTLSeconds  int    `json:"ttlSeconds"`
-}

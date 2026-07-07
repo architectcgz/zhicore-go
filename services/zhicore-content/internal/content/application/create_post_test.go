@@ -264,7 +264,6 @@ type createPostDeps struct {
 	engagement      *fakeEngagementRepository
 	engagementStats *fakeEngagementStatsTaskStore
 	engagementCache *fakeEngagementCache
-	presence        *fakeReaderPresenceStore
 	users           *fakeUserProfileClient
 	files           *fakeFileResourceClient
 	tx              *fakeTxRunner
@@ -284,7 +283,6 @@ func newCreatePostDeps() createPostDeps {
 		engagement:      &fakeEngagementRepository{},
 		engagementStats: &fakeEngagementStatsTaskStore{},
 		engagementCache: &fakeEngagementCache{},
-		presence:        &fakeReaderPresenceStore{},
 		files:           &fakeFileResourceClient{},
 		users: &fakeUserProfileClient{snapshot: ports.OwnerSnapshot{
 			DisplayName:    "architect",
@@ -310,7 +308,6 @@ func (d createPostDeps) asDeps() Deps {
 		Engagement:      d.engagement,
 		EngagementStats: d.engagementStats,
 		EngagementCache: d.engagementCache,
-		Presence:        d.presence,
 		Users:           d.users,
 		Files:           d.files,
 		Tx:              d.tx,

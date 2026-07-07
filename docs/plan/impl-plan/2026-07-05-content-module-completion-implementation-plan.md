@@ -61,7 +61,7 @@
 - File / User 下游 client adapter、分类 / 话题 / 标签引用校验语义错误、媒体和封面错误映射。
 - cleanup worker、repair worker、outbox dispatcher 和 admin retry 基础。
 - Content 黑盒 HTTP system test 和本地依赖测试 fixture。
-- 剩余 Content API family：公开文章查询、作者工作台、发布生命周期、标签/分类/话题、互动、presence、管理端。
+- 剩余 Content API family：公开文章查询、作者工作台、发布生命周期、标签/分类/话题、互动、管理端。
 - 限流、resilience、observability 和最终 review 证据。
 
 不在本计划处理：
@@ -552,9 +552,9 @@
 
   contract、migration、application/repository、handler 分开提交。
 
-## 任务 9：点赞、收藏、互动状态和 reader presence
+## 任务 9：点赞、收藏和互动状态
 
-**测试立场：** TDD - 幂等写、计数一致性、unknown viewer 状态、Redis 降级和 presence no-op 属于 R4。
+**测试立场：** TDD - 幂等写、计数一致性、unknown viewer 状态和 Redis 降级属于 R4。
 
 - [x] **步骤 1：拆 engagement endpoint contract**
 
@@ -578,20 +578,9 @@
 
   覆盖 `liked/favorited=true/false/null`、`degraded=true`、登录态、匿名读取和错误码。
 
-- [x] **步骤 5：拆 reader presence endpoint contract**
+- [x] **步骤 5：提交互动切片**
 
-  固定：
-  - `PUT /api/v1/posts/{postId}/reader-sessions/{sessionId}`
-  - `DELETE /api/v1/posts/{postId}/reader-sessions/{sessionId}`
-  - `GET /api/v1/posts/{postId}/reader-presence`
-
-- [x] **步骤 6：实现 presence application / Redis adapter / handler**
-
-  Presence 是附加能力；Redis 不可用时按 `rate-limiting.md` 返回空成功或 degraded 摘要，不能影响文章详情和正文读取。
-
-- [x] **步骤 7：提交互动和 presence 切片**
-
-  like/favorite、engagement query、presence 建议分开提交。
+  like/favorite、engagement query 建议分开提交。阅读在线状态已按产品判断退出当前范围，不再实现或保留接口。
 
 ## 任务 10：管理端 Content API
 
@@ -627,11 +616,11 @@
 
 - [ ] **步骤 1：定义 rate limiter port 和 outcome**
 
-  Outcome 至少覆盖 `ALLOW`、`REJECT_TOO_FREQUENT`、`DEGRADED_ALLOW_LOCAL`、`DEGRADED_DENY_UNAVAILABLE`、`NOOP_SUCCESS`。
+  Outcome 至少覆盖 `ALLOW`、`REJECT_TOO_FREQUENT`、`DEGRADED_ALLOW_LOCAL`、`DEGRADED_DENY_UNAVAILABLE`。
 
 - [ ] **步骤 2：补 application 限流测试**
 
-  覆盖草稿保存、发布、互动写、presence、admin retry 和内部 body read 的 fail-open / fail-closed / no-op 分支。
+  覆盖草稿保存、发布、互动写、admin retry 和内部 body read 的 fail-open / fail-closed 分支。
 
 - [ ] **步骤 3：实现 Redis rate limit adapter**
 
@@ -703,7 +692,7 @@
 
 - 本计划继续保持 Content 的服务内边界：HTTP contract 归 `services/zhicore-content/api/http`，业务规则归 application/domain，PostgreSQL/MongoDB/RabbitMQ/Redis 归 infrastructure，进程和 worker lifecycle 归 runtime/cmd。
 - Worker、outbox dispatcher、rate limiter 和 client adapter 都有明确 owner，避免在 handler 或 repository 中散落运行期策略。
-- API family 按公开查询、作者工作台、发布生命周期、taxonomy、engagement/presence、admin 分批实现，每批都有 contract、handler test、application/repository 测试和独立提交边界。
+- API family 按公开查询、作者工作台、发布生命周期、taxonomy、engagement、admin 分批实现，每批都有 contract、handler test、application/repository 测试和独立提交边界。
 - 系统测试在发布闭环上先补最小黑盒场景，后续 API family 可逐步加入 system test，不要求一次性构造全量生产环境。
 - 结构性收敛没有被静默推迟：可运行 runtime、worker、错误 sentinel、system test、限流和观测都作为独立任务，有明确完成标准。
 
@@ -712,5 +701,5 @@
 - 本计划范围很大，执行时必须按任务拆分 worktree 或阶段分支；不要在一个长分支里积累所有 API family。
 - User/File/RabbitMQ/Redis 的 Go 服务或 contract 若尚未完全可用，Content 只能通过 typed client contract 和本地 fake provider 做测试，不能伪造生产 readiness。
 - 如果迁移发现当前 `outbox_events` 或 task 表缺少 dispatch 状态字段，应新增独立 migration，而不是在 worker 中用内存状态绕过。
-- Engagement 和 presence 引入 Redis 后，降级语义必须严格按 `rate-limiting.md` 和 `engagement-design.md`，不能为了简化前端把 unknown 写成 `false`。
+- Engagement 引入 Redis 后，降级语义必须严格按 `rate-limiting.md` 和 `engagement-design.md`，不能为了简化前端把 unknown 写成 `false`。
 - Admin API 和 outbox retry 是高风险操作，必须有权限、限流和审计字段测试后再实现。

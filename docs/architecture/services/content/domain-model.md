@@ -21,15 +21,6 @@
 | Tag / Category | 标签、分类、slug、标签关系和标签统计投影 | `tags`、`categories`、`post_tags`、`tag_stats` |
 | Engagement | 点赞、取消点赞、收藏、取消收藏和文章本地统计 | `post_likes`、`post_favorites`、`post_stats` |
 | Projection / Integration | 服务内投影任务、跨服务 outbox、消费幂等和管理端重试 | `domain_event_task`、`outbox_event`、`consumed_events`、`outbox_retry_audit` |
-| Reader Presence | 读者在线 presence session、离开和在线状态查询 | Redis |
-
-**Reader Presence 隐私边界：**
-
-- **可见范围**：presence 数据聚合后只暴露"当前在线人数"（匿名数字），不暴露具体读者身份列表，即使对文章作者也不例外。
-- **匿名用户**：匿名/未登录读者不记录 presence（无法关联身份，也不聚合到计数，防止 fingerprinting）。
-- **TTL**：presence key 默认 TTL = 30s（心跳续期），停止心跳后 30s 自动过期；不需要主动 leave 接口也能自然清理。
-- **用户选项**：第一阶段不提供"关闭 presence 追踪"的用户设置；如未来引入，User 服务的 presence 偏好设置由 Content 消费并在写 presence 前检查。
-- **不得暴露**：presence 数据不得包含 `userId`、设备信息或 IP 进入 API 响应；Redis key 中的 `userId` 是服务内部实现细节，不对外。
 
 ## 聚合
 
@@ -121,7 +112,6 @@ Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best
 - `outbox_event`：跨服务集成事件投递台账。
 - `domain_event_task`：Content 服务内投影任务。
 - `consumed_events`：消费幂等记录。
-- Reader presence：短生命周期 Redis 状态。
 - `scheduled_publish_event`：定时发布任务记录。
 - `outbox_retry_audit`：管理端重试审计。
 - `content_body_cleanup_tasks` / `content_body_repair_tasks`：正文资源回收和数据修复任务。

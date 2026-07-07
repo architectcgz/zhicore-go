@@ -207,7 +207,6 @@ Provider contract：
 - 标签详情、标签搜索、热门标签、标签下文章。
 - 文章点赞/收藏状态和计数。
 - 文章作者 ID。
-- 文章上下文中的读者在线状态。
 
 Provider contract：
 

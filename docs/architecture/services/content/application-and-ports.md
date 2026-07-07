@@ -47,7 +47,6 @@ type Actor struct {
 - `GetPostEngagement`、`BatchGetEngagementStatus`
 - `GetLikeStatus`、`BatchGetLikeStatus`、`GetLikeCount`（内部可作为 engagement query 的窄能力）
 - `GetFavoriteStatus`、`BatchGetFavoriteStatus`、`GetFavoriteCount`（内部可作为 engagement query 的窄能力）
-- `GetReaderPresence`
 - `ListAdminPosts`、`ListOutboxDeadOrFailedEvents`
 
 命令用例修改状态，返回简单成功/失败或聚合 ID。查询用例只读取，返回 DTO 或视图模型。不要在命令用例里嵌套复杂查询逻辑。
@@ -79,7 +78,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `ConsumedEventStore` | 消费幂等 | 记录消费过的事件 ID |
 | `BodyCleanupTaskStore` | 正文清理任务 | 创建和查询未引用 MongoDB body 的清理任务；发布事务失败后可用独立短事务记录 orphan snapshot cleanup |
 | `BodyRepairTaskStore` | 正文修复任务 | 记录正文缺失、hash 不一致等数据一致性事故 |
-| `RateLimiter` | Content 业务限流 | 按 actor、post、session、service caller、operation 和高成本资源维度返回 typed decision；必须能表达 allow、`1003` reject、Redis 降级放行、`1004` fail-closed 和 presence no-op，策略见 `rate-limiting.md`。 |
+| `RateLimiter` | Content 业务限流 | 按 actor、post、service caller、operation 和高成本资源维度返回 typed decision；必须能表达 allow、`1003` reject、Redis 降级放行和 `1004` fail-closed，策略见 `rate-limiting.md`。 |
 
 ### 缓存和外部服务端口
 
@@ -88,7 +87,6 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 | `PostCacheStore` | Post 缓存 | cache-aside、失效、三态缓存 |
 | `TagCacheStore` | Tag 缓存 | 热门标签缓存 |
 | `EngagementCacheStore` | 点赞/收藏缓存 | Redis 状态和计数缓存；必须提供批量读取能力，cache error 只返回依赖状态，不把 unknown 伪装成 false |
-| `ReaderPresenceStore` | Presence 状态 | session、leave、presence 查询 |
 | `UserProfileClient` | User 服务调用 | 获取作者摘要 |
 | `FileResourceClient` | File service调用 | 解析或清理文件引用 |
 | `BodyParserRegistry` | 正文 schema 解析 | 按 `schemaVersion` 选择 parser，输出 `NormalizedBody` |
@@ -99,7 +97,7 @@ Ports 放在 `services/zhicore-content/internal/content/ports`，按聚合或用
 - `PostRepository` 包含 Post 聚合持久化方法，不拆成 10 个小接口。
 - `PostQueryRepository` 独立于 `PostRepository`，避免写模型被查询需求污染。
 - Outbox、InternalEventTask dispatcher、cleanup worker 属于 infrastructure；application 只依赖发布端口或任务记录端口。
-- HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、operation、body size、presence session、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误或 no-op success，adapter 不直接构造 HTTP response。
+- HTTP 入站层可以先做 route 级限流和身份上下文提取；涉及 owner、post、operation、body size、outbox event 等业务维度时，通过 `RateLimiter` 或 application use case 前置 guard 执行，不在 handler 中散写限流 key。`RateLimiter` 返回的 decision 由 application / handler 映射为公开错误，adapter 不直接构造 HTTP response。
 - Engagement 查询在 Redis 不可用时只能走受控 DB fallback：单篇详情可以返回 `viewer.liked/favorited=null` 和 `viewer.degraded=true`，批量状态必须使用批量 repository 方法，不能循环逐条查 `(user_id, post_id)`。完整规则见 [engagement-design.md](engagement-design.md)。
 - 不定义宽泛 `Store` 大接口。
 
@@ -197,7 +195,7 @@ api/http -> application -> domain <- ports <- infrastructure
 
 ## 推荐首个实现切片
 
-首个切片选择“创建草稿并发布文章”，原因是它覆盖核心 DDD、PostgreSQL / MongoDB 正文指针、outbox、cleanup / repair、body parser 和 HTTP 入站，但不会一开始卷入点赞、标签、管理端和 presence。
+首个切片选择“创建草稿并发布文章”，原因是它覆盖核心 DDD、PostgreSQL / MongoDB 正文指针、outbox、cleanup / repair、body parser 和 HTTP 入站，但不会一开始卷入点赞、标签和管理端。
 
 实施步骤：
 
@@ -227,6 +225,6 @@ api/http -> application -> domain <- ports <- infrastructure
    - `POST /api/v1/posts/{postId}/publish`
    - 从 Gateway 注入的身份上下文构造 `Actor`，缺失时返回认证失败；不做服务内 JWT 解析。
 
-该切片完成后再扩展点赞、收藏、标签、投影、管理端和 reader presence。
+该切片完成后再扩展点赞、收藏、标签、投影和管理端。
 
 首个切片的 application 测试必须覆盖发布失败方向：MongoDB snapshot 写入成功但 PostgreSQL transaction 失败时，线上 published 指针不变，并且新 snapshot 通过 immediate delete、独立 cleanup task 或 orphan scanner 可被回收。

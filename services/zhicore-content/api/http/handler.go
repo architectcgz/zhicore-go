@@ -47,9 +47,6 @@ type Service interface {
 	UnfavoritePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error)
 	GetPostEngagement(ctx context.Context, query application.GetPostEngagementQuery) (application.PostEngagementResult, error)
 	BatchGetEngagementStatus(ctx context.Context, query application.BatchGetEngagementStatusQuery) (application.BatchEngagementStatusResult, error)
-	UpsertReaderSession(ctx context.Context, command application.ReaderSessionCommand) (application.ReaderPresenceResult, error)
-	DeleteReaderSession(ctx context.Context, command application.ReaderSessionCommand) error
-	GetReaderPresence(ctx context.Context, query application.ReaderPresenceQuery) (application.ReaderPresenceResult, error)
 }
 
 type Handler struct {
@@ -76,9 +73,6 @@ func (h *Handler) routes() {
 	h.router.PUT("/api/v1/posts/:postId/favorite", h.favoritePost)
 	h.router.DELETE("/api/v1/posts/:postId/favorite", h.unfavoritePost)
 	h.router.GET("/api/v1/posts/:postId/engagement", h.getPostEngagement)
-	h.router.PUT("/api/v1/posts/:postId/reader-sessions/:sessionId", h.upsertReaderSession)
-	h.router.DELETE("/api/v1/posts/:postId/reader-sessions/:sessionId", h.deleteReaderSession)
-	h.router.GET("/api/v1/posts/:postId/reader-presence", h.getReaderPresence)
 	h.router.GET("/api/v1/me/posts", h.listAuthorPosts)
 	h.router.GET("/api/v1/me/drafts", h.listAuthorDrafts)
 	h.router.GET("/api/v1/posts/:postId", h.getPostDetail)

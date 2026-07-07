@@ -178,15 +178,6 @@ func mapPostStatsResponse(stats application.PostStats) postStatsResp {
 	}
 }
 
-func mapReaderPresenceResponse(result application.ReaderPresenceResult) readerPresenceResp {
-	return readerPresenceResp{
-		PostID:      result.PostID,
-		OnlineCount: result.OnlineCount,
-		Degraded:    result.Degraded,
-		TTLSeconds:  result.TTLSeconds,
-	}
-}
-
 func formatTime(value time.Time) string {
 	return sharedhttp.FormatRFC3339UTC(value)
 }
