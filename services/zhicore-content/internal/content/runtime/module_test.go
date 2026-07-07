@@ -93,9 +93,38 @@ func TestBuildWiresAdminOutboxRepository(t *testing.T) {
 	}
 }
 
+func TestBuildWiresTaxonomyRepository(t *testing.T) {
+	deps, mock := validDepsWithMock(t)
+	mock.ExpectQuery("FROM tags").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "slug", "post_count"}).
+			AddRow(int64(1), "tag_go", "Go", "go", int64(3)))
+
+	module, err := Build(deps)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tags?limit=1", nil)
+	module.HTTPHandler.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusServiceUnavailable {
+		t.Fatalf("taxonomy route returned service unavailable, want runtime Taxonomy repository wired; body=%s", rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sql expectations: %v", err)
+	}
+}
+
 func validDeps(t *testing.T) Deps {
 	t.Helper()
-	db, _, err := sqlmock.New()
+	deps, _ := validDepsWithMock(t)
+	return deps
+}
+
+func validDepsWithMock(t *testing.T) (Deps, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New() error = %v", err)
 	}
@@ -116,7 +145,7 @@ func validDeps(t *testing.T) Deps {
 		Clock:             fixedClock{now: time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)},
 		Users:             stubUsers{},
 		Files:             stubFiles{},
-	}
+	}, mock
 }
 
 type stubBodyParser struct{}
