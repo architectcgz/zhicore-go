@@ -81,8 +81,9 @@ type RegisterResult struct {
 }
 
 type LoginCommand struct {
-	Email    string
-	Password string
+	Email      string
+	Password   string
+	RememberMe bool
 }
 
 type LoginResult struct {

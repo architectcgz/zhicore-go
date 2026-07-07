@@ -54,21 +54,23 @@ func (h *Handler) register(c *gin.Context) {
 func (h *Handler) login(c *gin.Context) {
 	w, r := c.Writer, c.Request
 	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+		RememberMe *bool  `json:"rememberMe"`
 	}
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeValidationError(w)
 		return
 	}
-	if strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Password) == "" {
+	if strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Password) == "" || req.RememberMe == nil {
 		writeValidationError(w)
 		return
 	}
 
 	result, err := h.service.Login(r.Context(), LoginCommand{
-		Email:    req.Email,
-		Password: req.Password,
+		Email:      req.Email,
+		Password:   req.Password,
+		RememberMe: *req.RememberMe,
 	})
 	if err != nil {
 		writeMappedError(w, err)
