@@ -41,12 +41,13 @@ type RefreshSessionStore interface {
 }
 
 type CreateRefreshSessionInput struct {
-	AccountID        domain.AccountID
-	SessionID        string
-	CurrentTokenID   string
-	CurrentTokenHash string
-	ExpiresAt        time.Time
-	CreatedAt        time.Time
+	AccountID         domain.AccountID
+	SessionID         string
+	CurrentTokenID    string
+	CurrentTokenHash  string
+	PersistencePolicy domain.RefreshSessionPersistencePolicy
+	ExpiresAt         time.Time
+	CreatedAt         time.Time
 }
 
 type CreateProfileForAccountInput struct {

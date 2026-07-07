@@ -8,8 +8,10 @@ import (
 )
 
 type GenerateRefreshTokenMaterialInput struct {
-	AccountID domain.AccountID
-	IssuedAt  time.Time
+	AccountID         domain.AccountID
+	IssuedAt          time.Time
+	PersistencePolicy domain.RefreshSessionPersistencePolicy
+	TTL               time.Duration
 }
 
 type GeneratedRefreshTokenMaterial struct {
