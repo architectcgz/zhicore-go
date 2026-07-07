@@ -19,6 +19,7 @@ func TestStorePlanPostPublishedCampaignPersistsCampaignAndInitialShard(t *testin
 	t.Cleanup(func() { _ = db.Close() })
 	store := NewStore(db)
 	now := time.Date(2026, 7, 6, 19, 0, 0, 0, time.UTC)
+	activeSince := time.Date(2026, 6, 6, 10, 0, 0, 0, time.UTC)
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("INSERT INTO consumed_events").
@@ -32,6 +33,8 @@ func TestStorePlanPostPublishedCampaignPersistsCampaignAndInitialShard(t *testin
 			int64(41),
 			"POST",
 			int64(41),
+			"HOT",
+			sql.NullTime{Time: activeSince, Valid: true},
 			"Hello",
 			"Short summary",
 			[]byte(`{"internalId":41}`),
@@ -40,7 +43,7 @@ func TestStorePlanPostPublishedCampaignPersistsCampaignAndInitialShard(t *testin
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7001)))
 	mock.ExpectQuery("INSERT INTO notification_campaign_shard").
-		WithArgs(int64(7001), now).
+		WithArgs(int64(7001), "HOT", sql.NullTime{Time: activeSince, Valid: true}, now).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(8001)))
 	mock.ExpectExec("UPDATE consumed_events").
 		WithArgs("evt_post_published_1", now).
@@ -56,17 +59,19 @@ func TestStorePlanPostPublishedCampaignPersistsCampaignAndInitialShard(t *testin
 			PayloadHash:  "hash_1",
 			ExpiresAt:    now.Add(168 * time.Hour),
 		},
-		SourceEventID: "evt_post_published_1",
-		CampaignType:  "POST_PUBLISHED",
-		AuthorID:      1001,
-		PostID:        41,
-		ObjectType:    "POST",
-		ObjectID:      41,
-		Title:         "Hello",
-		Excerpt:       "Short summary",
-		Payload:       []byte(`{"internalId":41}`),
-		PublishedAt:   time.Date(2026, 7, 6, 18, 59, 0, 0, time.UTC),
-		CreatedAt:     now,
+		SourceEventID:       "evt_post_published_1",
+		CampaignType:        "POST_PUBLISHED",
+		AuthorID:            1001,
+		PostID:              41,
+		ObjectType:          "POST",
+		ObjectID:            41,
+		AudienceClass:       "HOT",
+		AudienceActiveSince: &activeSince,
+		Title:               "Hello",
+		Excerpt:             "Short summary",
+		Payload:             []byte(`{"internalId":41}`),
+		PublishedAt:         time.Date(2026, 7, 6, 18, 59, 0, 0, time.UTC),
+		CreatedAt:           now,
 	})
 	if err != nil {
 		t.Fatalf("PlanPostPublishedCampaign() error = %v", err)
@@ -119,11 +124,12 @@ func TestStoreClaimCampaignShardUsesSkipLockedAndConfiguredTimeout(t *testing.T)
 	store := NewStore(db)
 	now := time.Date(2026, 7, 6, 20, 0, 0, 0, time.UTC)
 	deadline := now.Add(30 * time.Second)
+	activeSince := time.Date(2026, 6, 6, 20, 0, 0, 0, time.UTC)
 
 	mock.ExpectQuery("FOR UPDATE SKIP LOCKED").
 		WithArgs("worker-1", now, int64(30)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "campaign_id", "follower_cursor", "attempt_count", "claim_deadline_at"}).
-			AddRow(int64(8001), int64(7001), "", 2, deadline))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "campaign_id", "author_id", "post_id", "audience_class", "audience_active_since", "follower_cursor", "attempt_count", "claim_deadline_at"}).
+			AddRow(int64(8001), int64(7001), int64(1001), int64(41), "HOT", activeSince, "", 2, deadline))
 
 	claim, err := store.ClaimCampaignShard(context.Background(), ports.ClaimCampaignShardInput{
 		WorkerID:     "worker-1",
@@ -133,8 +139,44 @@ func TestStoreClaimCampaignShardUsesSkipLockedAndConfiguredTimeout(t *testing.T)
 	if err != nil {
 		t.Fatalf("ClaimCampaignShard() error = %v", err)
 	}
-	if !claim.Found || claim.ShardID != 8001 || claim.CampaignID != 7001 || claim.AttemptCount != 2 || !claim.ClaimDeadlineAt.Equal(deadline) {
+	if !claim.Found ||
+		claim.ShardID != 8001 ||
+		claim.CampaignID != 7001 ||
+		claim.AuthorID != 1001 ||
+		claim.PostID != 41 ||
+		claim.AudienceClass != "HOT" ||
+		claim.AudienceActiveSince == nil ||
+		!claim.AudienceActiveSince.Equal(activeSince) ||
+		claim.AttemptCount != 2 ||
+		!claim.ClaimDeadlineAt.Equal(deadline) {
 		t.Fatalf("claim = %+v", claim)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sql expectations: %v", err)
+	}
+}
+
+func TestStoreFailCampaignShardSchedulesRetry(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("new sqlmock: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := NewStore(db)
+	now := time.Date(2026, 7, 6, 20, 10, 0, 0, time.UTC)
+
+	mock.ExpectExec("UPDATE notification_campaign_shard").
+		WithArgs(int64(8001), "USER_FOLLOWER_SHARD_DEGRADED", now, int64(120)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = store.FailCampaignShard(context.Background(), ports.FailCampaignShardInput{
+		ShardID:    8001,
+		ErrorCode:  "USER_FOLLOWER_SHARD_DEGRADED",
+		FailedAt:   now,
+		RetryAfter: 2 * time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("FailCampaignShard() error = %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("sql expectations: %v", err)

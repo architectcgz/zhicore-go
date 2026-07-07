@@ -139,18 +139,20 @@ type InteractionNotificationStore interface {
 }
 
 type PlanPostPublishedCampaignInput struct {
-	Event         ConsumedEventMetadata
-	SourceEventID string
-	CampaignType  string
-	AuthorID      int64
-	PostID        int64
-	ObjectType    string
-	ObjectID      int64
-	Title         string
-	Excerpt       string
-	Payload       []byte
-	PublishedAt   time.Time
-	CreatedAt     time.Time
+	Event               ConsumedEventMetadata
+	SourceEventID       string
+	CampaignType        string
+	AuthorID            int64
+	PostID              int64
+	ObjectType          string
+	ObjectID            int64
+	AudienceClass       string
+	AudienceActiveSince *time.Time
+	Title               string
+	Excerpt             string
+	Payload             []byte
+	PublishedAt         time.Time
+	CreatedAt           time.Time
 }
 
 type PlanCampaignResult struct {
@@ -166,17 +168,47 @@ type ClaimCampaignShardInput struct {
 }
 
 type ClaimedCampaignShard struct {
-	Found           bool
-	ShardID         int64
-	CampaignID      int64
-	FollowerCursor  string
-	AttemptCount    int
-	ClaimDeadlineAt time.Time
+	Found               bool
+	ShardID             int64
+	CampaignID          int64
+	AuthorID            int64
+	PostID              int64
+	AudienceClass       string
+	AudienceActiveSince *time.Time
+	FollowerCursor      string
+	AttemptCount        int
+	ClaimDeadlineAt     time.Time
 }
 
 type CampaignRepository interface {
 	PlanPostPublishedCampaign(ctx context.Context, input PlanPostPublishedCampaignInput) (PlanCampaignResult, error)
 	ClaimCampaignShard(ctx context.Context, input ClaimCampaignShardInput) (ClaimedCampaignShard, error)
+	FailCampaignShard(ctx context.Context, input FailCampaignShardInput) error
+}
+
+type FailCampaignShardInput struct {
+	ShardID    int64
+	ErrorCode  string
+	FailedAt   time.Time
+	RetryAfter time.Duration
+}
+
+type ListFollowerShardInput struct {
+	FollowingID   int64
+	AudienceClass string
+	ActiveSince   *time.Time
+	Cursor        string
+	Limit         int
+}
+
+type FollowerShardPage struct {
+	FollowerIDs []int64
+	NextCursor  string
+	HasMore     bool
+}
+
+type UserFollowerClient interface {
+	ListFollowerShard(ctx context.Context, input ListFollowerShardInput) (FollowerShardPage, error)
 }
 
 type NotificationSettingsRepository interface {

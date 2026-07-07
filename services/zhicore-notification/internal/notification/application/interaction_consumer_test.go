@@ -87,6 +87,9 @@ func TestInteractionConsumerPlansPostPublishedCampaignWithoutFollowerFanout(t *t
 	if planned.Title != "Hello" || planned.Excerpt != "Short summary" || !planned.PublishedAt.Equal(time.Date(2026, 7, 6, 9, 59, 0, 0, time.UTC)) {
 		t.Fatalf("planned content snapshot = %+v", planned)
 	}
+	if planned.AudienceClass != "HOT" || planned.AudienceActiveSince == nil || !planned.AudienceActiveSince.Equal(time.Date(2026, 6, 6, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("planned audience = class %q activeSince %v", planned.AudienceClass, planned.AudienceActiveSince)
+	}
 	if len(deps.notifications.created) != 0 || len(deps.fanout.hints) != 0 {
 		t.Fatalf("published campaign must not fanout immediately: notifications=%d hints=%d", len(deps.notifications.created), len(deps.fanout.hints))
 	}
@@ -364,8 +367,11 @@ func (f *fakeInteractionNotificationStore) CreateInteractionNotification(ctx con
 }
 
 type fakeCampaignStore struct {
-	planned []ports.PlanPostPublishedCampaignInput
-	err     error
+	planned    []ports.PlanPostPublishedCampaignInput
+	claim      ports.ClaimedCampaignShard
+	claimInput ports.ClaimCampaignShardInput
+	failed     []ports.FailCampaignShardInput
+	err        error
 }
 
 func (f *fakeCampaignStore) PlanPostPublishedCampaign(ctx context.Context, input ports.PlanPostPublishedCampaignInput) (ports.PlanCampaignResult, error) {
@@ -376,8 +382,17 @@ func (f *fakeCampaignStore) PlanPostPublishedCampaign(ctx context.Context, input
 	return ports.PlanCampaignResult{Created: true, CampaignID: 7001, ShardID: 8001}, nil
 }
 
-func (f *fakeCampaignStore) ClaimCampaignShard(context.Context, ports.ClaimCampaignShardInput) (ports.ClaimedCampaignShard, error) {
-	return ports.ClaimedCampaignShard{}, nil
+func (f *fakeCampaignStore) ClaimCampaignShard(_ context.Context, input ports.ClaimCampaignShardInput) (ports.ClaimedCampaignShard, error) {
+	f.claimInput = input
+	if f.err != nil {
+		return ports.ClaimedCampaignShard{}, f.err
+	}
+	return f.claim, nil
+}
+
+func (f *fakeCampaignStore) FailCampaignShard(_ context.Context, input ports.FailCampaignShardInput) error {
+	f.failed = append(f.failed, input)
+	return nil
 }
 
 type fakeRealtimeFanout struct {

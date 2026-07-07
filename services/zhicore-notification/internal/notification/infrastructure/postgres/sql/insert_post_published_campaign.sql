@@ -5,6 +5,8 @@ INSERT INTO notification_campaign (
     post_id,
     object_type,
     object_id,
+    audience_class,
+    audience_active_since,
     title,
     excerpt,
     payload,
@@ -23,9 +25,11 @@ INSERT INTO notification_campaign (
     $8,
     $9,
     $10,
-    'PLANNED',
     $11,
-    $11
+    $12,
+    'PLANNED',
+    $13,
+    $13
 )
 ON CONFLICT (source_event_id) DO NOTHING
 RETURNING id;

@@ -1,11 +1,12 @@
-UPDATE notification_campaign_shard
-SET status = 'PROCESSING',
-    claimed_by = $1,
-    claimed_at = $2,
-    claim_deadline_at = $2 + ($3 * INTERVAL '1 second'),
-    attempt_count = attempt_count + 1,
-    updated_at = $2
-WHERE id = (
+WITH claimed AS (
+    UPDATE notification_campaign_shard
+    SET status = 'PROCESSING',
+        claimed_by = $1,
+        claimed_at = $2,
+        claim_deadline_at = $2 + ($3 * INTERVAL '1 second'),
+        attempt_count = attempt_count + 1,
+        updated_at = $2
+    WHERE id = (
     SELECT id
     FROM notification_campaign_shard
     WHERE (
@@ -20,4 +21,17 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, campaign_id, follower_cursor, attempt_count, claim_deadline_at;
+    RETURNING id, campaign_id, audience_class, audience_active_since, follower_cursor, attempt_count, claim_deadline_at
+)
+SELECT
+    claimed.id,
+    claimed.campaign_id,
+    campaign.author_id,
+    campaign.post_id,
+    claimed.audience_class,
+    claimed.audience_active_since,
+    claimed.follower_cursor,
+    claimed.attempt_count,
+    claimed.claim_deadline_at
+FROM claimed
+JOIN notification_campaign campaign ON campaign.id = claimed.campaign_id;

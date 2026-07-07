@@ -181,6 +181,9 @@ func (c *InteractionConsumer) postPublishedCampaignInput(envelope integrationEnv
 	if payload.PublicID == "" || payload.InternalID <= 0 || payload.AuthorID <= 0 || strings.TrimSpace(payload.Title) == "" || payload.PublishedAt.IsZero() {
 		return ports.PlanPostPublishedCampaignInput{}, fmt.Errorf("content.post.published payload is incomplete")
 	}
+	// Regular post fanout only plans HOT active followers so a normal publish
+	// cannot expand into full-follower inbox materialization.
+	activeSince := occurredAt.Add(-30 * 24 * time.Hour)
 	return ports.PlanPostPublishedCampaignInput{
 		Event: ports.ConsumedEventMetadata{
 			EventID:      envelope.EventID,
@@ -191,17 +194,19 @@ func (c *InteractionConsumer) postPublishedCampaignInput(envelope integrationEnv
 			OccurredAt:   occurredAt,
 			ExpiresAt:    c.clock.Now().Add(c.config.ConsumedEventsRetention),
 		},
-		SourceEventID: envelope.EventID,
-		CampaignType:  "POST_PUBLISHED",
-		AuthorID:      payload.AuthorID,
-		PostID:        payload.InternalID,
-		ObjectType:    "POST",
-		ObjectID:      payload.InternalID,
-		Title:         strings.TrimSpace(payload.Title),
-		Excerpt:       payload.Summary,
-		Payload:       envelope.Payload,
-		PublishedAt:   payload.PublishedAt,
-		CreatedAt:     c.clock.Now(),
+		SourceEventID:       envelope.EventID,
+		CampaignType:        "POST_PUBLISHED",
+		AuthorID:            payload.AuthorID,
+		PostID:              payload.InternalID,
+		ObjectType:          "POST",
+		ObjectID:            payload.InternalID,
+		AudienceClass:       "HOT",
+		AudienceActiveSince: &activeSince,
+		Title:               strings.TrimSpace(payload.Title),
+		Excerpt:             payload.Summary,
+		Payload:             envelope.Payload,
+		PublishedAt:         payload.PublishedAt,
+		CreatedAt:           c.clock.Now(),
 	}, nil
 }
 
