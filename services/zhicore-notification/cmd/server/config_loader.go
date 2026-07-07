@@ -13,6 +13,8 @@ const (
 	envRedisPassword                  = "ZHICORE_NOTIFICATION_REDIS_PASSWORD"
 	envRedisDB                        = "ZHICORE_NOTIFICATION_REDIS_DB"
 	envRabbitMQURL                    = "ZHICORE_NOTIFICATION_RABBITMQ_URL"
+	envUserServiceBaseURL             = "ZHICORE_NOTIFICATION_USER_SERVICE_BASE_URL"
+	envUserServiceTimeout             = "ZHICORE_NOTIFICATION_USER_SERVICE_TIMEOUT"
 	envPublicIDActiveVersion          = "ZHICORE_NOTIFICATION_PUBLIC_ID_ACTIVE_VERSION"
 	envPublicIDSecrets                = "ZHICORE_NOTIFICATION_PUBLIC_ID_SECRETS"
 	envConsumedEventsRetention        = "ZHICORE_NOTIFICATION_CONSUMER_CONSUMED_EVENTS_RETENTION"
@@ -42,6 +44,9 @@ func LoadNotificationServerConfig(lookup func(string) (string, bool)) (Notificat
 		return NotificationServerConfig{}, err
 	}
 	if err := overlayRequiredString(&cfg.RabbitMQ.URL, lookup, envRabbitMQURL, requiredSeen); err != nil {
+		return NotificationServerConfig{}, err
+	}
+	if err := overlayRequiredString(&cfg.UserService.BaseURL, lookup, envUserServiceBaseURL, requiredSeen); err != nil {
 		return NotificationServerConfig{}, err
 	}
 	if err := overlayPublicIDConfig(&cfg, lookup, requiredSeen); err != nil {
@@ -180,6 +185,9 @@ func overlayOptionalConfig(cfg *NotificationServerConfig, lookup func(string) (s
 		return err
 	}
 	if err := overlayOptionalDuration(&cfg.HTTP.IdleTimeout, lookup, envHTTPIdleTimeout); err != nil {
+		return err
+	}
+	if err := overlayOptionalDuration(&cfg.UserService.Timeout, lookup, envUserServiceTimeout); err != nil {
 		return err
 	}
 	if value, ok, err := lookupOptionalEnv(lookup, envHTTPShutdownTimeout); err != nil {

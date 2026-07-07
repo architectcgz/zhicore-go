@@ -13,6 +13,7 @@ type NotificationServerConfig struct {
 	Postgres       NotificationPostgresConfig
 	Redis          NotificationRedisConfig
 	RabbitMQ       NotificationRabbitMQConfig
+	UserService    NotificationUserServiceConfig
 	PublicID       NotificationPublicIDConfig
 	Consumer       NotificationConsumerConfig
 	RealtimeFanout NotificationRealtimeFanoutConfig
@@ -40,6 +41,11 @@ type NotificationRedisConfig struct {
 
 type NotificationRabbitMQConfig struct {
 	URL string
+}
+
+type NotificationUserServiceConfig struct {
+	BaseURL string
+	Timeout time.Duration
 }
 
 type NotificationPublicIDConfig struct {
@@ -86,6 +92,14 @@ func (c NotificationRabbitMQConfig) GoString() string {
 	return c.String()
 }
 
+func (c NotificationUserServiceConfig) String() string {
+	return fmt.Sprintf("{BaseURL:%s Timeout:%s}", redactedURLSummary(c.BaseURL), c.Timeout)
+}
+
+func (c NotificationUserServiceConfig) GoString() string {
+	return c.String()
+}
+
 func (c NotificationPublicIDConfig) String() string {
 	return fmt.Sprintf("{Prefix:%s ActiveVersion:%d Secrets:%s}", c.Prefix, c.ActiveVersion, redactedSecretVersions(c.Secrets))
 }
@@ -96,7 +110,7 @@ func (c NotificationPublicIDConfig) GoString() string {
 
 func (c NotificationServerConfig) RedactedSummary() string {
 	return fmt.Sprintf(
-		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s postgres=%s redis.addr=%s redis.password=%s redis.db=%d rabbitmq.url=%s publicID.prefix=%s publicID.activeVersion=%d publicID.keyVersions=%s consumer.consumedEventsRetention=%s realtimeFanout.timeout=%s campaign.claimTimeout=%s campaign.shardBatchSize=%d campaign.maxConcurrentShardJobs=%d",
+		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s postgres=%s redis.addr=%s redis.password=%s redis.db=%d rabbitmq.url=%s userService.baseURL=%s userService.timeout=%s publicID.prefix=%s publicID.activeVersion=%d publicID.keyVersions=%s consumer.consumedEventsRetention=%s realtimeFanout.timeout=%s campaign.claimTimeout=%s campaign.shardBatchSize=%d campaign.maxConcurrentShardJobs=%d",
 		c.ServiceName,
 		c.HTTP.Addr,
 		c.HTTP.ReadHeaderTimeout,
@@ -109,6 +123,8 @@ func (c NotificationServerConfig) RedactedSummary() string {
 		redactedPresence(c.Redis.Password),
 		c.Redis.DB,
 		redactedURLSummary(c.RabbitMQ.URL),
+		redactedURLSummary(c.UserService.BaseURL),
+		c.UserService.Timeout,
 		c.PublicID.Prefix,
 		c.PublicID.ActiveVersion,
 		redactedSecretVersions(c.PublicID.Secrets),

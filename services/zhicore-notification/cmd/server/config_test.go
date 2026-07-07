@@ -18,6 +18,8 @@ func TestLoadNotificationServerConfigParsesRuntimeFields(t *testing.T) {
 		envPostgresDSN:                    "postgres://user:pass@localhost:5432/zhicore_notification?sslmode=disable",
 		envRedisAddr:                      "localhost:6379",
 		envRabbitMQURL:                    "amqp://user:pass@localhost:5672/",
+		envUserServiceBaseURL:             "http://localhost:8081",
+		envUserServiceTimeout:             "1500ms",
 		envPublicIDActiveVersion:          "2",
 		envPublicIDSecrets:                "1:old-secret,2:new-secret",
 		envConsumedEventsRetention:        "168h",
@@ -43,6 +45,16 @@ func TestLoadNotificationServerConfigParsesRuntimeFields(t *testing.T) {
 	if cfg.Campaign.ShardBatchSize != 200 || cfg.Campaign.MaxConcurrentShardJobs != 4 {
 		t.Fatalf("campaign config = %#v", cfg.Campaign)
 	}
+	if cfg.UserService.BaseURL != "http://localhost:8081" || cfg.UserService.Timeout != 1500*time.Millisecond {
+		t.Fatalf("user service config = %#v", cfg.UserService)
+	}
+}
+
+func TestDefaultNotificationServerConfigUsesNarrowUserServiceTimeout(t *testing.T) {
+	cfg := DefaultNotificationServerConfig()
+	if cfg.UserService.Timeout != 2*time.Second {
+		t.Fatalf("user service timeout = %s, want 2s", cfg.UserService.Timeout)
+	}
 }
 
 func TestNotificationServerConfigRedactedSummaryDoesNotLeakSecrets(t *testing.T) {
@@ -61,5 +73,8 @@ func TestNotificationServerConfigRedactedSummaryDoesNotLeakSecrets(t *testing.T)
 	}
 	if !strings.Contains(summary, "publicID.activeVersion=1") {
 		t.Fatalf("summary missing active version: %s", summary)
+	}
+	if !strings.Contains(summary, "userService.timeout=2s") {
+		t.Fatalf("summary missing user service timeout: %s", summary)
 	}
 }

@@ -13,6 +13,9 @@ func DefaultNotificationServerConfig() NotificationServerConfig {
 			IdleTimeout:       60 * time.Second,
 			ShutdownTimeout:   20 * time.Second,
 		},
+		UserService: NotificationUserServiceConfig{
+			Timeout: 2 * time.Second,
+		},
 		PublicID: NotificationPublicIDConfig{
 			Prefix:        "ntf_",
 			ActiveVersion: 1,

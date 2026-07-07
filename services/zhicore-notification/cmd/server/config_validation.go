@@ -47,6 +47,12 @@ func validateNotificationServerConfig(cfg NotificationServerConfig, requiredSeen
 	if err := validateURLWithSchemes(envRabbitMQURL, cfg.RabbitMQ.URL, "amqp", "amqps"); err != nil {
 		return err
 	}
+	if err := validateURLWithSchemes(envUserServiceBaseURL, cfg.UserService.BaseURL, "http", "https"); err != nil {
+		return err
+	}
+	if cfg.UserService.Timeout <= 0 {
+		return fmt.Errorf("%s: duration must be greater than zero", envUserServiceTimeout)
+	}
 	if strings.TrimSpace(cfg.PublicID.Secrets[cfg.PublicID.ActiveVersion]) == "" {
 		return fmt.Errorf("%s: active version secret is required", envPublicIDSecrets)
 	}
@@ -73,6 +79,7 @@ func missingRequiredEnv(cfg NotificationServerConfig, seen map[string]bool) []st
 		envPostgresDSN,
 		envRedisAddr,
 		envRabbitMQURL,
+		envUserServiceBaseURL,
 		envPublicIDActiveVersion,
 		envPublicIDSecrets,
 		envConsumedEventsRetention,
@@ -95,6 +102,9 @@ func missingRequiredEnv(cfg NotificationServerConfig, seen map[string]bool) []st
 	}
 	if cfg.RabbitMQ.URL == "" && !containsString(missing, envRabbitMQURL) {
 		missing = append(missing, envRabbitMQURL)
+	}
+	if cfg.UserService.BaseURL == "" && !containsString(missing, envUserServiceBaseURL) {
+		missing = append(missing, envUserServiceBaseURL)
 	}
 	return missing
 }
