@@ -20,7 +20,7 @@
 | Post Body / Draft | 正文、草稿、富文档块、媒体引用和 PostgreSQL / MongoDB 指针状态 | MongoDB `post_bodies`、`posts.published_body_id`、`posts.draft_body_id` |
 | Tag / Category | 标签、分类、slug、标签关系和标签统计投影 | `tags`、`categories`、`post_tags`、`tag_stats` |
 | Engagement | 点赞、取消点赞、收藏、取消收藏和文章本地统计 | `post_likes`、`post_favorites`、`post_stats` |
-| Projection / Integration | 服务内投影任务、跨服务 outbox、消费幂等和管理端重试 | `domain_event_task`、`outbox_event`、`consumed_events`、`outbox_retry_audit` |
+| Projection / Integration | 服务内投影任务、跨服务 outbox、消费幂等和管理端审计 | `domain_event_task`、`outbox_event`、`consumed_events`、`outbox_retry_audit`、`admin_post_audit` |
 
 ## 聚合
 
@@ -114,6 +114,7 @@ Redis 点赞 / 收藏状态和计数缓存只在 PostgreSQL 事务提交后 best
 - `consumed_events`：消费幂等记录。
 - `scheduled_publish_event`：定时发布任务记录。
 - `outbox_retry_audit`：管理端重试审计。
+- `admin_post_audit`：管理端文章删除审计，记录操作者、原因和状态变化。
 - `content_body_cleanup_tasks` / `content_body_repair_tasks`：正文资源回收和数据修复任务。
 
 ## 领域事件

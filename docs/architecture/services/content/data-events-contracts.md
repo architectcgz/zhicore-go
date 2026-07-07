@@ -37,6 +37,7 @@ PostgreSQL：
 - `outbox_event`
 - `domain_event_task`
 - `outbox_retry_audit`
+- `admin_post_audit`
 - `consumed_events`
 
 MongoDB：

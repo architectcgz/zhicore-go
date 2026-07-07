@@ -163,6 +163,38 @@ func TestContentEngagementMigrationContract(t *testing.T) {
 	}
 }
 
+func TestAdminPostAuditMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_admin_post_audit", ".up.sql")
+	down := readNamedMigration(t, "add_admin_post_audit", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE admin_post_audit",
+		"post_id BIGINT NOT NULL REFERENCES posts (id)",
+		"public_id VARCHAR(64) NOT NULL",
+		"admin_user_id BIGINT NOT NULL",
+		"action VARCHAR(32) NOT NULL",
+		"reason TEXT NOT NULL",
+		"previous_status VARCHAR(32) NOT NULL",
+		"new_status VARCHAR(32) NOT NULL",
+		"occurred_at TIMESTAMPTZ NOT NULL",
+		"CHECK (action IN ('DELETE'))",
+		"CHECK (previous_status IN ('DRAFT', 'PUBLISHED', 'SCHEDULED', 'DELETED'))",
+		"CHECK (new_status IN ('DRAFT', 'PUBLISHED', 'SCHEDULED', 'DELETED'))",
+		"CREATE INDEX ix_admin_post_audit_post_created_at",
+		"CREATE INDEX ix_admin_post_audit_admin_created_at",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("admin post audit up migration missing %q", fragment)
+		}
+	}
+
+	if !strings.Contains(down, "DROP TABLE IF EXISTS admin_post_audit") {
+		t.Fatalf("admin post audit down migration missing drop table")
+	}
+}
+
 func readContentPublishCoreMigration(t *testing.T, suffix string) string {
 	return readNamedMigration(t, "create_content_publish_core", suffix)
 }
