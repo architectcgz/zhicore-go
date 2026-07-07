@@ -1,0 +1,101 @@
+name: zhicore
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-management-alpine
+    container_name: zhicore-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: zhicore
+      RABBITMQ_DEFAULT_PASS: zhicore
+    networks:
+      shared-infra:
+        aliases:
+          - zhicore-rabbitmq
+          - rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0.37-jammy
+    container_name: zhicore-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: zhicore
+      MONGO_INITDB_ROOT_PASSWORD: zhicore
+    networks:
+      shared-infra:
+        aliases:
+          - zhicore-mongodb
+          - mongodb
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' -u zhicore -p zhicore --authenticationDatabase admin | grep 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  content:
+    image: zhicore/zhicore-content:local
+    container_name: zhicore-content
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "18080:8080"
+    environment:
+      ZHICORE_CONTENT_HTTP_ADDR: ":8080"
+      ZHICORE_CONTENT_POSTGRES_DSN: postgres://postgres:postgres123456@shared-postgres:5432/zhicore_content?sslmode=disable
+      ZHICORE_CONTENT_MONGO_URI: mongodb://zhicore:zhicore@zhicore-mongodb:27017/zhicore_content?authSource=admin
+      ZHICORE_CONTENT_RABBITMQ_URL: amqp://zhicore:zhicore@zhicore-rabbitmq:5672/
+      ZHICORE_CONTENT_RABBITMQ_EXCHANGE: zhicore.events
+      ZHICORE_CONTENT_RABBITMQ_PUBLISH_CONFIRM_TIMEOUT: 3s
+      ZHICORE_CONTENT_USER_SERVICE_BASE_URL: http://zhicore-user:8080
+      ZHICORE_CONTENT_FILE_SERVICE_BASE_URL: http://zhicore-file:8080
+      ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED: "false"
+      ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED: "false"
+      ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED: "false"
+    networks:
+      - shared-infra
+    restart: unless-stopped
+
+  notification:
+    image: zhicore/zhicore-notification:local
+    container_name: zhicore-notification
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "18090:8080"
+    environment:
+      ZHICORE_NOTIFICATION_HTTP_ADDR: ":8080"
+      ZHICORE_NOTIFICATION_POSTGRES_DSN: postgres://postgres:postgres123456@shared-postgres:5432/zhicore_notification?sslmode=disable
+      ZHICORE_NOTIFICATION_REDIS_ADDR: shared-redis:6379
+      ZHICORE_NOTIFICATION_REDIS_PASSWORD: redis123456
+      ZHICORE_NOTIFICATION_REDIS_DB: "0"
+      ZHICORE_NOTIFICATION_RABBITMQ_URL: amqp://zhicore:zhicore@zhicore-rabbitmq:5672/
+      ZHICORE_NOTIFICATION_USER_SERVICE_BASE_URL: http://zhicore-user:8080
+      ZHICORE_NOTIFICATION_USER_SERVICE_TIMEOUT: 2s
+      ZHICORE_NOTIFICATION_PUBLIC_ID_ACTIVE_VERSION: "1"
+      ZHICORE_NOTIFICATION_PUBLIC_ID_SECRETS: 1:local-notification-public-id-secret
+      ZHICORE_NOTIFICATION_CONSUMER_CONSUMED_EVENTS_RETENTION: 168h
+      ZHICORE_NOTIFICATION_REALTIME_FANOUT_TIMEOUT: 500ms
+      ZHICORE_NOTIFICATION_CAMPAIGN_CLAIM_TIMEOUT: 30s
+      ZHICORE_NOTIFICATION_CAMPAIGN_SHARD_BATCH_SIZE: "200"
+      ZHICORE_NOTIFICATION_CAMPAIGN_MAX_CONCURRENT_SHARD_JOBS: "4"
+    networks:
+      - shared-infra
+    restart: unless-stopped
+
+networks:
+  shared-infra:
+    external: true
