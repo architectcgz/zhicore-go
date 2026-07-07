@@ -8,6 +8,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	notificationruntime "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/runtime"
 )
 
 func TestRunNotificationServerStopsRuntimeWhenServeFails(t *testing.T) {
@@ -35,7 +37,7 @@ func TestRunNotificationServerStopsRuntimeWhenServeFails(t *testing.T) {
 
 func TestBuildCampaignShardWorkersUsesMaxConcurrentShardJobs(t *testing.T) {
 	workerIDs := make([]string, 0, 3)
-	workers, err := buildCampaignShardWorkers(3, time.Millisecond, func(workerID string) (func(context.Context) error, error) {
+	workers, err := notificationruntime.BuildCampaignShardWorkers(3, time.Millisecond, func(workerID string) (func(context.Context) error, error) {
 		workerIDs = append(workerIDs, workerID)
 		return func(ctx context.Context) error {
 			<-ctx.Done()
