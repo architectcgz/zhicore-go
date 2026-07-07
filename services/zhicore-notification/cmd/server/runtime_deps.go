@@ -10,6 +10,7 @@ import (
 	notificationruntime "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/runtime"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/application"
+	notificationclients "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/infrastructure/clients"
 	notificationpostgres "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/infrastructure/postgres"
 	notificationpublicid "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/infrastructure/publicid"
 	notificationredis "github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/infrastructure/redis"
@@ -85,6 +86,33 @@ func openNotificationRuntimeDependencies(ctx context.Context, cfg NotificationSe
 		return openedNotificationRuntime{}, fmt.Errorf("build notification application service: %w", err)
 	}
 
+	followers := notificationclients.NewUserFollowerClient(notificationclients.UserFollowerClientConfig{
+		BaseURL: cfg.UserService.BaseURL,
+		Timeout: cfg.UserService.Timeout,
+	})
+	campaignWorkers, err := buildCampaignShardWorkers(cfg.Campaign.MaxConcurrentShardJobs, time.Second, func(workerID string) (func(context.Context) error, error) {
+		executor, err := application.NewCampaignShardExecutor(application.CampaignShardExecutorDeps{
+			Campaigns: store,
+			Followers: followers,
+		}, application.CampaignShardExecutorConfig{
+			WorkerID:     workerID,
+			ClaimTimeout: cfg.Campaign.ClaimTimeout,
+			BatchSize:    cfg.Campaign.ShardBatchSize,
+			RetryDelay:   cfg.Campaign.ClaimTimeout,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return func(ctx context.Context) error {
+			_, err := executor.ExecuteOnce(ctx)
+			return err
+		}, nil
+	})
+	if err != nil {
+		closeNamedClosers(closers)
+		return openedNotificationRuntime{}, fmt.Errorf("build notification campaign shard workers: %w", err)
+	}
+
 	module, err := notificationruntime.Build(notificationruntime.Deps{
 		Service: service,
 		Health: notificationruntime.HealthDeps{
@@ -96,9 +124,9 @@ func openNotificationRuntimeDependencies(ctx context.Context, cfg NotificationSe
 			},
 			Workers: []notificationruntime.WorkerDescriptor{
 				{Name: "cleanup_consumed_events", Enabled: false, Ready: false},
-				{Name: "campaign_shard", Enabled: false, Ready: false},
 			},
 		},
+		Workers: campaignWorkers,
 	})
 	if err != nil {
 		closeNamedClosers(closers)
@@ -106,6 +134,29 @@ func openNotificationRuntimeDependencies(ctx context.Context, cfg NotificationSe
 	}
 
 	return openedNotificationRuntime{Module: module, Closers: closers}, nil
+}
+
+type campaignShardRunOnceFactory func(workerID string) (func(context.Context) error, error)
+
+func buildCampaignShardWorkers(maxJobs int, interval time.Duration, buildRunOnce campaignShardRunOnceFactory) ([]notificationruntime.WorkerRunner, error) {
+	if maxJobs <= 0 {
+		return nil, fmt.Errorf("campaign max concurrent shard jobs must be greater than zero")
+	}
+	if buildRunOnce == nil {
+		return nil, fmt.Errorf("campaign shard worker factory is required")
+	}
+	workers := make([]notificationruntime.WorkerRunner, 0, maxJobs)
+	for index := 1; index <= maxJobs; index++ {
+		// Each worker needs a stable unique identity because shard completion and
+		// failure use the worker id as part of the DB lease token.
+		workerID := fmt.Sprintf("zhicore-notification:campaign-shard:%d", index)
+		runOnce, err := buildRunOnce(workerID)
+		if err != nil {
+			return nil, err
+		}
+		workers = append(workers, notificationruntime.NewLoopWorker(fmt.Sprintf("campaign_shard_%d", index), interval, runOnce))
+	}
+	return workers, nil
 }
 
 type redisClientAdapter struct {
