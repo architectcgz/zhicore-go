@@ -201,3 +201,22 @@ type adminOutboxRetryResp struct {
 	RetryCount int    `json:"retryCount"`
 	RetriedAt  string `json:"retriedAt"`
 }
+
+type tagResp struct {
+	TagID     string `json:"tagId"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	PostCount int64  `json:"postCount"`
+}
+
+type updatePostTagsReq struct {
+	BasePostVersion int64    `json:"basePostVersion"`
+	Tags            *[]string `json:"tags"`
+}
+
+type postTagsMutationResp struct {
+	PostID      string    `json:"postId"`
+	PostVersion int64     `json:"postVersion"`
+	Tags        []tagResp `json:"tags"`
+	UpdatedAt   string    `json:"updatedAt"`
+}

@@ -111,6 +111,27 @@ func mapPostBodyResponse(body application.PostBodyResult) (postBodyResp, bool) {
 	}, true
 }
 
+func mapTagResponses(tags []application.Tag) []tagResp {
+	resp := make([]tagResp, 0, len(tags))
+	for _, tag := range tags {
+		resp = append(resp, mapTagResponse(tag))
+	}
+	return resp
+}
+
+func mapTagResponse(tag application.Tag) tagResp {
+	return tagResp{TagID: tag.TagID, Name: tag.Name, Slug: tag.Slug, PostCount: tag.PostCount}
+}
+
+func mapPostTagsMutationResponse(result application.PostTagsMutationResult) postTagsMutationResp {
+	return postTagsMutationResp{
+		PostID:      result.PostID,
+		PostVersion: result.PostVersion,
+		Tags:        mapTagResponses(result.Tags),
+		UpdatedAt:   formatTime(result.UpdatedAt),
+	}
+}
+
 func formatTime(value time.Time) string {
 	return sharedhttp.FormatRFC3339UTC(value)
 }
