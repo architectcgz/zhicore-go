@@ -21,7 +21,7 @@ WITH claimed AS (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-    RETURNING id, campaign_id, audience_class, audience_active_since, follower_cursor, attempt_count, claim_deadline_at
+    RETURNING id, campaign_id, audience_class, audience_active_since, follower_cursor, attempt_count, claimed_by, claim_deadline_at
 )
 SELECT
     claimed.id,
@@ -32,6 +32,11 @@ SELECT
     claimed.audience_active_since,
     claimed.follower_cursor,
     claimed.attempt_count,
-    claimed.claim_deadline_at
+    claimed.claimed_by,
+    claimed.claim_deadline_at,
+    campaign.title,
+    campaign.excerpt,
+    campaign.payload,
+    campaign.published_at
 FROM claimed
 JOIN notification_campaign campaign ON campaign.id = claimed.campaign_id;

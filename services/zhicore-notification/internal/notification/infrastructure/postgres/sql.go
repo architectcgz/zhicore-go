@@ -19,6 +19,7 @@ func mustSQL(name string) string {
 var (
 	insertConsumedEventSQL                = mustSQL("insert_consumed_event.sql")
 	nextNotificationIDSQL                 = mustSQL("next_notification_id.sql")
+	nextDeliveryIDSQL                     = mustSQL("next_delivery_id.sql")
 	insertInteractionNotificationSQL      = mustSQL("insert_interaction_notification.sql")
 	upsertInteractionNotificationGroupSQL = mustSQL("upsert_interaction_notification_group.sql")
 	markConsumedEventSQL                  = mustSQL("mark_consumed_event.sql")
@@ -47,4 +48,10 @@ var (
 	insertInitialCampaignShardSQL         = mustSQL("insert_initial_campaign_shard.sql")
 	claimCampaignShardSQL                 = mustSQL("claim_campaign_shard.sql")
 	failCampaignShardSQL                  = mustSQL("fail_campaign_shard.sql")
+	completeCampaignShardSQL              = mustSQL("complete_campaign_shard.sql")
+	insertCampaignDeliverySQL             = mustSQL("insert_campaign_delivery.sql")
+	getCampaignDeliveryDecisionSQL        = mustSQL("get_campaign_delivery_decision.sql")
+	lockRebuildGroupStateSQL              = mustSQL("lock_rebuild_group_state.sql")
+	deleteGroupStateForRebuildSQL         = mustSQL("delete_group_state_for_rebuild.sql")
+	rebuildGroupStateSQL                  = mustSQL("rebuild_group_state.sql")
 )

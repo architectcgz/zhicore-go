@@ -10,6 +10,8 @@ var (
 	ErrNotificationNotFound   = errors.New("notification not found")
 	ErrDependencyUnavailable  = errors.New("dependency unavailable")
 	ErrDuplicateConsumedEvent = errors.New("duplicate consumed event")
+	ErrRebuildLocked          = errors.New("notification rebuild already running")
+	ErrShardLeaseLost         = errors.New("campaign shard lease lost")
 )
 
 type NotificationPublicIDCodec interface {
@@ -177,20 +179,78 @@ type ClaimedCampaignShard struct {
 	AudienceActiveSince *time.Time
 	FollowerCursor      string
 	AttemptCount        int
+	ClaimedBy           string
 	ClaimDeadlineAt     time.Time
+	Title               string
+	Excerpt             string
+	Payload             []byte
+	PublishedAt         time.Time
 }
 
 type CampaignRepository interface {
 	PlanPostPublishedCampaign(ctx context.Context, input PlanPostPublishedCampaignInput) (PlanCampaignResult, error)
 	ClaimCampaignShard(ctx context.Context, input ClaimCampaignShardInput) (ClaimedCampaignShard, error)
+	MaterializeCampaignFollowers(ctx context.Context, input MaterializeCampaignFollowersInput) (MaterializeCampaignFollowersResult, error)
 	FailCampaignShard(ctx context.Context, input FailCampaignShardInput) error
+	CompleteCampaignShard(ctx context.Context, input CompleteCampaignShardInput) error
+	RebuildGroupState(ctx context.Context, input RebuildGroupStateInput) (RebuildGroupStateResult, error)
 }
 
 type FailCampaignShardInput struct {
-	ShardID    int64
-	ErrorCode  string
-	FailedAt   time.Time
-	RetryAfter time.Duration
+	ShardID         int64
+	WorkerID        string
+	ClaimDeadlineAt time.Time
+	ErrorCode       string
+	FailedAt        time.Time
+	RetryAfter      time.Duration
+}
+
+type MaterializeCampaignFollowersInput struct {
+	ShardID          int64
+	CampaignID       int64
+	AuthorID         int64
+	PostID           int64
+	AudienceClass    string
+	NotificationType string
+	Category         string
+	EventCode        string
+	TargetType       string
+	TargetID         string
+	Title            string
+	Content          string
+	Payload          []byte
+	OccurredAt       time.Time
+	CreatedAt        time.Time
+	FollowerIDs      []int64
+}
+
+type MaterializeCampaignFollowersResult struct {
+	ProcessedCount int64
+	SuccessCount   int64
+	SkippedCount   int64
+	FailedCount    int64
+}
+
+type CompleteCampaignShardInput struct {
+	ShardID         int64
+	WorkerID        string
+	ClaimDeadlineAt time.Time
+	ProcessedCount  int64
+	SuccessCount    int64
+	SkippedCount    int64
+	FailedCount     int64
+	NextCursor      string
+	HasMore         bool
+	CompletedAt     time.Time
+}
+
+type RebuildGroupStateInput struct {
+	RecipientID int64
+	RebuiltAt   time.Time
+}
+
+type RebuildGroupStateResult struct {
+	RebuiltGroups int64
 }
 
 type ListFollowerShardInput struct {

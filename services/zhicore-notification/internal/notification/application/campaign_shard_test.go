@@ -21,7 +21,11 @@ func TestCampaignShardExecutorRequestsHotActiveFollowerShard(t *testing.T) {
 			AudienceClass:       "HOT",
 			AudienceActiveSince: &activeSince,
 			FollowerCursor:      "cursor-1",
+			Title:               "New post",
+			Excerpt:             "excerpt",
+			Payload:             []byte(`{"postId":41}`),
 		},
+		materialized: ports.MaterializeCampaignFollowersResult{ProcessedCount: 2, SuccessCount: 1, SkippedCount: 1},
 	}
 	followers := &fakeFollowerClient{
 		page: ports.FollowerShardPage{
@@ -62,6 +66,26 @@ func TestCampaignShardExecutorRequestsHotActiveFollowerShard(t *testing.T) {
 		followers.input.Limit != 250 {
 		t.Fatalf("follower input = %+v", followers.input)
 	}
+	if len(campaigns.completed) != 1 {
+		t.Fatalf("completed shards = %+v, want one progress update", campaigns.completed)
+	}
+	completed := campaigns.completed[0]
+	if completed.ShardID != 8001 ||
+		completed.ProcessedCount != 2 ||
+		completed.SuccessCount != 1 ||
+		completed.SkippedCount != 1 ||
+		completed.NextCursor != "cursor-2" ||
+		!completed.HasMore ||
+		!completed.CompletedAt.Equal(clock.now) {
+		t.Fatalf("completed shard = %+v", completed)
+	}
+	if len(campaigns.materializeInputs) != 1 {
+		t.Fatalf("materialize inputs = %+v, want one fanout write before completion", campaigns.materializeInputs)
+	}
+	materialize := campaigns.materializeInputs[0]
+	if materialize.ShardID != 8001 || materialize.CampaignID != 7001 || len(materialize.FollowerIDs) != 2 || materialize.FollowerIDs[0] != 2001 {
+		t.Fatalf("materialize input = %+v", materialize)
+	}
 }
 
 func TestCampaignShardExecutorRetriesWhenFollowerShardDegraded(t *testing.T) {
@@ -74,6 +98,7 @@ func TestCampaignShardExecutorRetriesWhenFollowerShardDegraded(t *testing.T) {
 			AuthorID:      1001,
 			PostID:        41,
 			AudienceClass: "HOT",
+			ClaimedBy:     "worker-1",
 		},
 	}
 	followers := &fakeFollowerClient{err: ports.ErrDependencyUnavailable}
@@ -99,7 +124,7 @@ func TestCampaignShardExecutorRetriesWhenFollowerShardDegraded(t *testing.T) {
 		t.Fatalf("failed shards = %+v, want one retry mark", campaigns.failed)
 	}
 	failed := campaigns.failed[0]
-	if failed.ShardID != 8001 || failed.ErrorCode != "USER_FOLLOWER_SHARD_DEGRADED" || failed.RetryAfter != 2*time.Minute || !failed.FailedAt.Equal(clock.now) {
+	if failed.ShardID != 8001 || failed.WorkerID != "worker-1" || failed.ErrorCode != "USER_FOLLOWER_SHARD_DEGRADED" || failed.RetryAfter != 2*time.Minute || !failed.FailedAt.Equal(clock.now) {
 		t.Fatalf("failed shard = %+v", failed)
 	}
 }

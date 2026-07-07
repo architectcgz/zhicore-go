@@ -94,11 +94,48 @@ func (e *CampaignShardExecutor) ExecuteOnce(ctx context.Context) (CampaignShardE
 		// A HOT shard cannot silently fall back to ALL followers. User degraded
 		// means the shard stays retryable instead of being treated as empty.
 		_ = e.campaigns.FailCampaignShard(ctx, ports.FailCampaignShardInput{
-			ShardID:    claim.ShardID,
-			ErrorCode:  campaignFollowerShardDegraded,
-			FailedAt:   now,
-			RetryAfter: e.config.RetryDelay,
+			ShardID:         claim.ShardID,
+			WorkerID:        strings.TrimSpace(e.config.WorkerID),
+			ClaimDeadlineAt: claim.ClaimDeadlineAt,
+			ErrorCode:       campaignFollowerShardDegraded,
+			FailedAt:        now,
+			RetryAfter:      e.config.RetryDelay,
 		})
+		return CampaignShardExecutionResult{}, err
+	}
+	fanout, err := e.campaigns.MaterializeCampaignFollowers(ctx, ports.MaterializeCampaignFollowersInput{
+		ShardID:          claim.ShardID,
+		CampaignID:       claim.CampaignID,
+		AuthorID:         claim.AuthorID,
+		PostID:           claim.PostID,
+		AudienceClass:    claim.AudienceClass,
+		NotificationType: "POST_PUBLISHED_BY_FOLLOWING",
+		Category:         "CONTENT",
+		EventCode:        "content.post.published",
+		TargetType:       "POST",
+		TargetID:         fmt.Sprintf("%d", claim.PostID),
+		Title:            claim.Title,
+		Content:          claim.Excerpt,
+		Payload:          claim.Payload,
+		OccurredAt:       claim.PublishedAt,
+		CreatedAt:        now,
+		FollowerIDs:      page.FollowerIDs,
+	})
+	if err != nil {
+		return CampaignShardExecutionResult{}, err
+	}
+	if err := e.campaigns.CompleteCampaignShard(ctx, ports.CompleteCampaignShardInput{
+		ShardID:         claim.ShardID,
+		WorkerID:        strings.TrimSpace(e.config.WorkerID),
+		ClaimDeadlineAt: claim.ClaimDeadlineAt,
+		ProcessedCount:  fanout.ProcessedCount,
+		SuccessCount:    fanout.SuccessCount,
+		SkippedCount:    fanout.SkippedCount,
+		FailedCount:     fanout.FailedCount,
+		NextCursor:      page.NextCursor,
+		HasMore:         page.HasMore,
+		CompletedAt:     now,
+	}); err != nil {
 		return CampaignShardExecutionResult{}, err
 	}
 	return CampaignShardExecutionResult{

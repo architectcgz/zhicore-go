@@ -367,11 +367,14 @@ func (f *fakeInteractionNotificationStore) CreateInteractionNotification(ctx con
 }
 
 type fakeCampaignStore struct {
-	planned    []ports.PlanPostPublishedCampaignInput
-	claim      ports.ClaimedCampaignShard
-	claimInput ports.ClaimCampaignShardInput
-	failed     []ports.FailCampaignShardInput
-	err        error
+	planned           []ports.PlanPostPublishedCampaignInput
+	claim             ports.ClaimedCampaignShard
+	claimInput        ports.ClaimCampaignShardInput
+	failed            []ports.FailCampaignShardInput
+	completed         []ports.CompleteCampaignShardInput
+	materialized      ports.MaterializeCampaignFollowersResult
+	materializeInputs []ports.MaterializeCampaignFollowersInput
+	err               error
 }
 
 func (f *fakeCampaignStore) PlanPostPublishedCampaign(ctx context.Context, input ports.PlanPostPublishedCampaignInput) (ports.PlanCampaignResult, error) {
@@ -393,6 +396,20 @@ func (f *fakeCampaignStore) ClaimCampaignShard(_ context.Context, input ports.Cl
 func (f *fakeCampaignStore) FailCampaignShard(_ context.Context, input ports.FailCampaignShardInput) error {
 	f.failed = append(f.failed, input)
 	return nil
+}
+
+func (f *fakeCampaignStore) CompleteCampaignShard(_ context.Context, input ports.CompleteCampaignShardInput) error {
+	f.completed = append(f.completed, input)
+	return f.err
+}
+
+func (f *fakeCampaignStore) MaterializeCampaignFollowers(_ context.Context, input ports.MaterializeCampaignFollowersInput) (ports.MaterializeCampaignFollowersResult, error) {
+	f.materializeInputs = append(f.materializeInputs, input)
+	return f.materialized, f.err
+}
+
+func (f *fakeCampaignStore) RebuildGroupState(_ context.Context, input ports.RebuildGroupStateInput) (ports.RebuildGroupStateResult, error) {
+	return ports.RebuildGroupStateResult{}, f.err
 }
 
 type fakeRealtimeFanout struct {
