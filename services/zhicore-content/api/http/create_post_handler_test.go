@@ -220,6 +220,16 @@ type fakeContentService struct {
 	retryOutboxResult  application.RetryAdminOutboxEventResult
 	retryOutboxErr     error
 
+	listAdminPostsCalls  int
+	listAdminPostsQuery  application.ListAdminPostsQuery
+	listAdminPostsResult application.ListAdminPostsResult
+	listAdminPostsErr    error
+
+	deleteAdminPostCalls   int
+	deleteAdminPostCommand application.DeleteAdminPostCommand
+	deleteAdminPostResult  application.DeleteAdminPostResult
+	deleteAdminPostErr     error
+
 	listTagsCalls  int
 	listTagsQuery  application.ListTagsQuery
 	listTagsResult application.TagPageResult
@@ -461,6 +471,24 @@ func (f *fakeContentService) RetryAdminOutboxEvent(ctx context.Context, command 
 		return application.RetryAdminOutboxEventResult{}, f.retryOutboxErr
 	}
 	return f.retryOutboxResult, nil
+}
+
+func (f *fakeContentService) ListAdminPosts(ctx context.Context, query application.ListAdminPostsQuery) (application.ListAdminPostsResult, error) {
+	f.listAdminPostsCalls++
+	f.listAdminPostsQuery = query
+	if f.listAdminPostsErr != nil {
+		return application.ListAdminPostsResult{}, f.listAdminPostsErr
+	}
+	return f.listAdminPostsResult, nil
+}
+
+func (f *fakeContentService) DeleteAdminPost(ctx context.Context, command application.DeleteAdminPostCommand) (application.DeleteAdminPostResult, error) {
+	f.deleteAdminPostCalls++
+	f.deleteAdminPostCommand = command
+	if f.deleteAdminPostErr != nil {
+		return application.DeleteAdminPostResult{}, f.deleteAdminPostErr
+	}
+	return f.deleteAdminPostResult, nil
 }
 
 func (f *fakeContentService) ListTags(ctx context.Context, query application.ListTagsQuery) (application.TagPageResult, error) {

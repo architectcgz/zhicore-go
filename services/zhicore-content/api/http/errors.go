@@ -26,6 +26,7 @@ const (
 	errorOperationPublicPostQuery errorOperation = "publicPostQuery"
 	errorOperationAuthorWorkbench errorOperation = "authorWorkbench"
 	errorOperationAdminOutbox     errorOperation = "adminOutbox"
+	errorOperationAdminPosts      errorOperation = "adminPosts"
 	errorOperationEngagement      errorOperation = "engagement"
 )
 

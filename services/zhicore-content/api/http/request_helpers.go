@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -66,6 +67,17 @@ func postIDFromPath(c *gin.Context) (string, error) {
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
 	return sharedhttp.DecodeJSONBodyLimited(w, r, maxJSONRequestBodyBytes, target)
+}
+
+func decodeOptionalJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
+	if r.Body == nil || r.Body == http.NoBody {
+		return nil
+	}
+	err := decodeJSONBody(w, r, target)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	return err
 }
 
 func optionalPositiveIntQuery(c *gin.Context, key string) (int, error) {

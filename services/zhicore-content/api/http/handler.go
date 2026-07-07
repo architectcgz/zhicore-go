@@ -31,6 +31,8 @@ type Service interface {
 	GetAuthorDraft(ctx context.Context, query application.GetAuthorDraftQuery) (application.AuthorDraftResult, error)
 	UpdateDraftMeta(ctx context.Context, command application.UpdateDraftMetaCommand) (application.DraftMutationResult, error)
 	DeleteAuthorDraft(ctx context.Context, command application.DeleteAuthorDraftCommand) (application.DraftMutationResult, error)
+	ListAdminPosts(ctx context.Context, query application.ListAdminPostsQuery) (application.ListAdminPostsResult, error)
+	DeleteAdminPost(ctx context.Context, command application.DeleteAdminPostCommand) (application.DeleteAdminPostResult, error)
 	ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error)
 	RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error)
 	ListTags(ctx context.Context, query application.ListTagsQuery) (application.TagPageResult, error)
@@ -92,6 +94,8 @@ func (h *Handler) routes() {
 	h.router.GET("/api/v1/tags/hot", h.listHotTags)
 	h.router.GET("/api/v1/tags/:slug/posts", h.listPostsByTag)
 	h.router.GET("/api/v1/tags/:slug", h.getTag)
+	h.router.GET("/api/v1/admin/content/posts", h.listAdminPosts)
+	h.router.DELETE("/api/v1/admin/content/posts/:postId", h.deleteAdminPost)
 	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
 	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
 }

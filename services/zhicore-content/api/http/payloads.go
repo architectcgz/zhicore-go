@@ -178,6 +178,38 @@ type adminOutboxRetryReq struct {
 	Reason string `json:"reason"`
 }
 
+type adminPostDeleteReq struct {
+	Reason string `json:"reason"`
+}
+
+type adminPostListResp struct {
+	Items []adminPostResp `json:"items"`
+	Page  int             `json:"page"`
+	Size  int             `json:"size"`
+	Total int64           `json:"total"`
+}
+
+type adminPostResp struct {
+	PostID             string        `json:"postId"`
+	AuthorID           string        `json:"authorId"`
+	AuthorName         string        `json:"authorName,omitempty"`
+	AuthorAvatarFileID string        `json:"authorAvatarFileId,omitempty"`
+	Title              string        `json:"title"`
+	Summary            string        `json:"summary,omitempty"`
+	CoverFileID        string        `json:"coverFileId,omitempty"`
+	Status             string        `json:"status"`
+	PostVersion        int64         `json:"postVersion"`
+	PublishedAt        string        `json:"publishedAt,omitempty"`
+	CreatedAt          string        `json:"createdAt"`
+	UpdatedAt          string        `json:"updatedAt"`
+	Stats              postStatsResp `json:"stats"`
+}
+
+type adminPostDeleteResp struct {
+	PostID string `json:"postId"`
+	Status string `json:"status"`
+}
+
 type adminOutboxListResp struct {
 	Items []adminOutboxEventResp `json:"items"`
 	Page  int                    `json:"page"`
