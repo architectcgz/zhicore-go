@@ -219,6 +219,46 @@ type fakeContentService struct {
 	retryOutboxCommand application.RetryAdminOutboxEventCommand
 	retryOutboxResult  application.RetryAdminOutboxEventResult
 	retryOutboxErr     error
+
+	listTagsCalls  int
+	listTagsQuery  application.ListTagsQuery
+	listTagsResult application.TagPageResult
+	listTagsErr    error
+
+	getTagCalls  int
+	getTagQuery  application.GetTagQuery
+	getTagResult application.Tag
+	getTagErr    error
+
+	searchTagsCalls  int
+	searchTagsQuery  application.SearchTagsQuery
+	searchTagsResult []application.Tag
+	searchTagsErr    error
+
+	listHotTagsCalls  int
+	listHotTagsQuery  application.ListHotTagsQuery
+	listHotTagsResult []application.Tag
+	listHotTagsErr    error
+
+	listPostsByTagCalls  int
+	listPostsByTagQuery  application.ListPostsByTagQuery
+	listPostsByTagResult application.ListPublishedPostsResult
+	listPostsByTagErr    error
+
+	getPostTagsCalls  int
+	getPostTagsQuery  application.GetPostTagsQuery
+	getPostTagsResult []application.Tag
+	getPostTagsErr    error
+
+	updatePostTagsCalls  int
+	updatePostTagsCmd    application.UpdatePostTagsCommand
+	updatePostTagsResult application.PostTagsMutationResult
+	updatePostTagsErr    error
+
+	deletePostTagCalls  int
+	deletePostTagCmd    application.DeletePostTagCommand
+	deletePostTagResult application.PostTagsMutationResult
+	deletePostTagErr    error
 }
 
 func (f *fakeContentService) CreatePost(ctx context.Context, cmd application.CreatePostCommand) (application.CreatePostResult, error) {
@@ -391,6 +431,78 @@ func (f *fakeContentService) RetryAdminOutboxEvent(ctx context.Context, command 
 		return application.RetryAdminOutboxEventResult{}, f.retryOutboxErr
 	}
 	return f.retryOutboxResult, nil
+}
+
+func (f *fakeContentService) ListTags(ctx context.Context, query application.ListTagsQuery) (application.TagPageResult, error) {
+	f.listTagsCalls++
+	f.listTagsQuery = query
+	if f.listTagsErr != nil {
+		return application.TagPageResult{}, f.listTagsErr
+	}
+	return f.listTagsResult, nil
+}
+
+func (f *fakeContentService) GetTag(ctx context.Context, query application.GetTagQuery) (application.Tag, error) {
+	f.getTagCalls++
+	f.getTagQuery = query
+	if f.getTagErr != nil {
+		return application.Tag{}, f.getTagErr
+	}
+	return f.getTagResult, nil
+}
+
+func (f *fakeContentService) SearchTags(ctx context.Context, query application.SearchTagsQuery) ([]application.Tag, error) {
+	f.searchTagsCalls++
+	f.searchTagsQuery = query
+	if f.searchTagsErr != nil {
+		return nil, f.searchTagsErr
+	}
+	return append([]application.Tag(nil), f.searchTagsResult...), nil
+}
+
+func (f *fakeContentService) ListHotTags(ctx context.Context, query application.ListHotTagsQuery) ([]application.Tag, error) {
+	f.listHotTagsCalls++
+	f.listHotTagsQuery = query
+	if f.listHotTagsErr != nil {
+		return nil, f.listHotTagsErr
+	}
+	return append([]application.Tag(nil), f.listHotTagsResult...), nil
+}
+
+func (f *fakeContentService) ListPostsByTag(ctx context.Context, query application.ListPostsByTagQuery) (application.ListPublishedPostsResult, error) {
+	f.listPostsByTagCalls++
+	f.listPostsByTagQuery = query
+	if f.listPostsByTagErr != nil {
+		return application.ListPublishedPostsResult{}, f.listPostsByTagErr
+	}
+	return f.listPostsByTagResult, nil
+}
+
+func (f *fakeContentService) GetPostTags(ctx context.Context, query application.GetPostTagsQuery) ([]application.Tag, error) {
+	f.getPostTagsCalls++
+	f.getPostTagsQuery = query
+	if f.getPostTagsErr != nil {
+		return nil, f.getPostTagsErr
+	}
+	return append([]application.Tag(nil), f.getPostTagsResult...), nil
+}
+
+func (f *fakeContentService) UpdatePostTags(ctx context.Context, command application.UpdatePostTagsCommand) (application.PostTagsMutationResult, error) {
+	f.updatePostTagsCalls++
+	f.updatePostTagsCmd = command
+	if f.updatePostTagsErr != nil {
+		return application.PostTagsMutationResult{}, f.updatePostTagsErr
+	}
+	return f.updatePostTagsResult, nil
+}
+
+func (f *fakeContentService) DeletePostTag(ctx context.Context, command application.DeletePostTagCommand) (application.PostTagsMutationResult, error) {
+	f.deletePostTagCalls++
+	f.deletePostTagCmd = command
+	if f.deletePostTagErr != nil {
+		return application.PostTagsMutationResult{}, f.deletePostTagErr
+	}
+	return f.deletePostTagResult, nil
 }
 
 type envelope[T any] struct {
