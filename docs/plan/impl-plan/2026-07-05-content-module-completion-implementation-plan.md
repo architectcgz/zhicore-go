@@ -589,7 +589,7 @@
 
   Presence 是附加能力；Redis 不可用时按 `rate-limiting.md` 返回空成功或 degraded 摘要，不能影响文章详情和正文读取。
 
-- [ ] **步骤 7：提交互动和 presence 切片**
+- [x] **步骤 7：提交互动和 presence 切片**
 
   like/favorite、engagement query、presence 建议分开提交。
 
