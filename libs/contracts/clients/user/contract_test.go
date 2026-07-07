@@ -21,14 +21,16 @@ func TestInternalHTTPContractPaths(t *testing.T) {
 
 func TestListFollowerShardContractJSONShape(t *testing.T) {
 	payload, err := json.Marshal(ListFollowerShardRequest{
-		FollowingID: 77,
-		Cursor:      "42",
-		Limit:       200,
+		FollowingID:   77,
+		AudienceClass: "HOT",
+		ActiveSince:   "2026-07-01T00:00:00Z",
+		Cursor:        "42",
+		Limit:         200,
 	})
 	if err != nil {
 		t.Fatalf("Marshal() error = %v", err)
 	}
-	if string(payload) != `{"followingId":77,"cursor":"42","limit":200}` {
+	if string(payload) != `{"followingId":77,"audienceClass":"HOT","activeSince":"2026-07-01T00:00:00Z","cursor":"42","limit":200}` {
 		t.Fatalf("payload = %s", payload)
 	}
 

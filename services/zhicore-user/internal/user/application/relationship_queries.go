@@ -26,9 +26,11 @@ type ListFollowingQuery struct {
 }
 
 type ListFollowerShardQuery struct {
-	FollowingID UserID
-	Cursor      string
-	Limit       int
+	FollowingID   UserID
+	AudienceClass string
+	ActiveSince   string
+	Cursor        string
+	Limit         int
 }
 
 type RelationshipProfilePage struct {

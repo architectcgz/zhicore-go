@@ -105,9 +105,11 @@ func (h *Handler) listFollowerShard(c *gin.Context) {
 		return
 	}
 	page, err := h.service.ListFollowerShard(c.Request.Context(), application.ListFollowerShardQuery{
-		FollowingID: application.UserID(req.FollowingID),
-		Cursor:      req.Cursor,
-		Limit:       req.Limit,
+		FollowingID:   application.UserID(req.FollowingID),
+		AudienceClass: req.AudienceClass,
+		ActiveSince:   req.ActiveSince,
+		Cursor:        req.Cursor,
+		Limit:         req.Limit,
 	})
 	if err != nil {
 		writeMappedError(c, err)

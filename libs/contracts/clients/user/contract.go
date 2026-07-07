@@ -63,9 +63,11 @@ type BlockPairResult struct {
 }
 
 type ListFollowerShardRequest struct {
-	FollowingID int64  `json:"followingId"`
-	Cursor      string `json:"cursor,omitempty"`
-	Limit       int    `json:"limit,omitempty"`
+	FollowingID   int64  `json:"followingId"`
+	AudienceClass string `json:"audienceClass"`
+	ActiveSince   string `json:"activeSince,omitempty"`
+	Cursor        string `json:"cursor,omitempty"`
+	Limit         int    `json:"limit,omitempty"`
 }
 
 type ListFollowerShardResponse struct {

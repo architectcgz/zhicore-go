@@ -120,7 +120,7 @@ func TestInternalListFollowerShardMapsRequestAndRequiresNotificationOperation(t 
 			HasMore:     true,
 		},
 	}
-	req := withJSONHeader(httptest.NewRequest(http.MethodPost, usercontract.ListFollowerShardPath, bytes.NewBufferString(`{"followingId":77,"cursor":"42","limit":200}`)))
+	req := withJSONHeader(httptest.NewRequest(http.MethodPost, usercontract.ListFollowerShardPath, bytes.NewBufferString(`{"followingId":77,"audienceClass":"HOT","activeSince":"2026-07-01T00:00:00Z","cursor":"42","limit":200}`)))
 	req.Header.Set("X-Caller-Service", "zhicore-notification")
 	req.Header.Set("X-Caller-Operation", usercontract.OperationNotificationListFollowerShard)
 	rr := httptest.NewRecorder()
@@ -133,7 +133,11 @@ func TestInternalListFollowerShardMapsRequestAndRequiresNotificationOperation(t 
 	if service.followerShardCalls != 1 {
 		t.Fatalf("followerShardCalls = %d, want 1", service.followerShardCalls)
 	}
-	if service.followerShardQuery.FollowingID != 77 || service.followerShardQuery.Cursor != "42" || service.followerShardQuery.Limit != 200 {
+	if service.followerShardQuery.FollowingID != 77 ||
+		service.followerShardQuery.AudienceClass != "HOT" ||
+		service.followerShardQuery.ActiveSince != "2026-07-01T00:00:00Z" ||
+		service.followerShardQuery.Cursor != "42" ||
+		service.followerShardQuery.Limit != 200 {
 		t.Fatalf("followerShardQuery = %#v", service.followerShardQuery)
 	}
 	var body envelope[usercontract.ListFollowerShardResponse]
