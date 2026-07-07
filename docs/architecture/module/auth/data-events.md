@@ -9,7 +9,7 @@ Auth 拥有账号认证事实：
 | `auth_accounts` | Auth | 账号 ID、登录标识、账号状态、User 映射、版本号和登录元数据。 |
 | `auth_password_credentials` | Auth | password hash、凭证版本和更新时间。 |
 | `auth_account_roles` | Auth | 账号角色授予、撤销和审计来源。 |
-| `auth_refresh_sessions` | Auth | Refresh session、当前 refresh token hash、过期和撤销状态；PostgreSQL 是真相源。 |
+| `auth_refresh_sessions` | Auth | Refresh session、当前 refresh token hash、原始持久化策略、过期和撤销状态；PostgreSQL 是真相源。 |
 | `auth_used_refresh_tokens` | Auth | 已 rotation 使用过的 refresh token 记录，用于 replay 检测。 |
 | `auth_email_verifications` | Auth | 邮箱验证码发送、校验、尝试次数和发送状态。 |
 | `auth_verification_tokens` | Auth | 注册、找回密码等短期一次性不透明 token hash。 |

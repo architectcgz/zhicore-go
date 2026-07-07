@@ -10,6 +10,8 @@
 - Auth 受保护 endpoint 至少需要 `X-Account-Id`、`X-User-Id`、`X-Session-Id`、`X-Session-Version`、`X-Principal-Version`；角色相关 endpoint 还需要 `X-User-Roles`。
 - 变更 session 的浏览器 endpoint 需要 `X-CSRF-Token` 与 `csrf_token` cookie 做 double-submit 校验。
 - `refresh_token` 只通过 HttpOnly cookie 传输，不在响应 body 返回。
+- `login` 的 `rememberMe` 只决定 refresh session / cookie 的滑动 TTL：`false` 为 7 天，`true` 为 30 天；access token TTL 不受影响。
+- `refresh` 不接收 `rememberMe`；成功 rotation 时沿用当前 refresh session 在登录时保存的原始持久化策略续期。
 - `logout`、`DELETE /sessions/current` 和撤销当前 session 的响应必须尽力清理 `refresh_token` 和 `csrf_token` cookie。
 - `202 PROCESSING` 表示安全撤销已受理但 Gateway 可见的 Redis 撤销投影尚未确认完成；前端不能提示“被盗 token 已失效”，应按 `operationId` 查询。
 - `202 PROCESSING` 仍使用成功 envelope：HTTP status 为 `202`，但 body `code` 固定为 `200`，异步处理标识放在 `data.operationId`，不新增专用错误码。
@@ -19,9 +21,9 @@
 
 | Endpoint | Use case | 设计文档 | Contract 状态 |
 | --- | --- | --- | --- |
-| `POST /api/v1/auth/register` | `RegisterAccount` | `endpoints/register.md` | 已验证 |
+| `POST /api/v1/auth/register` | `RegisterAccount` | `endpoints/register.md` | 草案 |
 | `POST /api/v1/auth/login` | `Login` | `endpoints/login.md` | 已验证 |
-| `POST /api/v1/auth/refresh` | `RefreshToken` | `endpoints/refresh.md` | 已验证 |
+| `POST /api/v1/auth/refresh` | `RefreshToken` | `endpoints/refresh.md` | 草案 |
 | `POST /api/v1/auth/logout` | `Logout` | `endpoints/logout.md` | 已验证 |
 | `GET /api/v1/auth/me` | `GetCurrentPrincipal` | `endpoints/me.md` | 已验证 |
 | `GET /api/v1/auth/csrf` | `GetCSRFToken` | `endpoints/csrf.md` | 已验证 |

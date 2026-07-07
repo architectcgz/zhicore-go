@@ -18,7 +18,7 @@
 | `auth_accounts` | Auth | 账号生命周期、登录标识、User 映射、版本号和登录元数据。 |
 | `auth_password_credentials` | Auth | 密码 hash、密码更新时间和凭证版本。 |
 | `auth_account_roles` | Auth | 账号角色授予、撤销和审计来源。 |
-| `auth_refresh_sessions` | Auth | 浏览器/设备级 refresh session、当前 refresh token hash、过期和撤销状态。 |
+| `auth_refresh_sessions` | Auth | 浏览器/设备级 refresh session、当前 refresh token hash、原始持久化策略、过期和撤销状态。 |
 | `auth_used_refresh_tokens` | Auth | 已 rotation 使用过的 refresh token 记录，用于 replay 检测。 |
 | `auth_email_verifications` | Auth | 邮箱验证码发送、校验、尝试次数和发送状态。 |
 | `auth_verification_tokens` | Auth | `emailVerificationToken`、`passwordResetToken` 等短期一次性不透明 token 的 hash。 |
@@ -119,6 +119,7 @@ refresh session 真相源。一个 session 表示一次登录设备/浏览器会
 | `account_id` | `BIGINT` | 所属账号。 |
 | `current_token_id` | `VARCHAR(64)` | 当前 refresh token 的非秘密定位符。 |
 | `current_token_hash` | `VARCHAR(128)` | `HMAC-SHA-256(serverPepper, normalizedRefreshToken)` 等结果。 |
+| `persistence_policy` | `VARCHAR(32)` | refresh session 原始持久化策略：`STANDARD` 表示 `rememberMe=false`，滑动 TTL 7 天；`REMEMBERED` 表示 `rememberMe=true`，滑动 TTL 30 天。 |
 | `created_at` | `TIMESTAMPTZ` | 创建时间。 |
 | `last_used_at` | `TIMESTAMPTZ NULL` | 最近 refresh 成功时间。 |
 | `expires_at` | `TIMESTAMPTZ` | refresh session 过期时间。 |
@@ -134,6 +135,7 @@ refresh session 真相源。一个 session 表示一次登录设备/浏览器会
 约束和索引：
 
 - `session_id` 唯一。
+- `persistence_policy` 只允许 `STANDARD`、`REMEMBERED`；实现可用 `CHECK` 约束或受控枚举。
 - `(account_id, revoked_at, expires_at)` 支持 session list。
 - `(account_id, expires_at)` 支持账号级清理和 revoke all。
 - `current_token_id` 可按实现需要加唯一索引；`current_token_hash` 不对外暴露。
@@ -142,6 +144,8 @@ rotation 规则：
 
 - `POST /auth/refresh` 按 `session_id` 开事务并锁行。
 - 校验 `current_token_id/current_token_hash` 成功后，生成新 refresh token，写 `auth_used_refresh_tokens`，再更新当前 session 的 `current_token_id/current_token_hash/last_used_at`。
+- refresh 成功时必须沿用 `persistence_policy` 计算新的 `expires_at`：`STANDARD` 续到 `now + AUTH_REFRESH_STANDARD_TTL`，`REMEMBERED` 续到 `now + AUTH_REFRESH_REMEMBERED_TTL`；客户端不能在 refresh 请求中改变该策略。
+- `expires_at <= now` 时按 token 过期处理，返回 `AUTH_TOKEN_EXPIRED`，不执行 rotation，客户端必须重新登录。
 - 旧 token 再出现时，若命中 used token 记录，按 replay 处理并吊销当前 session。
 
 ## `auth_used_refresh_tokens`
@@ -313,7 +317,7 @@ Auth producer outbox。业务状态变更和 outbox 写入必须在同一 Postgr
 | 数据 | 默认保留策略 |
 | --- | --- |
 | `PENDING_PROFILE` account | 超过 `AUTH_PENDING_PROFILE_TTL` 后转 `EXPIRED`，释放 email，但保留历史行。 |
-| `auth_used_refresh_tokens` | 默认保留 30 天，过期后硬删除。 |
+| `auth_used_refresh_tokens` | 默认保留到最长 refresh TTL（当前 30 天）之后再硬删除。 |
 | revoked / expired refresh sessions | 默认保留 90 天，配置化。 |
 | security operations | 默认保留 7-30 天，配置化。 |
 | outbox `PUBLISHED` | 默认保留 7-30 天，配置化；`FAILED` 不自动删除。 |

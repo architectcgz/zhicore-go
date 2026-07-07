@@ -145,6 +145,27 @@ ZHICORE_GATEWAY_JWT_SECRET=...
 
 这些值可以有本地开发默认值，但生产依赖地址和凭证必须来自环境注入。
 
+## Auth token 和 session 配置
+
+Auth 的 token、refresh session 和 cookie TTL 必须由命名配置驱动，不能在 handler、application service、repository 或 cookie helper 中写死。
+
+当前 `zhicore-auth` 的 `cmd/server` / runtime 尚未装配真实 application service、repository、token signer 和配置加载；本节先固定目标配置契约。运行时接入条件和剩余实现范围登记在 `docs/todos/debt/auth-remember-me-refresh-ttl.md`，不能把下表理解为当前进程已经从环境变量加载并生效。
+
+| 配置 | 默认值 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `AUTH_ACCESS_TOKEN_TTL` | `2h` | Defaulted | access token TTL；`rememberMe` 不影响该值。 |
+| `AUTH_REFRESH_STANDARD_TTL` | `168h` | Defaulted | `rememberMe=false` 时 refresh session、refresh token material 和 `refresh_token` cookie 的滑动 TTL。 |
+| `AUTH_REFRESH_REMEMBERED_TTL` | `720h` | Defaulted | `rememberMe=true` 时 refresh session、refresh token material 和 `refresh_token` cookie 的滑动 TTL。 |
+| `AUTH_REFRESH_TOKEN_PEPPER` | 无 | Required Secret | refresh token hash 使用的服务端 pepper；不得有生产默认值。 |
+
+规则：
+
+- `AUTH_REFRESH_REMEMBERED_TTL` 必须大于或等于 `AUTH_REFRESH_STANDARD_TTL`，且二者都必须大于 `AUTH_ACCESS_TOKEN_TTL`。
+- 登录时根据 `rememberMe` 固定 session 原始持久化策略；refresh rotation 时从 PostgreSQL refresh session 读取该策略并滚动到新的 `now + TTL`，不能读取客户端提交的新策略。
+- `refresh_token` cookie 的 `Expires/Max-Age`、PostgreSQL `auth_refresh_sessions.expires_at` 和 Redis refresh session cache TTL 必须对齐。
+- refresh session 已过期时返回 `AUTH_TOKEN_EXPIRED` 并要求用户重新登录，不能用配置默认值延长已经过期的 session。
+- `auth_used_refresh_tokens` 的保留窗口不得短于最长 refresh TTL，当前至少覆盖 `AUTH_REFRESH_REMEMBERED_TTL`。
+
 ## 测试和验证
 
 修改配置加载、默认值、必填项或环境变量命名时：

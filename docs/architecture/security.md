@@ -45,6 +45,8 @@
 - 登录失败对外返回稳定错误码，不区分“用户不存在”和“密码错误”的内部细节，除非服务级 contract 已明确登记历史差异。
 - 禁用账号、角色变更、密码重置和 token 全量失效必须由 Auth 提供 command contract；其他服务不能自行修改账号身份状态。
 - refresh token、临时授权 token 或高风险操作 token 不作为资源 ID 使用；编码和加密边界见 `docs/architecture/id-strategy.md`。
+- `rememberMe` 只影响 refresh session / HttpOnly refresh cookie 的滑动 TTL：未勾选为 7 天，勾选为 30 天；access token TTL 不因“记住我”延长。
+- refresh session 过期后必须重新登录；refresh token rotation 只能沿用登录时保存的原始持久化策略，不能由 refresh 请求重新提交或覆盖 `rememberMe`。
 
 ### User
 

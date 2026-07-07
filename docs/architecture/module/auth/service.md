@@ -5,8 +5,8 @@
 | Use case | 职责 |
 | --- | --- |
 | `RegisterAccount` | 校验登录标识唯一性、hash 密码；事务 A 创建或复用未过期 `PENDING_PROFILE` account / credential；同步调用 User `CreateProfileForAccount` 获取非零 `userId`；事务 B 用真正激活时刻写 `auth_accounts.user_id`、切 `ACTIVE`、授予默认 `ROLE_USER` 并写 `auth.account.registered` outbox。 |
-| `Login` | 按登录标识加载账号，校验状态和密码；`ACTIVE` 账号必须已有非零 `userId`；先生成并校验 refresh token material（`sessionId/tokenId/plaintext/hash/expiresAt`），再持久化 PostgreSQL refresh session metadata，最后基于已确定的 session 真相签发 access token，并把 refresh plaintext 返回给上层。 |
-| `RefreshToken` | 以 PostgreSQL refresh session 和 token hash 为真相源校验 refresh token，执行 token rotation；疑似重放时吊销当前 session 或升级账号级处置。 |
+| `Login` | 按登录标识加载账号，校验状态和密码；`ACTIVE` 账号必须已有非零 `userId`；根据 `rememberMe` 选择 refresh 持久化策略（标准 7 天 / 记住我 30 天），由 application 计算 refresh session 过期时间，先生成并校验 refresh token material（`sessionId/tokenId/plaintext/hash/expiresAt`），再持久化 PostgreSQL refresh session metadata 和原始持久化策略，最后基于已确定的 session 真相签发 access token，并把 refresh plaintext 返回给上层。 |
+| `RefreshToken` | 以 PostgreSQL refresh session 和 token hash 为真相源校验 refresh token，按 session 保存的原始持久化策略执行 token rotation 和滑动续期；疑似重放时吊销当前 session 或升级账号级处置。 |
 | `Logout` | 吊销当前 refresh token，按需要写 access token 黑名单。 |
 | `ChangePassword` | 校验旧凭证，更新 password hash，事务后吊销账号全部 refresh token。 |
 | `DisableAccount` / `EnableAccount` | 维护账号状态，禁用后吊销 refresh token 并让 Gateway 缓存自然过期或失效。 |
@@ -38,7 +38,10 @@
 
 - Refresh token 使用高熵 opaque token，服务端只保存 `sessionId`、`currentTokenId` 和 `currentTokenHash`，不保存明文 token。
 - `Login` 签发 refresh token 后，先在 PostgreSQL 创建 refresh session；Redis 只保存 refresh session 校验缓存，不作为真相源。
+- `rememberMe=false` 创建标准 session，refresh session / cookie 滑动 TTL 为 7 天；`rememberMe=true` 创建 remembered session，滑动 TTL 为 30 天。`rememberMe` 只影响 refresh session 生命周期，不影响 access token TTL。
 - `RefreshToken` 从 refresh token 中解析 `sessionId/tokenId`，读取 PostgreSQL session 并校验未过期、未撤销、token hash 匹配。
+- `RefreshToken` 不接收新的 `rememberMe` 入参；rotation 成功后的新 refresh token 必须沿用 PostgreSQL session 中保存的原始持久化策略，标准 session 续到 `now + 7d`，remembered session 续到 `now + 30d`。
+- refresh session 或 refresh token 已过期时返回 `ErrTokenExpired` / `AUTH_TOKEN_EXPIRED`，客户端必须重新登录，不能用过期 refresh token 换取新 access token。
 - 如果旧 `tokenId` 或旧 token hash 再次出现，按疑似重放处理：首批吊销当前 session；同账号短时间多次、跨 IP/UA 异常或多个 session 重放时再升级为账号级处置。
 - rotation 成功时，在同一数据库事务内把 `currentTokenId/currentTokenHash` 更新为新值；事务提交后再更新 Redis 缓存和 Gateway 可见的安全投影。
 - Redis 不可用时，refresh 是否允许降级取决于 Gateway 是否能回源 Auth 校验 access state；如果 Gateway 不能回源，或账号/session 存在未完成安全 operation，则不得签发新 access token。

@@ -17,8 +17,8 @@ Ports 放在 `services/zhicore-auth/internal/auth/ports`，按能力和用例族
 | Port | 职责 |
 | --- | --- |
 | `PasswordHasher` | 密码 hash 和 verify。 |
-| `RefreshTokenMaterialIssuer` | 生成 refresh token material：`sessionId/tokenId/plaintext/hash/expiresAt`；application 必须先校验这些字段非空且 `expiresAt > now`，再持久化 refresh session metadata。 |
-| `RefreshSessionStore` | Refresh session 真相源；只持久化已确定的 `sessionId/currentTokenId/currentTokenHash/expiresAt`，不负责回传 refresh token 明文。 |
+| `RefreshTokenMaterialIssuer` | 按 application 传入的 refresh TTL / session 持久化策略生成 refresh token material：`sessionId/tokenId/plaintext/hash/expiresAt`；application 必须先校验这些字段非空，且 `expiresAt` 等于 application 按策略计算的 `now + TTL`，再持久化 refresh session metadata。 |
+| `RefreshSessionStore` | Refresh session 真相源；持久化已确定的 `sessionId/currentTokenId/currentTokenHash/persistencePolicy/expiresAt`，refresh rotation 时按已保存的 `persistencePolicy` 计算新过期时间，不负责回传 refresh token 明文。 |
 | `TokenIssuer` | 只负责 access token/JWT claims 的签发、解析和校验；不能先发明 refresh session 真相身份再让 repository 追认。 |
 | `AccessTokenBlacklist` | Access token 黑名单或 token version 失效机制；task 1 先保留端口定义，不强制 application 构造期接线；后续 `logout`、单 session revoke、改密码和账号禁用接入时，它是对应能力的 required owner。 |
 | `AuthCacheStore` | 账号主体、角色和 token 校验缓存；task 1 先保留端口定义，不强制 application 构造期接线；后续 `me`、session revoke 和 Gateway principal/session projection 接入时，它是对应能力的 required owner。 |

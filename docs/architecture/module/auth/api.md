@@ -22,8 +22,8 @@
 | Endpoint | Use case | 主要副作用 |
 | --- | --- | --- |
 | `POST /api/v1/auth/register` | `RegisterAccount` | 写入账号、凭证、默认角色、outbox；初始化 User profile 或发布事件。 |
-| `POST /api/v1/auth/login` | `Login` | 创建 PostgreSQL refresh session，签发 access / refresh token，更新登录安全审计，并尽力写 Redis 缓存。 |
-| `POST /api/v1/auth/refresh` | `RefreshToken` | 基于 PostgreSQL session 和 token hash 执行 rotation；重放时吊销当前 session 或升级账号级处置。 |
+| `POST /api/v1/auth/login` | `Login` | 按 `rememberMe` 创建标准 7 天或记住我 30 天 PostgreSQL refresh session，签发 access / refresh token，更新登录安全审计，并尽力写 Redis 缓存。 |
+| `POST /api/v1/auth/refresh` | `RefreshToken` | 基于 PostgreSQL session 和 token hash 执行 rotation，并沿用 session 原始持久化策略滑动续期；重放时吊销当前 session 或升级账号级处置。 |
 | `POST /api/v1/auth/logout` | `Logout` | 吊销当前 refresh token，必要时写 access token 黑名单。 |
 | `GET /api/v1/auth/me` | `GetCurrentPrincipal` | 无业务写入。 |
 | `GET /api/v1/auth/csrf` | `GetCSRFToken` | 签发 CSRF token 并覆盖 `csrf_token` cookie；不签发 access/refresh token。 |

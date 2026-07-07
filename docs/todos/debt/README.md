@@ -14,6 +14,7 @@
 ## 当前条目
 
 - [file-cleanup-orphan.md](file-cleanup-orphan.md)：File 服务孤儿文件清理。
+- [auth-remember-me-refresh-ttl.md](auth-remember-me-refresh-ttl.md)：Auth 记住我 refresh TTL 目标契约待实现。
 - [unimplemented-service-modules.md](unimplemented-service-modules.md)：未实现服务模块盘点。
 
 ## 已处理条目

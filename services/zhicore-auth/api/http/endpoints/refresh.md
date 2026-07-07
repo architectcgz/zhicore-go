@@ -53,6 +53,8 @@
 
 Redis 正常时，Auth 基于 PostgreSQL refresh session 真相源校验 token hash，执行 rotation，签发新 access token 和新 refresh token，并覆盖 `refresh_token` 与 `csrf_token` cookie。refresh token 只来自 HttpOnly cookie，且新 refresh token 只通过 Set-Cookie 返回，不进入 body；CSRF 只通过 `X-CSRF-Token` header + `csrf_token` cookie 校验。
 
+refresh 不接受 `rememberMe` 或任何 body 字段。成功 rotation 后，新 refresh session 过期时间必须沿用登录时保存的原始持久化策略滑动续期：标准 session 续到 `now + 7d`，remembered session 续到 `now + 30d`。响应写入的 `refresh_token` cookie `Expires/Max-Age` 必须与新的 session `expiresAt` 对齐。
+
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `accessToken` | string | 是 | 新 Bearer access token。 |
@@ -94,7 +96,7 @@ Redis 短时不可用但 Auth DB 正常且 Gateway 能回源 Auth `ValidateAcces
 | --- | --- | --- | --- |
 | `2013` | `403` | CSRF 校验失败 | `X-CSRF-Token` 或 `csrf_token` cookie 缺失、不匹配。 |
 | `2001` | `401` | token 无效 | refresh token 格式非法、hash 不匹配或无法定位 session。 |
-| `2002` | `401` | token 过期 | refresh session 或 refresh token 已过期。 |
+| `2002` | `401` | token 过期 | refresh session 或 refresh token 已过期；客户端必须清理本地登录态并重新登录。 |
 | `2017` | `401` | refresh token replay | 已失效 tokenId/token hash 再次出现，当前 session 被吊销或升级风险处置。 |
 | `2018` | `401` | session 已撤销 | refresh session 已撤销、账号级 sessionVersion 已失效或安全处置要求重新登录。 |
 | `2004` | `403` | 账号禁用 | 账号状态为 `DISABLED`。 |
@@ -106,6 +108,7 @@ Redis 短时不可用但 Auth DB 正常且 Gateway 能回源 Auth `ValidateAcces
 ## 权限和可见性
 
 - refresh 只基于 HttpOnly `refresh_token` cookie 定位 session，不接受 body 中的 `accountId/sessionId/token`。
+- refresh 不能修改 session 的原始持久化策略；前端不应在 refresh 请求中发送 `rememberMe`。
 - 成功 refresh 不因 rotation 自动黑名单旧 access token；旧 access token 仍按自身 `exp`、`jti`、session/version 状态由 Gateway 判断。
 - refresh replay 是安全事件，不能被普通限流吞掉。
 - 不返回 refresh token 明文、refresh token hash、tokenId、Redis key、jti 原值、完整 IP 或完整 User-Agent。
@@ -116,5 +119,5 @@ Redis 短时不可用但 Auth DB 正常且 Gateway 能回源 Auth `ValidateAcces
 
 ## 测试要求
 
-- Handler contract test：已验证，覆盖正常 rotation、CSRF 失败和安全 operation `202`。
+- Handler contract test：待补标准 / remembered session 沿用原始策略续期、过期 refresh 要求重新登录、body 字段被拒绝或忽略的契约；既有测试已覆盖正常 rotation、CSRF 失败和安全 operation `202`。
 - System HTTP test：待补。

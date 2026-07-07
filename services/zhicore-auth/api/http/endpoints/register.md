@@ -42,7 +42,7 @@
 
 ## 成功响应 `RegisterResp`
 
-Redis 正常且 Gateway 可见的 session/version/principal 投影写入成功时，注册成功后可自动登录，返回 access token 并通过 `Set-Cookie` 写入 `refresh_token` 和 `csrf_token`。refresh token 不进入 body；CSRF token 只作为 `csrfToken` body 字段和 `csrf_token` cookie 给浏览器后续提交 `X-CSRF-Token` 使用。
+Redis 正常且 Gateway 可见的 session/version/principal 投影写入成功时，注册成功后可自动登录，返回 access token 并通过 `Set-Cookie` 写入 `refresh_token` 和 `csrf_token`。注册自动登录默认创建标准 refresh session，滑动 TTL 为 7 天；需要长期保持登录时，用户后续通过 `login.rememberMe=true` 建立 remembered session。refresh token 不进入 body；CSRF token 只作为 `csrfToken` body 字段和 `csrf_token` cookie 给浏览器后续提交 `X-CSRF-Token` 使用。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
@@ -93,5 +93,5 @@ Redis 不可用时，首期不走注册成功自动登录。账号和 User profi
 
 ## 测试要求
 
-- Handler contract test：已验证，覆盖正常注册并自动登录、email 冲突、pending retry、密码策略失败和 email 格式非法。
+- Handler contract test：待补注册自动登录默认标准 7 天 refresh session 和 cookie 过期时间；既有测试已覆盖正常注册并自动登录、email 冲突、pending retry、密码策略失败和 email 格式非法。
 - System HTTP test：待补。
