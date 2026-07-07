@@ -260,6 +260,7 @@ type createPostDeps struct {
 	repair          *fakeRepairTaskStore
 	outbox          *fakeOutboxPublisher
 	outboxAdmin     *fakeOutboxAdminRepository
+	adminPosts      *fakeAdminPostRepository
 	taxonomy        *fakeTaxonomyRepository
 	engagement      *fakeEngagementRepository
 	engagementStats *fakeEngagementStatsTaskStore
@@ -279,6 +280,7 @@ func newCreatePostDeps() createPostDeps {
 		repair:          &fakeRepairTaskStore{},
 		outbox:          &fakeOutboxPublisher{},
 		outboxAdmin:     &fakeOutboxAdminRepository{},
+		adminPosts:      &fakeAdminPostRepository{},
 		taxonomy:        &fakeTaxonomyRepository{},
 		engagement:      &fakeEngagementRepository{},
 		engagementStats: &fakeEngagementStatsTaskStore{},
@@ -304,6 +306,7 @@ func (d createPostDeps) asDeps() Deps {
 		Repair:          d.repair,
 		Outbox:          d.outbox,
 		Admin:           d.outboxAdmin,
+		AdminPosts:      d.adminPosts,
 		Taxonomy:        d.taxonomy,
 		Engagement:      d.engagement,
 		EngagementStats: d.engagementStats,

@@ -53,6 +53,7 @@ type Service struct {
 	repair          ports.BodyRepairTaskStore
 	outbox          ports.OutboxPublisher
 	admin           ports.OutboxAdminRepository
+	adminPosts      ports.AdminPostRepository
 	taxonomy        ports.TaxonomyRepository
 	engagement      ports.EngagementRepository
 	engagementStats ports.EngagementStatsTaskStore
@@ -72,6 +73,7 @@ type Deps struct {
 	Repair          ports.BodyRepairTaskStore
 	Outbox          ports.OutboxPublisher
 	Admin           ports.OutboxAdminRepository
+	AdminPosts      ports.AdminPostRepository
 	Taxonomy        ports.TaxonomyRepository
 	Engagement      ports.EngagementRepository
 	EngagementStats ports.EngagementStatsTaskStore
@@ -92,6 +94,7 @@ func NewService(deps Deps) *Service {
 		repair:          deps.Repair,
 		outbox:          deps.Outbox,
 		admin:           deps.Admin,
+		adminPosts:      deps.AdminPosts,
 		taxonomy:        deps.Taxonomy,
 		engagement:      deps.Engagement,
 		engagementStats: deps.EngagementStats,
