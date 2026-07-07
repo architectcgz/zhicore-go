@@ -260,6 +260,7 @@ type createPostDeps struct {
 	repair      *fakeRepairTaskStore
 	outbox      *fakeOutboxPublisher
 	outboxAdmin *fakeOutboxAdminRepository
+	taxonomy    *fakeTaxonomyRepository
 	users       *fakeUserProfileClient
 	files       *fakeFileResourceClient
 	tx          *fakeTxRunner
@@ -275,6 +276,7 @@ func newCreatePostDeps() createPostDeps {
 		repair:      &fakeRepairTaskStore{},
 		outbox:      &fakeOutboxPublisher{},
 		outboxAdmin: &fakeOutboxAdminRepository{},
+		taxonomy:    &fakeTaxonomyRepository{},
 		files:       &fakeFileResourceClient{},
 		users: &fakeUserProfileClient{snapshot: ports.OwnerSnapshot{
 			DisplayName:    "architect",
@@ -289,17 +291,18 @@ func newCreatePostDeps() createPostDeps {
 
 func (d createPostDeps) asDeps() Deps {
 	return Deps{
-		Posts:   d.posts,
-		Queries: d.posts,
-		Bodies:  d.bodies,
-		Cleanup: d.cleanup,
-		Repair:  d.repair,
-		Outbox:  d.outbox,
-		Admin:   d.outboxAdmin,
-		Users:   d.users,
-		Files:   d.files,
-		Tx:      d.tx,
-		Parser:  d.parser,
-		Clock:   d.clock,
+		Posts:    d.posts,
+		Queries:  d.posts,
+		Bodies:   d.bodies,
+		Cleanup:  d.cleanup,
+		Repair:   d.repair,
+		Outbox:   d.outbox,
+		Admin:    d.outboxAdmin,
+		Taxonomy: d.taxonomy,
+		Users:    d.users,
+		Files:    d.files,
+		Tx:       d.tx,
+		Parser:   d.parser,
+		Clock:    d.clock,
 	}
 }
