@@ -4,8 +4,8 @@
 
 ## 事实来源
 
-- Java `zhicore-content` controller：只作为业务能力参考，用于确认 Post command/query、like/favorite、tag、admin、outbox、reader presence 等能力存在；不作为 Go API path、字段或响应兼容约束。
-- Java `content-service-design.md`、`content-visibility-and-projection-evolution.md`、`post-reading-presence.md`。
+- Java `zhicore-content` controller：只作为业务能力参考，用于确认 Post command/query、like/favorite、tag、admin、outbox 等能力存在；不作为 Go API path、字段或响应兼容约束。
+- Java `content-service-design.md`、`content-visibility-and-projection-evolution.md`。
 - Java `zhicore-content/src/main/resources/db/schema.sql`。
 - `zhicore-client` 和 `zhicore-integration` 中 post 事件与 DTO。
 
@@ -18,7 +18,7 @@
 4. [data-events-contracts.md](data-events-contracts.md)：API 保留范围、数据归属、事件、跨服务依赖、发布校验、错误契约和链接预览后续项。
 5. [engagement-design.md](engagement-design.md)：点赞、收藏、互动统计、当前用户状态、Redis 故障降级和产品展示语义。
 6. [frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)：公开浏览页面、文章详情页、列表页互动摘要和前端加载编排。
-7. [rate-limiting.md](rate-limiting.md)：公开读、作者写路径、互动、presence、管理端和内部调用的限流矩阵、Redis 故障原则和观测要求。
+7. [rate-limiting.md](rate-limiting.md)：公开读、作者写路径、互动、管理端和内部调用的限流矩阵、Redis 故障原则和观测要求。
 8. [runtime-resilience.md](runtime-resilience.md)：Content 下游 provider / operation 的 timeout、retry、circuit breaker、max-in-flight 和降级策略矩阵。
 
 相关 ADR：
@@ -56,7 +56,7 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 - **链接预览第一阶段不做**：后续如果做，必须由后端异步生成并使用 SSRF-safe fetcher。
 - **Engagement viewer 状态使用三值语义**：`liked/favorited=true` 表示确认已互动，`false` 表示确认未互动，`null + degraded=true` 表示当前无法确认；前端不能把 unknown 当成未点赞或未收藏。
 - **浏览页面按主资源和附加资源分层加载**：文章列表 / 详情先加载主资源；文章不可用时不请求 engagement，文章可读后再加载互动状态。
-- **Content 需要服务内业务限流**：Gateway 粗限流只挡 IP / route 洪水；Content 还要按 actor、post、session、service caller、operation 和高成本资源保护草稿、发布、正文读取、互动、presence、管理端和内部调用。
+- **Content 需要服务内业务限流**：Gateway 粗限流只挡 IP / route 洪水；Content 还要按 actor、post、service caller、operation 和高成本资源保护草稿、发布、正文读取、互动、管理端和内部调用。
 - **Content 需要按 provider + operation 声明 resilience policy**：User、File service、MongoDB、Redis、RabbitMQ 和 PostgreSQL 的 timeout、retry、熔断、max-in-flight 与降级策略见 `runtime-resilience.md`，不能只在实现里临时写 timeout。
 
 ## 当前设计状态
@@ -72,4 +72,4 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 
 - 按 `2026-07-05-content-module-completion-implementation-plan.md` 先补服务可运行 runtime、真实 readiness 和配置模板。
 - 分别实现 cleanup worker、repair worker 和 outbox dispatcher，不把 disabled descriptor 伪装成生产 worker。
-- 补 Content 黑盒 HTTP system test，再按公开查询、作者工作台、发布生命周期、taxonomy、engagement / presence 和 admin API family 逐步扩展。
+- 补 Content 黑盒 HTTP system test，再按公开查询、作者工作台、发布生命周期、taxonomy、engagement 和 admin API family 逐步扩展。

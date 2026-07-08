@@ -4,7 +4,7 @@
 
 ## 定位
 
-Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Java 只作为业务能力参考，用来确认“有哪些文章、草稿、标签、互动、presence、管理端能力”，不作为 Go 对外 contract 的 path、字段或分页形态约束。
+Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Java 只作为业务能力参考，用来确认“有哪些文章、草稿、标签、互动、管理端能力”，不作为 Go 对外 contract 的 path、字段或分页形态约束。
 
 本目录是 Content 对外 HTTP 事实源；字段级总览见 [endpoints/content-api.md](endpoints/content-api.md)，进入实现切片的 endpoint 会拆成单独 schema。
 
@@ -32,9 +32,9 @@ Content API 是 Go-first 设计，不沿用旧 Java path / DTO 作为约束。Ja
 
 ## 限流上下文
 
-Content API 需要 Gateway 粗限流和 Content 服务内业务限流两层保护。Gateway 按 IP、route、method 阻挡明显洪水流量；Content 按 actor、post、session、service caller、operation 和高成本资源维度保护草稿保存、发布、正文读取、互动统计、presence、管理端和内部调用。
+Content API 需要 Gateway 粗限流和 Content 服务内业务限流两层保护。Gateway 按 IP、route、method 阻挡明显洪水流量；Content 按 actor、post、service caller、operation 和高成本资源维度保护草稿保存、发布、正文读取、互动统计、管理端和内部调用。
 
-业务限流命中时返回 HTTP `429`，body `code` 使用 `1003`。Redis 或 limiter 依赖不可用导致高副作用写路径不能确认配额时，返回 HTTP `503`，body `code` 使用 `1004`。Reader presence 是附加能力，Redis 不可用时 presence 接口返回空摘要或空成功并标记降级，不能影响文章详情、正文读取和公开列表。
+业务限流命中时返回 HTTP `429`，body `code` 使用 `1003`。Redis 或 limiter 依赖不可用导致高副作用写路径不能确认配额时，返回 HTTP `503`，body `code` 使用 `1004`。
 
 Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把 unknown 伪装成 `false`。详情页和批量状态使用 `liked=null`、`favorited=null` 和 `degraded=true` 表示状态不可确认；命令接口仍必须返回确定成功或错误。
 
@@ -83,19 +83,16 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `PUT` | `/api/v1/posts/{postId}/tags` | 作者 | 替换文章标签集合；字段级 schema 见 [endpoints/update-post-tags.md](endpoints/update-post-tags.md)。 |
 | `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | 作者 | 删除单个文章标签；字段级 schema 见 [endpoints/delete-post-tag.md](endpoints/delete-post-tag.md)。 |
 
-### 互动和 presence
+### 互动
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `PUT` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等点赞。 |
-| `DELETE` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等取消点赞。 |
-| `PUT` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等收藏。 |
-| `DELETE` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等取消收藏。 |
-| `GET` | `/api/v1/posts/{postId}/engagement` | 匿名 / 登录用户 | 互动计数和当前用户状态。 |
-| `POST` | `/api/v1/posts/engagement/batch-status` | 登录用户 | 批量查询点赞 / 收藏状态。 |
-| `PUT` | `/api/v1/posts/{postId}/reader-sessions/{sessionId}` | 匿名 / 登录用户 | 注册或刷新阅读 presence session。 |
-| `DELETE` | `/api/v1/posts/{postId}/reader-sessions/{sessionId}` | 匿名 / 登录用户 | 离开阅读 presence session。 |
-| `GET` | `/api/v1/posts/{postId}/reader-presence` | 匿名 | 查询阅读 presence 摘要。 |
+| `PUT` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等点赞；字段级 schema 见 [endpoints/like-post.md](endpoints/like-post.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/like` | 登录用户 | 幂等取消点赞；字段级 schema 见 [endpoints/unlike-post.md](endpoints/unlike-post.md)。 |
+| `PUT` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等收藏；字段级 schema 见 [endpoints/favorite-post.md](endpoints/favorite-post.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/favorite` | 登录用户 | 幂等取消收藏；字段级 schema 见 [endpoints/unfavorite-post.md](endpoints/unfavorite-post.md)。 |
+| `GET` | `/api/v1/posts/{postId}/engagement` | 匿名 / 登录用户 | 互动计数和当前用户状态；字段级 schema 见 [endpoints/get-post-engagement.md](endpoints/get-post-engagement.md)。 |
+| `POST` | `/api/v1/posts/engagement/batch-status` | 登录用户 | 批量查询点赞 / 收藏状态；字段级 schema 见 [endpoints/batch-get-engagement-status.md](endpoints/batch-get-engagement-status.md)。 |
 
 ### 标签
 
@@ -111,8 +108,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/admin/content/posts` | 管理员 | 管理端文章查询。 |
-| `DELETE` | `/api/v1/admin/content/posts/{postId}` | 管理员 | 管理端删除文章。 |
+| `GET` | `/api/v1/admin/content/posts` | 管理员 | 管理端文章查询；字段级 schema 见 [endpoints/list-admin-posts.md](endpoints/list-admin-posts.md)。 |
+| `DELETE` | `/api/v1/admin/content/posts/{postId}` | 管理员 | 管理端删除文章；字段级 schema 见 [endpoints/delete-admin-post.md](endpoints/delete-admin-post.md)。 |
 | `GET` | `/api/v1/admin/content/outbox-events` | 管理员 | 查询 dead / failed outbox 事件。 |
 | `POST` | `/api/v1/admin/content/outbox-events/{eventId}/retry` | 管理员 | 手动重试 outbox 事件。 |
 
@@ -149,6 +146,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `GET` | `/api/v1/posts/{postId}/tags` | [endpoints/get-post-tags.md](endpoints/get-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
 | `PUT` | `/api/v1/posts/{postId}/tags` | [endpoints/update-post-tags.md](endpoints/update-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
 | `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | [endpoints/delete-post-tag.md](endpoints/delete-post-tag.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/admin/content/posts` | [endpoints/list-admin-posts.md](endpoints/list-admin-posts.md) | `services/zhicore-content/api/http/admin_posts_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/admin/content/posts/{postId}` | [endpoints/delete-admin-post.md](endpoints/delete-admin-post.md) | `services/zhicore-content/api/http/admin_posts_handler_test.go` | 已验证 |
 
 ## 已验证依赖语义错误映射
 
@@ -163,7 +162,7 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | code | HTTP status | 含义 | 适用场景 |
 | --- | --- | --- | --- |
 | `1001` | `400` | 参数校验失败 | path/query/body 字段非法、cursor 非法、blocks schema 非法。 |
-| `1003` | `429` | 请求过于频繁 | Content 业务限流命中，包含公开读、草稿保存、发布、互动、presence、管理端和内部调用频控。 |
+| `1003` | `429` | 请求过于频繁 | Content 业务限流命中，包含公开读、草稿保存、发布、互动、管理端和内部调用频控。 |
 | `1004` | `503` | 服务暂时不可用 | MongoDB、PostgreSQL、User、File service、限流依赖或其他核心依赖不可用。 |
 | `1005` | `404` | 数据不存在 | outbox event 等非文章资源不存在。 |
 | `2006` | `401` | 请先登录 | 登录态 endpoint 缺少 Gateway 注入身份。 |

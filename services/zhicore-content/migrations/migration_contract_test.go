@@ -132,6 +132,69 @@ func TestContentTaxonomyMigrationContract(t *testing.T) {
 	}
 }
 
+func TestContentEngagementMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_content_engagement", ".up.sql")
+	down := readNamedMigration(t, "add_content_engagement", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE post_likes",
+		"post_id BIGINT NOT NULL REFERENCES posts (id)",
+		"user_id BIGINT NOT NULL",
+		"UNIQUE (post_id, user_id)",
+		"CREATE INDEX ix_post_likes_user_post",
+		"CREATE TABLE post_favorites",
+		"CREATE UNIQUE INDEX ux_post_favorites_post_user",
+		"CREATE INDEX ix_post_favorites_user_post",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("engagement up migration missing %q", fragment)
+		}
+	}
+
+	for _, fragment := range []string{
+		"DROP TABLE IF EXISTS post_favorites",
+		"DROP TABLE IF EXISTS post_likes",
+	} {
+		if !strings.Contains(down, fragment) {
+			t.Fatalf("engagement down migration missing %q", fragment)
+		}
+	}
+}
+
+func TestAdminPostAuditMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_admin_post_audit", ".up.sql")
+	down := readNamedMigration(t, "add_admin_post_audit", ".down.sql")
+
+	for _, fragment := range []string{
+		"BEGIN;",
+		"CREATE TABLE admin_post_audit",
+		"post_id BIGINT NOT NULL REFERENCES posts (id)",
+		"public_id VARCHAR(64) NOT NULL",
+		"admin_user_id BIGINT NOT NULL",
+		"action VARCHAR(32) NOT NULL",
+		"reason TEXT NOT NULL",
+		"previous_status VARCHAR(32) NOT NULL",
+		"new_status VARCHAR(32) NOT NULL",
+		"occurred_at TIMESTAMPTZ NOT NULL",
+		"CHECK (action IN ('DELETE'))",
+		"CHECK (previous_status IN ('DRAFT', 'PUBLISHED', 'SCHEDULED', 'DELETED'))",
+		"CHECK (new_status IN ('DRAFT', 'PUBLISHED', 'SCHEDULED', 'DELETED'))",
+		"CREATE INDEX ix_admin_post_audit_post_created_at",
+		"CREATE INDEX ix_admin_post_audit_admin_created_at",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("admin post audit up migration missing %q", fragment)
+		}
+	}
+
+	if !strings.Contains(down, "DROP TABLE IF EXISTS admin_post_audit") {
+		t.Fatalf("admin post audit down migration missing drop table")
+	}
+}
+
 func readContentPublishCoreMigration(t *testing.T, suffix string) string {
 	return readNamedMigration(t, "create_content_publish_core", suffix)
 }

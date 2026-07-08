@@ -46,6 +46,7 @@ func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 		"ZHICORE_CONTENT_HTTP_SHUTDOWN_TIMEOUT":            "22s",
 		"ZHICORE_CONTENT_HTTP_MAX_JSON_BODY":               "1MiB",
 		"ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED":          "true",
+		"ZHICORE_CONTENT_WORKERS_ENGAGEMENT_STATS_ENABLED": "true",
 	}))
 	if err != nil {
 		t.Fatalf("LoadContentServerConfig() error = %v", err)
@@ -71,8 +72,8 @@ func TestLoadContentServerConfigAppliesDefaultsAndEnvOverrides(t *testing.T) {
 	if cfg.HTTP.MaxJSONBodyBytes != 1<<20 {
 		t.Fatalf("MaxJSONBodyBytes = %d, want 1MiB", cfg.HTTP.MaxJSONBodyBytes)
 	}
-	if !cfg.Workers.CleanupEnabled || cfg.Workers.RepairEnabled || cfg.Workers.OutboxEnabled {
-		t.Fatalf("workers = %#v, want only cleanup enabled", cfg.Workers)
+	if !cfg.Workers.CleanupEnabled || cfg.Workers.RepairEnabled || cfg.Workers.OutboxEnabled || !cfg.Workers.EngagementStatsEnabled {
+		t.Fatalf("workers = %#v, want cleanup and engagement stats enabled", cfg.Workers)
 	}
 	if cfg.Mongo.Database != "zhicore_content" || cfg.Mongo.BodyCollection != "post_bodies" {
 		t.Fatalf("mongo defaults = (%q, %q), want zhicore_content/post_bodies", cfg.Mongo.Database, cfg.Mongo.BodyCollection)
@@ -189,6 +190,7 @@ func TestLoadContentServerConfigRejectsPresentButEmptyEnv(t *testing.T) {
 		{name: "cleanup enabled", envName: "ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED"},
 		{name: "repair enabled", envName: "ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED"},
 		{name: "outbox enabled", envName: "ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"},
+		{name: "engagement stats enabled", envName: "ZHICORE_CONTENT_WORKERS_ENGAGEMENT_STATS_ENABLED"},
 		{name: "postgres dsn", envName: "ZHICORE_CONTENT_POSTGRES_DSN"},
 		{name: "mongo uri", envName: "ZHICORE_CONTENT_MONGO_URI"},
 		{name: "redis addr", envName: "ZHICORE_CONTENT_REDIS_ADDR"},
@@ -227,13 +229,14 @@ func TestLoadContentServerConfigAcceptsStrictBoolLiterals(t *testing.T) {
 	values["ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED"] = "true"
 	values["ZHICORE_CONTENT_WORKERS_REPAIR_ENABLED"] = "false"
 	values["ZHICORE_CONTENT_WORKERS_OUTBOX_ENABLED"] = "false"
+	values["ZHICORE_CONTENT_WORKERS_ENGAGEMENT_STATS_ENABLED"] = "true"
 
 	cfg, err := LoadContentServerConfig(mapLookup(values))
 	if err != nil {
 		t.Fatalf("LoadContentServerConfig() error = %v", err)
 	}
-	if !cfg.Workers.CleanupEnabled || cfg.Workers.RepairEnabled || cfg.Workers.OutboxEnabled {
-		t.Fatalf("workers = %#v, want cleanup=true repair=false outbox=false", cfg.Workers)
+	if !cfg.Workers.CleanupEnabled || cfg.Workers.RepairEnabled || cfg.Workers.OutboxEnabled || !cfg.Workers.EngagementStatsEnabled {
+		t.Fatalf("workers = %#v, want cleanup=true repair=false outbox=false engagementStats=true", cfg.Workers)
 	}
 }
 
@@ -248,6 +251,16 @@ func TestLoadContentServerConfigRejectsNonCanonicalBoolValues(t *testing.T) {
 				t.Fatalf("LoadContentServerConfig() error = %v, want mention ZHICORE_CONTENT_WORKERS_CLEANUP_ENABLED", err)
 			}
 		})
+	}
+}
+
+func TestContentServerConfigSummaryIncludesEngagementStatsWorkerFlag(t *testing.T) {
+	cfg := DefaultContentServerConfig()
+	cfg.Workers.EngagementStatsEnabled = true
+
+	summary := cfg.RedactedSummary()
+	if !strings.Contains(summary, "workers.engagementStats=true") {
+		t.Fatalf("summary = %q, want engagement stats worker flag", summary)
 	}
 }
 

@@ -220,6 +220,16 @@ type fakeContentService struct {
 	retryOutboxResult  application.RetryAdminOutboxEventResult
 	retryOutboxErr     error
 
+	listAdminPostsCalls  int
+	listAdminPostsQuery  application.ListAdminPostsQuery
+	listAdminPostsResult application.ListAdminPostsResult
+	listAdminPostsErr    error
+
+	deleteAdminPostCalls   int
+	deleteAdminPostCommand application.DeleteAdminPostCommand
+	deleteAdminPostResult  application.DeleteAdminPostResult
+	deleteAdminPostErr     error
+
 	listTagsCalls  int
 	listTagsQuery  application.ListTagsQuery
 	listTagsResult application.TagPageResult
@@ -259,6 +269,36 @@ type fakeContentService struct {
 	deletePostTagCmd    application.DeletePostTagCommand
 	deletePostTagResult application.PostTagsMutationResult
 	deletePostTagErr    error
+
+	likePostCalls  int
+	likePostCmd    application.EngagementCommand
+	likePostResult application.EngagementResult
+	likePostErr    error
+
+	unlikePostCalls  int
+	unlikePostCmd    application.EngagementCommand
+	unlikePostResult application.EngagementResult
+	unlikePostErr    error
+
+	favoritePostCalls  int
+	favoritePostCmd    application.EngagementCommand
+	favoritePostResult application.EngagementResult
+	favoritePostErr    error
+
+	unfavoritePostCalls  int
+	unfavoritePostCmd    application.EngagementCommand
+	unfavoritePostResult application.EngagementResult
+	unfavoritePostErr    error
+
+	getEngagementCalls  int
+	getEngagementQuery  application.GetPostEngagementQuery
+	getEngagementResult application.PostEngagementResult
+	getEngagementErr    error
+
+	batchEngagementCalls  int
+	batchEngagementQuery  application.BatchGetEngagementStatusQuery
+	batchEngagementResult application.BatchEngagementStatusResult
+	batchEngagementErr    error
 }
 
 func (f *fakeContentService) CreatePost(ctx context.Context, cmd application.CreatePostCommand) (application.CreatePostResult, error) {
@@ -433,6 +473,24 @@ func (f *fakeContentService) RetryAdminOutboxEvent(ctx context.Context, command 
 	return f.retryOutboxResult, nil
 }
 
+func (f *fakeContentService) ListAdminPosts(ctx context.Context, query application.ListAdminPostsQuery) (application.ListAdminPostsResult, error) {
+	f.listAdminPostsCalls++
+	f.listAdminPostsQuery = query
+	if f.listAdminPostsErr != nil {
+		return application.ListAdminPostsResult{}, f.listAdminPostsErr
+	}
+	return f.listAdminPostsResult, nil
+}
+
+func (f *fakeContentService) DeleteAdminPost(ctx context.Context, command application.DeleteAdminPostCommand) (application.DeleteAdminPostResult, error) {
+	f.deleteAdminPostCalls++
+	f.deleteAdminPostCommand = command
+	if f.deleteAdminPostErr != nil {
+		return application.DeleteAdminPostResult{}, f.deleteAdminPostErr
+	}
+	return f.deleteAdminPostResult, nil
+}
+
 func (f *fakeContentService) ListTags(ctx context.Context, query application.ListTagsQuery) (application.TagPageResult, error) {
 	f.listTagsCalls++
 	f.listTagsQuery = query
@@ -503,6 +561,60 @@ func (f *fakeContentService) DeletePostTag(ctx context.Context, command applicat
 		return application.PostTagsMutationResult{}, f.deletePostTagErr
 	}
 	return f.deletePostTagResult, nil
+}
+
+func (f *fakeContentService) LikePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error) {
+	f.likePostCalls++
+	f.likePostCmd = command
+	if f.likePostErr != nil {
+		return application.EngagementResult{}, f.likePostErr
+	}
+	return f.likePostResult, nil
+}
+
+func (f *fakeContentService) UnlikePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error) {
+	f.unlikePostCalls++
+	f.unlikePostCmd = command
+	if f.unlikePostErr != nil {
+		return application.EngagementResult{}, f.unlikePostErr
+	}
+	return f.unlikePostResult, nil
+}
+
+func (f *fakeContentService) FavoritePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error) {
+	f.favoritePostCalls++
+	f.favoritePostCmd = command
+	if f.favoritePostErr != nil {
+		return application.EngagementResult{}, f.favoritePostErr
+	}
+	return f.favoritePostResult, nil
+}
+
+func (f *fakeContentService) UnfavoritePost(ctx context.Context, command application.EngagementCommand) (application.EngagementResult, error) {
+	f.unfavoritePostCalls++
+	f.unfavoritePostCmd = command
+	if f.unfavoritePostErr != nil {
+		return application.EngagementResult{}, f.unfavoritePostErr
+	}
+	return f.unfavoritePostResult, nil
+}
+
+func (f *fakeContentService) GetPostEngagement(ctx context.Context, query application.GetPostEngagementQuery) (application.PostEngagementResult, error) {
+	f.getEngagementCalls++
+	f.getEngagementQuery = query
+	if f.getEngagementErr != nil {
+		return application.PostEngagementResult{}, f.getEngagementErr
+	}
+	return f.getEngagementResult, nil
+}
+
+func (f *fakeContentService) BatchGetEngagementStatus(ctx context.Context, query application.BatchGetEngagementStatusQuery) (application.BatchEngagementStatusResult, error) {
+	f.batchEngagementCalls++
+	f.batchEngagementQuery = query
+	if f.batchEngagementErr != nil {
+		return application.BatchEngagementStatusResult{}, f.batchEngagementErr
+	}
+	return f.batchEngagementResult, nil
 }
 
 type envelope[T any] struct {

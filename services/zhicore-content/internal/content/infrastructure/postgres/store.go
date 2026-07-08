@@ -511,6 +511,8 @@ func (g randomIDGenerator) NewID() (string, error) {
 
 var _ ports.PostRepository = (*Store)(nil)
 var _ ports.PostQueryRepository = (*Store)(nil)
+var _ ports.AdminPostRepository = (*Store)(nil)
+var _ ports.EngagementRepository = (*Store)(nil)
 var _ ports.BodyReferenceChecker = (*Store)(nil)
 var _ ports.TransactionRunner = (*TransactionRunner)(nil)
 var _ ports.OutboxPublisher = (*Store)(nil)

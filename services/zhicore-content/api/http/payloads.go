@@ -52,6 +52,10 @@ type batchGetPostsReq struct {
 	IncludeDeleted bool     `json:"includeDeleted"`
 }
 
+type batchGetEngagementStatusReq struct {
+	PostIDs []string `json:"postIds"`
+}
+
 type updateDraftMetaReq struct {
 	BasePostVersion int64     `json:"basePostVersion"`
 	Title           *string   `json:"title"`
@@ -174,6 +178,38 @@ type adminOutboxRetryReq struct {
 	Reason string `json:"reason"`
 }
 
+type adminPostDeleteReq struct {
+	Reason string `json:"reason"`
+}
+
+type adminPostListResp struct {
+	Items []adminPostResp `json:"items"`
+	Page  int             `json:"page"`
+	Size  int             `json:"size"`
+	Total int64           `json:"total"`
+}
+
+type adminPostResp struct {
+	PostID             string        `json:"postId"`
+	AuthorID           string        `json:"authorId"`
+	AuthorName         string        `json:"authorName,omitempty"`
+	AuthorAvatarFileID string        `json:"authorAvatarFileId,omitempty"`
+	Title              string        `json:"title"`
+	Summary            string        `json:"summary,omitempty"`
+	CoverFileID        string        `json:"coverFileId,omitempty"`
+	Status             string        `json:"status"`
+	PostVersion        int64         `json:"postVersion"`
+	PublishedAt        string        `json:"publishedAt,omitempty"`
+	CreatedAt          string        `json:"createdAt"`
+	UpdatedAt          string        `json:"updatedAt"`
+	Stats              postStatsResp `json:"stats"`
+}
+
+type adminPostDeleteResp struct {
+	PostID string `json:"postId"`
+	Status string `json:"status"`
+}
+
 type adminOutboxListResp struct {
 	Items []adminOutboxEventResp `json:"items"`
 	Page  int                    `json:"page"`
@@ -210,7 +246,7 @@ type tagResp struct {
 }
 
 type updatePostTagsReq struct {
-	BasePostVersion int64    `json:"basePostVersion"`
+	BasePostVersion int64     `json:"basePostVersion"`
 	Tags            *[]string `json:"tags"`
 }
 
@@ -219,4 +255,34 @@ type postTagsMutationResp struct {
 	PostVersion int64     `json:"postVersion"`
 	Tags        []tagResp `json:"tags"`
 	UpdatedAt   string    `json:"updatedAt"`
+}
+
+type engagementMutationResp struct {
+	PostID    string        `json:"postId"`
+	Liked     bool          `json:"liked"`
+	Favorited bool          `json:"favorited"`
+	Stats     postStatsResp `json:"stats"`
+}
+
+type postEngagementResp struct {
+	PostID string                `json:"postId"`
+	Stats  postStatsResp         `json:"stats"`
+	Viewer *engagementViewerResp `json:"viewer,omitempty"`
+}
+
+type engagementViewerResp struct {
+	Liked     *bool `json:"liked"`
+	Favorited *bool `json:"favorited"`
+	Degraded  bool  `json:"degraded"`
+}
+
+type batchEngagementStatusResp struct {
+	Items []engagementStatusItemResp `json:"items"`
+}
+
+type engagementStatusItemResp struct {
+	PostID    string `json:"postId"`
+	Liked     *bool  `json:"liked"`
+	Favorited *bool  `json:"favorited"`
+	Degraded  bool   `json:"degraded"`
 }

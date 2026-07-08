@@ -198,6 +198,7 @@ Provider contract：
 - `scheduled_publish_event`
 - `outbox_event`
 - `outbox_retry_audit`
+- `admin_post_audit`
 - `consumed_events`
 - `domain_event_task`
 
@@ -207,7 +208,6 @@ Provider contract：
 - 标签详情、标签搜索、热门标签、标签下文章。
 - 文章点赞/收藏状态和计数。
 - 文章作者 ID。
-- 文章上下文中的读者在线状态。
 
 Provider contract：
 
@@ -524,7 +524,7 @@ Provider contract：
 | --- | --- |
 | Auth | `accounts`, `account_credentials`, `roles`, `account_roles`, Auth `outbox_events`, Auth Redis refresh token 白名单和 token 失效缓存 |
 | User | `users`, `user_follows`, `user_follow_stats`, `user_blocks`, `user_check_ins`, `user_check_in_stats`, User `outbox_events` |
-| Content | `posts`, `post_stats`, `post_likes`, `post_favorites`, `categories`, `tags`, `post_tags`, `tag_stats`, `scheduled_publish_event`, `outbox_event`, `outbox_retry_audit`, `consumed_events`, `domain_event_task`, Content MongoDB projection |
+| Content | `posts`, `post_stats`, `post_likes`, `post_favorites`, `categories`, `tags`, `post_tags`, `tag_stats`, `scheduled_publish_event`, `outbox_event`, `outbox_retry_audit`, `admin_post_audit`, `consumed_events`, `domain_event_task`, Content MongoDB projection |
 | Comment | `comments`, `comment_stats`, `comment_post_stats`, `comment_likes`, `comment_counter_deltas`, `comment_hot_rank`, `comment_recommended_rank`, Comment `outbox_events` |
 | Message | `conversations`, `messages`, `message_outbox_task` |
 | Notification | `notifications`, `notification_group_state`, `notification_campaign`, `notification_campaign_shard`, `notification_delivery`, `notification_user_preference`, `notification_user_dnd`, `notification_author_subscription`, `global_announcements`, `assistant_messages` |

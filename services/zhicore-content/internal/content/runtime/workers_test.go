@@ -11,6 +11,7 @@ func TestContentWorkersReturnsEnabledDescriptors(t *testing.T) {
 	deps.Config.Workers.CleanupEnabled = true
 	deps.Config.Workers.RepairEnabled = true
 	deps.Config.Workers.OutboxEnabled = true
+	deps.Config.Workers.EngagementStatsEnabled = true
 
 	module, err := Build(deps)
 	if err != nil {
@@ -29,6 +30,10 @@ func TestContentWorkersReturnsEnabledDescriptors(t *testing.T) {
 	if outbox == nil || !outbox.Enabled || outbox.DisabledReason != "" || outbox.Checker == nil || outbox.Runner == nil {
 		t.Fatalf("outbox worker = %#v, want enabled descriptor with checker and runner", outbox)
 	}
+	engagementStats := findWorkerDescriptor(module.Workers, "content-engagement-stats")
+	if engagementStats == nil || !engagementStats.Enabled || engagementStats.DisabledReason != "" || engagementStats.Checker == nil || engagementStats.Runner == nil {
+		t.Fatalf("engagement stats worker = %#v, want enabled descriptor with checker and runner", engagementStats)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -40,6 +45,9 @@ func TestContentWorkersReturnsEnabledDescriptors(t *testing.T) {
 	}
 	if err := outbox.Runner.Run(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("outbox Run(canceled) error = %v, want context.Canceled", err)
+	}
+	if err := engagementStats.Runner.Run(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("engagement stats Run(canceled) error = %v, want context.Canceled", err)
 	}
 }
 

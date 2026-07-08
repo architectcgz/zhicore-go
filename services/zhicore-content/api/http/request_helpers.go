@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,6 +22,13 @@ func actorFromRequest(r *http.Request) (*application.Actor, error) {
 		return nil, errLoginRequired
 	}
 	return &application.Actor{UserID: userID, Roles: rolesFromRequest(r)}, nil
+}
+
+func optionalActorFromRequest(r *http.Request) (*application.Actor, error) {
+	if strings.TrimSpace(r.Header.Get(userIDHeaderName)) == "" {
+		return nil, nil
+	}
+	return actorFromRequest(r)
 }
 
 func requireAdminActorFromRequest(r *http.Request) (*application.Actor, error) {
@@ -59,6 +67,17 @@ func postIDFromPath(c *gin.Context) (string, error) {
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
 	return sharedhttp.DecodeJSONBodyLimited(w, r, maxJSONRequestBodyBytes, target)
+}
+
+func decodeOptionalJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
+	if r.Body == nil || r.Body == http.NoBody {
+		return nil
+	}
+	err := decodeJSONBody(w, r, target)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	return err
 }
 
 func optionalPositiveIntQuery(c *gin.Context, key string) (int, error) {

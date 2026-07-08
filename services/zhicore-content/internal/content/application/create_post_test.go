@@ -254,30 +254,38 @@ func TestCreatePost(t *testing.T) {
 }
 
 type createPostDeps struct {
-	posts       *fakePostRepository
-	bodies      *fakeBodyStore
-	cleanup     *fakeCleanupTaskStore
-	repair      *fakeRepairTaskStore
-	outbox      *fakeOutboxPublisher
-	outboxAdmin *fakeOutboxAdminRepository
-	taxonomy    *fakeTaxonomyRepository
-	users       *fakeUserProfileClient
-	files       *fakeFileResourceClient
-	tx          *fakeTxRunner
-	parser      *fakeBodyParser
-	clock       fakeClock
+	posts           *fakePostRepository
+	bodies          *fakeBodyStore
+	cleanup         *fakeCleanupTaskStore
+	repair          *fakeRepairTaskStore
+	outbox          *fakeOutboxPublisher
+	outboxAdmin     *fakeOutboxAdminRepository
+	adminPosts      *fakeAdminPostRepository
+	taxonomy        *fakeTaxonomyRepository
+	engagement      *fakeEngagementRepository
+	engagementStats *fakeEngagementStatsTaskStore
+	engagementCache *fakeEngagementCache
+	users           *fakeUserProfileClient
+	files           *fakeFileResourceClient
+	tx              *fakeTxRunner
+	parser          *fakeBodyParser
+	clock           fakeClock
 }
 
 func newCreatePostDeps() createPostDeps {
 	return createPostDeps{
-		posts:       &fakePostRepository{},
-		bodies:      &fakeBodyStore{},
-		cleanup:     &fakeCleanupTaskStore{},
-		repair:      &fakeRepairTaskStore{},
-		outbox:      &fakeOutboxPublisher{},
-		outboxAdmin: &fakeOutboxAdminRepository{},
-		taxonomy:    &fakeTaxonomyRepository{},
-		files:       &fakeFileResourceClient{},
+		posts:           &fakePostRepository{},
+		bodies:          &fakeBodyStore{},
+		cleanup:         &fakeCleanupTaskStore{},
+		repair:          &fakeRepairTaskStore{},
+		outbox:          &fakeOutboxPublisher{},
+		outboxAdmin:     &fakeOutboxAdminRepository{},
+		adminPosts:      &fakeAdminPostRepository{},
+		taxonomy:        &fakeTaxonomyRepository{},
+		engagement:      &fakeEngagementRepository{},
+		engagementStats: &fakeEngagementStatsTaskStore{},
+		engagementCache: &fakeEngagementCache{},
+		files:           &fakeFileResourceClient{},
 		users: &fakeUserProfileClient{snapshot: ports.OwnerSnapshot{
 			DisplayName:    "architect",
 			AvatarFileID:   "file_avatar",
@@ -291,18 +299,22 @@ func newCreatePostDeps() createPostDeps {
 
 func (d createPostDeps) asDeps() Deps {
 	return Deps{
-		Posts:    d.posts,
-		Queries:  d.posts,
-		Bodies:   d.bodies,
-		Cleanup:  d.cleanup,
-		Repair:   d.repair,
-		Outbox:   d.outbox,
-		Admin:    d.outboxAdmin,
-		Taxonomy: d.taxonomy,
-		Users:    d.users,
-		Files:    d.files,
-		Tx:       d.tx,
-		Parser:   d.parser,
-		Clock:    d.clock,
+		Posts:           d.posts,
+		Queries:         d.posts,
+		Bodies:          d.bodies,
+		Cleanup:         d.cleanup,
+		Repair:          d.repair,
+		Outbox:          d.outbox,
+		Admin:           d.outboxAdmin,
+		AdminPosts:      d.adminPosts,
+		Taxonomy:        d.taxonomy,
+		Engagement:      d.engagement,
+		EngagementStats: d.engagementStats,
+		EngagementCache: d.engagementCache,
+		Users:           d.users,
+		Files:           d.files,
+		Tx:              d.tx,
+		Parser:          d.parser,
+		Clock:           d.clock,
 	}
 }

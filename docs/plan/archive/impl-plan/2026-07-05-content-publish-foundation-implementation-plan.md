@@ -42,7 +42,7 @@
 不在本计划处理：
 
 - 文章列表、文章详情元数据、读取草稿、草稿 meta 更新、删除/恢复/撤回/定时发布。
-- 点赞、收藏、标签、分类管理、reader presence、管理端、Search / Ranking consumer、link preview。
+- 点赞、收藏、标签、分类管理、管理端、Search / Ranking consumer、link preview。
 - 前端 adapter 或页面改动。
 
 ## 文件结构
@@ -344,7 +344,7 @@
 - 计划遵守 `api/http -> application -> domain/ports -> infrastructure -> runtime` 的依赖方向；handler 不持有业务事务，repository 不做权限判断。
 - HTTP DTO 只留在 `services/zhicore-content/api/http`，application 对外暴露自有 command / query / result，domain 不被导出别名穿透到入站层。
 - PostgreSQL 负责 published / draft 指针和可见性，MongoDB 只保存 body；发布失败方向有 cleanup / repair 收敛路径。
-- 本计划只实现 Content 首个闭环，不把点赞、收藏、标签、管理端、presence、Search / Ranking consumer 或 link preview 塞入同一提交链。
+- 本计划只实现 Content 首个闭环，不把点赞、收藏、标签、管理端、Search / Ranking consumer 或 link preview 塞入同一提交链。
 - Ranking / Search 后续依赖的 `content.post.published` outbox 边界在本计划中落地，但 consumer 和下游投影不在本计划内实现。
 
 ## 交付说明

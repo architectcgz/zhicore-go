@@ -58,8 +58,8 @@ func TestBuildReturnsHTTPHandlerWorkerDescriptionsAndHealthDetails(t *testing.T)
 		module.HealthDetails.Mongo != "configured" || module.HealthDetails.Redis != "configured" || module.HealthDetails.BodyParser != "v1" {
 		t.Fatalf("health details = %#v", module.HealthDetails)
 	}
-	if len(module.Workers) != 3 {
-		t.Fatalf("workers = %d, want cleanup/repair/outbox descriptors", len(module.Workers))
+	if len(module.Workers) != 4 {
+		t.Fatalf("workers = %d, want cleanup/repair/outbox/engagement-stats descriptors", len(module.Workers))
 	}
 	for _, worker := range module.Workers {
 		if worker.Enabled || strings.TrimSpace(worker.DisabledReason) == "" {
