@@ -8,7 +8,8 @@ type PostBodyInput struct {
 }
 
 type GetPublishedPostBodyQuery struct {
-	PostID string
+	PostID           string
+	RateLimitSubject string
 }
 
 type GetPublishedPostBodyResult struct {

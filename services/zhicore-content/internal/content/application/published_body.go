@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Service) GetPublishedPostBody(ctx context.Context, query GetPublishedPostBodyQuery) (GetPublishedPostBodyResult, error) {
-	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(query.PostID, "get_published_post_body")); err != nil {
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(query.RateLimitSubject, query.PostID, "get_published_post_body")); err != nil {
 		return GetPublishedPostBodyResult{}, err
 	}
 	pointer, err := s.queries.GetPublishedBodyPointer(ctx, query.PostID)

@@ -46,10 +46,10 @@ func actorRateLimitRequest(limitType ports.RateLimitType, actor *Actor, resource
 	}
 }
 
-func publicRateLimitRequest(resource, operation string) ports.RateLimitRequest {
+func publicRateLimitRequest(subject, resource, operation string) ports.RateLimitRequest {
 	return ports.RateLimitRequest{
 		LimitType: ports.RateLimitTypePublicRead,
-		Subject:   "public",
+		Subject:   publicRateLimitSubject(subject),
 		Resource:  strings.TrimSpace(resource),
 		Operation: strings.TrimSpace(operation),
 	}
@@ -60,6 +60,14 @@ func actorRateLimitSubject(actor *Actor) string {
 		return "anonymous"
 	}
 	return "actor:" + strconv.FormatInt(actor.UserID, 10)
+}
+
+func publicRateLimitSubject(subject string) string {
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		return "anonymous"
+	}
+	return subject
 }
 
 func decisionReason(decision ports.RateLimitDecision) string {
