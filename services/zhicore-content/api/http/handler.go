@@ -33,6 +33,14 @@ type Service interface {
 	DeleteAuthorDraft(ctx context.Context, command application.DeleteAuthorDraftCommand) (application.DraftMutationResult, error)
 	ListAdminOutboxEvents(ctx context.Context, query application.ListAdminOutboxEventsQuery) (application.ListAdminOutboxEventsResult, error)
 	RetryAdminOutboxEvent(ctx context.Context, command application.RetryAdminOutboxEventCommand) (application.RetryAdminOutboxEventResult, error)
+	ListTags(ctx context.Context, query application.ListTagsQuery) (application.TagPageResult, error)
+	GetTag(ctx context.Context, query application.GetTagQuery) (application.Tag, error)
+	SearchTags(ctx context.Context, query application.SearchTagsQuery) ([]application.Tag, error)
+	ListHotTags(ctx context.Context, query application.ListHotTagsQuery) ([]application.Tag, error)
+	ListPostsByTag(ctx context.Context, query application.ListPostsByTagQuery) (application.ListPublishedPostsResult, error)
+	GetPostTags(ctx context.Context, query application.GetPostTagsQuery) ([]application.Tag, error)
+	UpdatePostTags(ctx context.Context, command application.UpdatePostTagsCommand) (application.PostTagsMutationResult, error)
+	DeletePostTag(ctx context.Context, command application.DeletePostTagCommand) (application.PostTagsMutationResult, error)
 }
 
 type Handler struct {
@@ -50,6 +58,9 @@ func (h *Handler) routes() {
 	h.router.POST("/api/v1/posts", h.createPost)
 	h.router.GET("/api/v1/posts", h.listPublishedPosts)
 	h.router.POST("/api/v1/posts/batch-get", h.batchGetPublishedPosts)
+	h.router.GET("/api/v1/posts/:postId/tags", h.getPostTags)
+	h.router.PUT("/api/v1/posts/:postId/tags", h.updatePostTags)
+	h.router.DELETE("/api/v1/posts/:postId/tags/:slug", h.deletePostTag)
 	h.router.GET("/api/v1/me/posts", h.listAuthorPosts)
 	h.router.GET("/api/v1/me/drafts", h.listAuthorDrafts)
 	h.router.GET("/api/v1/posts/:postId", h.getPostDetail)
@@ -64,6 +75,11 @@ func (h *Handler) routes() {
 	h.router.POST("/api/v1/posts/:postId/restore", h.restorePost)
 	h.router.DELETE("/api/v1/posts/:postId", h.deletePost)
 	h.router.GET("/api/v1/posts/:postId/body", h.getPostBody)
+	h.router.GET("/api/v1/tags", h.listTags)
+	h.router.GET("/api/v1/tags/search", h.searchTags)
+	h.router.GET("/api/v1/tags/hot", h.listHotTags)
+	h.router.GET("/api/v1/tags/:slug/posts", h.listPostsByTag)
+	h.router.GET("/api/v1/tags/:slug", h.getTag)
 	h.router.GET("/api/v1/admin/content/outbox-events", h.listAdminOutboxEvents)
 	h.router.POST("/api/v1/admin/content/outbox-events/:eventId/retry", h.retryAdminOutboxEvent)
 }

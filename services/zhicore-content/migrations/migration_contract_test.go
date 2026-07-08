@@ -90,6 +90,48 @@ func TestScheduledPublishMigrationContract(t *testing.T) {
 	}
 }
 
+func TestContentTaxonomyMigrationContract(t *testing.T) {
+	up := readNamedMigration(t, "add_content_taxonomy", ".up.sql")
+	down := readNamedMigration(t, "add_content_taxonomy", ".down.sql")
+
+	for _, fragment := range []string{
+		"ALTER TABLE posts ADD COLUMN category_id BIGINT NULL",
+		"ALTER TABLE posts ADD COLUMN topic_id BIGINT NULL",
+		"CREATE TABLE categories",
+		"kind VARCHAR(16) NOT NULL",
+		"public_id VARCHAR(64) NOT NULL",
+		"slug VARCHAR(96) NOT NULL",
+		"CHECK (kind IN ('CATEGORY', 'TOPIC'))",
+		"CREATE UNIQUE INDEX ux_categories_kind_slug",
+		"CREATE TABLE tags",
+		"CREATE UNIQUE INDEX ux_tags_slug",
+		"CREATE TABLE tag_stats",
+		"post_count BIGINT NOT NULL DEFAULT 0",
+		"CREATE TABLE post_tags",
+		"position INT NOT NULL",
+		"CREATE UNIQUE INDEX ux_post_tags_post_tag",
+		"CREATE INDEX ix_post_tags_tag_post",
+		"COMMIT;",
+	} {
+		if !strings.Contains(up, fragment) {
+			t.Fatalf("taxonomy up migration missing %q", fragment)
+		}
+	}
+
+	for _, fragment := range []string{
+		"DROP TABLE IF EXISTS post_tags",
+		"DROP TABLE IF EXISTS tag_stats",
+		"DROP TABLE IF EXISTS tags",
+		"DROP TABLE IF EXISTS categories",
+		"ALTER TABLE posts DROP COLUMN IF EXISTS topic_id",
+		"ALTER TABLE posts DROP COLUMN IF EXISTS category_id",
+	} {
+		if !strings.Contains(down, fragment) {
+			t.Fatalf("taxonomy down migration missing %q", fragment)
+		}
+	}
+}
+
 func readContentPublishCoreMigration(t *testing.T, suffix string) string {
 	return readNamedMigration(t, "create_content_publish_core", suffix)
 }

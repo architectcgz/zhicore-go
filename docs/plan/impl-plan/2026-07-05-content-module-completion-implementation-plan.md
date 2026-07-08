@@ -524,7 +524,7 @@
 
 **测试立场：** TDD - 引用存在性、slug 唯一性、文章标签替换、统计和查询分页属于 R4。
 
-- [ ] **步骤 1：拆 endpoint contract**
+- [x] **步骤 1：拆 endpoint contract**
 
   固定：
   - `GET /api/v1/tags`
@@ -536,19 +536,19 @@
   - `PUT /api/v1/posts/{postId}/tags`
   - `DELETE /api/v1/posts/{postId}/tags/{slug}`
 
-- [ ] **步骤 2：补 schema / migration 差异检查**
+- [x] **步骤 2：补 schema / migration 差异检查**
 
   如果当前 core migration 未覆盖 category/topic/tag 所需列、索引或统计表，新增独立 migration pair 和 migration contract test。
 
-- [ ] **步骤 3：实现 taxonomy ports / repository / application**
+- [x] **步骤 3：实现 taxonomy ports / repository / application**
 
   分类、话题、标签引用不存在时返回 sentinel，供 HTTP 映射 `4012`。
 
-- [ ] **步骤 4：补 handler contract test 和实现**
+- [x] **步骤 4：补 handler contract test 和实现**
 
   覆盖公开查询、作者替换标签、重复 tag、slug 不存在、分页和错误码。
 
-- [ ] **步骤 5：提交 taxonomy 切片**
+- [x] **步骤 5：提交 taxonomy 切片**
 
   contract、migration、application/repository、handler 分开提交。
 

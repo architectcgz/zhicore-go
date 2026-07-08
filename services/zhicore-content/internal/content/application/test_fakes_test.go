@@ -281,6 +281,105 @@ type fakeBodyStore struct {
 	afterDelete        func()
 }
 
+type fakeTaxonomyRepository struct {
+	listTagsQuery    ports.TagListQuery
+	listTagsResult   []ports.TagRecord
+	listTagsErr      error
+	getTagSlug       string
+	getTagResult     ports.TagRecord
+	getTagErr        error
+	searchQuery      ports.TagSearchQuery
+	searchResult     []ports.TagRecord
+	searchErr        error
+	hotLimit         int
+	hotResult        []ports.TagRecord
+	hotErr           error
+	listPostsQuery   ports.TaggedPostListQuery
+	listPostsResult  []ports.PostSummaryRecord
+	listPostsErr     error
+	postTagsPublicID string
+	postTagsResult   []ports.TagRecord
+	postTagsErr      error
+	replaceCalls     int
+	replaceTx        ports.Tx
+	replaceInput     ports.ReplacePostTagsInput
+	replaceResult    ports.PostTagsMutationRecord
+	replaceErr       error
+	removeCalls      int
+	removeTx         ports.Tx
+	removeInput      ports.RemovePostTagInput
+	removeResult     ports.PostTagsMutationRecord
+	removeErr        error
+}
+
+func (f *fakeTaxonomyRepository) ListTags(ctx context.Context, query ports.TagListQuery) ([]ports.TagRecord, error) {
+	f.listTagsQuery = query
+	if f.listTagsErr != nil {
+		return nil, f.listTagsErr
+	}
+	return append([]ports.TagRecord(nil), f.listTagsResult...), nil
+}
+
+func (f *fakeTaxonomyRepository) GetTagBySlug(ctx context.Context, slug string) (ports.TagRecord, error) {
+	f.getTagSlug = slug
+	if f.getTagErr != nil {
+		return ports.TagRecord{}, f.getTagErr
+	}
+	return f.getTagResult, nil
+}
+
+func (f *fakeTaxonomyRepository) SearchTags(ctx context.Context, query ports.TagSearchQuery) ([]ports.TagRecord, error) {
+	f.searchQuery = query
+	if f.searchErr != nil {
+		return nil, f.searchErr
+	}
+	return append([]ports.TagRecord(nil), f.searchResult...), nil
+}
+
+func (f *fakeTaxonomyRepository) ListHotTags(ctx context.Context, limit int) ([]ports.TagRecord, error) {
+	f.hotLimit = limit
+	if f.hotErr != nil {
+		return nil, f.hotErr
+	}
+	return append([]ports.TagRecord(nil), f.hotResult...), nil
+}
+
+func (f *fakeTaxonomyRepository) ListPublishedPostsByTag(ctx context.Context, query ports.TaggedPostListQuery) ([]ports.PostSummaryRecord, error) {
+	f.listPostsQuery = query
+	if f.listPostsErr != nil {
+		return nil, f.listPostsErr
+	}
+	return append([]ports.PostSummaryRecord(nil), f.listPostsResult...), nil
+}
+
+func (f *fakeTaxonomyRepository) ListPostTags(ctx context.Context, publicID string) ([]ports.TagRecord, error) {
+	f.postTagsPublicID = publicID
+	if f.postTagsErr != nil {
+		return nil, f.postTagsErr
+	}
+	return append([]ports.TagRecord(nil), f.postTagsResult...), nil
+}
+
+func (f *fakeTaxonomyRepository) ReplacePostTags(ctx context.Context, tx ports.Tx, input ports.ReplacePostTagsInput) (ports.PostTagsMutationRecord, error) {
+	f.replaceCalls++
+	f.replaceTx = tx
+	f.replaceInput = input
+	if f.replaceErr != nil {
+		return ports.PostTagsMutationRecord{}, f.replaceErr
+	}
+	return f.replaceResult, nil
+}
+
+func (f *fakeTaxonomyRepository) RemovePostTag(ctx context.Context, tx ports.Tx, input ports.RemovePostTagInput) (ports.PostTagsMutationRecord, error) {
+	f.removeCalls++
+	f.removeTx = tx
+	f.removeInput = input
+	if f.removeErr != nil {
+		return ports.PostTagsMutationRecord{}, f.removeErr
+	}
+	return f.removeResult, nil
+}
+
 func (f *fakeBodyStore) WriteDraftBody(ctx context.Context, input ports.WriteBodyInput) (ports.StoredBody, error) {
 	f.writeDraftCalls++
 	f.writeInput = input

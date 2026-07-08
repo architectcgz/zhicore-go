@@ -61,7 +61,7 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `GET` | `/api/v1/posts/{postId}` | 匿名 | 文章详情元数据和可展示正文；字段级 schema 见 [endpoints/get-post-detail.md](endpoints/get-post-detail.md)。 |
 | `GET` | `/api/v1/posts/{postId}/body` | 匿名 / 服务间 | 读取 published body，供详情页和 Search 使用。字段级 schema 见 [endpoints/get-post-body.md](endpoints/get-post-body.md)。 |
 | `POST` | `/api/v1/posts/batch-get` | 匿名 / 服务间 | 批量获取文章摘要；字段级 schema 见 [endpoints/batch-get-posts.md](endpoints/batch-get-posts.md)。 |
-| `GET` | `/api/v1/posts/{postId}/tags` | 匿名 | 文章标签列表。 |
+| `GET` | `/api/v1/posts/{postId}/tags` | 匿名 | 文章标签列表；字段级 schema 见 [endpoints/get-post-tags.md](endpoints/get-post-tags.md)。 |
 
 ### 作者工作台
 
@@ -80,8 +80,8 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `DELETE` | `/api/v1/posts/{postId}/schedule` | 作者 | 取消定时发布；字段级 schema 见 [endpoints/cancel-post-schedule.md](endpoints/cancel-post-schedule.md)。 |
 | `DELETE` | `/api/v1/posts/{postId}` | 作者 | 软删除文章；字段级 schema 见 [endpoints/delete-post.md](endpoints/delete-post.md)。 |
 | `POST` | `/api/v1/posts/{postId}/restore` | 作者 | 恢复软删除文章；字段级 schema 见 [endpoints/restore-post.md](endpoints/restore-post.md)。 |
-| `PUT` | `/api/v1/posts/{postId}/tags` | 作者 | 替换文章标签集合。 |
-| `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | 作者 | 删除单个文章标签。 |
+| `PUT` | `/api/v1/posts/{postId}/tags` | 作者 | 替换文章标签集合；字段级 schema 见 [endpoints/update-post-tags.md](endpoints/update-post-tags.md)。 |
+| `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | 作者 | 删除单个文章标签；字段级 schema 见 [endpoints/delete-post-tag.md](endpoints/delete-post-tag.md)。 |
 
 ### 互动和 presence
 
@@ -101,11 +101,11 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 
 | 方法 | 路径 | 鉴权 | 用途 |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/tags` | 匿名 | 标签列表。 |
-| `GET` | `/api/v1/tags/{slug}` | 匿名 | 标签详情。 |
-| `GET` | `/api/v1/tags/search` | 匿名 | 标签搜索 / 自动补全。 |
-| `GET` | `/api/v1/tags/hot` | 匿名 | 热门标签。 |
-| `GET` | `/api/v1/tags/{slug}/posts` | 匿名 | 标签下公开文章列表。 |
+| `GET` | `/api/v1/tags` | 匿名 | 标签列表；字段级 schema 见 [endpoints/list-tags.md](endpoints/list-tags.md)。 |
+| `GET` | `/api/v1/tags/{slug}` | 匿名 | 标签详情；字段级 schema 见 [endpoints/get-tag.md](endpoints/get-tag.md)。 |
+| `GET` | `/api/v1/tags/search` | 匿名 | 标签搜索 / 自动补全；字段级 schema 见 [endpoints/search-tags.md](endpoints/search-tags.md)。 |
+| `GET` | `/api/v1/tags/hot` | 匿名 | 热门标签；字段级 schema 见 [endpoints/list-hot-tags.md](endpoints/list-hot-tags.md)。 |
+| `GET` | `/api/v1/tags/{slug}/posts` | 匿名 | 标签下公开文章列表；字段级 schema 见 [endpoints/list-posts-by-tag.md](endpoints/list-posts-by-tag.md)。 |
 
 ### 管理和运维
 
@@ -141,6 +141,14 @@ Engagement 读路径中，当前用户点赞 / 收藏状态不可确认时不把
 | `DELETE` | `/api/v1/posts/{postId}` | [endpoints/delete-post.md](endpoints/delete-post.md) | `services/zhicore-content/api/http/post_lifecycle_handler_test.go` | 已验证 |
 | `POST` | `/api/v1/posts/{postId}/restore` | [endpoints/restore-post.md](endpoints/restore-post.md) | `services/zhicore-content/api/http/post_lifecycle_handler_test.go` | 已验证 |
 | `GET` | `/api/v1/posts/{postId}/body` | [endpoints/get-post-body.md](endpoints/get-post-body.md) | `services/zhicore-content/api/http/get_post_body_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/tags` | [endpoints/list-tags.md](endpoints/list-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/tags/{slug}` | [endpoints/get-tag.md](endpoints/get-tag.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/tags/search` | [endpoints/search-tags.md](endpoints/search-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/tags/hot` | [endpoints/list-hot-tags.md](endpoints/list-hot-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/tags/{slug}/posts` | [endpoints/list-posts-by-tag.md](endpoints/list-posts-by-tag.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `GET` | `/api/v1/posts/{postId}/tags` | [endpoints/get-post-tags.md](endpoints/get-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `PUT` | `/api/v1/posts/{postId}/tags` | [endpoints/update-post-tags.md](endpoints/update-post-tags.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
+| `DELETE` | `/api/v1/posts/{postId}/tags/{slug}` | [endpoints/delete-post-tag.md](endpoints/delete-post-tag.md) | `services/zhicore-content/api/http/taxonomy_handler_test.go` | 已验证 |
 
 ## 已验证依赖语义错误映射
 

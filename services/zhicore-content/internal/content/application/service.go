@@ -47,54 +47,57 @@ type BodyValidationError = ports.BodyValidationError
 type ValidationDetail = ports.ValidationDetail
 
 type Service struct {
-	posts   ports.PostRepository
-	queries ports.PostQueryRepository
-	bodies  ports.PostContentStore
-	cleanup ports.BodyCleanupTaskStore
-	repair  ports.BodyRepairTaskStore
-	outbox  ports.OutboxPublisher
-	admin   ports.OutboxAdminRepository
-	users   ports.UserProfileClient
-	files   ports.FileResourceClient
-	tx      ports.TransactionRunner
-	parser  ports.BodyParserRegistry
-	limiter ports.RateLimiter
-	observe ports.ContentObserver
-	clock   ports.Clock
+	posts    ports.PostRepository
+	queries  ports.PostQueryRepository
+	bodies   ports.PostContentStore
+	cleanup  ports.BodyCleanupTaskStore
+	repair   ports.BodyRepairTaskStore
+	outbox   ports.OutboxPublisher
+	admin    ports.OutboxAdminRepository
+	taxonomy ports.TaxonomyRepository
+	users    ports.UserProfileClient
+	files    ports.FileResourceClient
+	tx       ports.TransactionRunner
+	parser   ports.BodyParserRegistry
+	limiter  ports.RateLimiter
+	observe  ports.ContentObserver
+	clock    ports.Clock
 }
 
 type Deps struct {
-	Posts   ports.PostRepository
-	Queries ports.PostQueryRepository
-	Bodies  ports.PostContentStore
-	Cleanup ports.BodyCleanupTaskStore
-	Repair  ports.BodyRepairTaskStore
-	Outbox  ports.OutboxPublisher
-	Admin   ports.OutboxAdminRepository
-	Users   ports.UserProfileClient
-	Files   ports.FileResourceClient
-	Tx      ports.TransactionRunner
-	Parser  ports.BodyParserRegistry
-	Limiter ports.RateLimiter
-	Observe ports.ContentObserver
-	Clock   ports.Clock
+	Posts    ports.PostRepository
+	Queries  ports.PostQueryRepository
+	Bodies   ports.PostContentStore
+	Cleanup  ports.BodyCleanupTaskStore
+	Repair   ports.BodyRepairTaskStore
+	Outbox   ports.OutboxPublisher
+	Admin    ports.OutboxAdminRepository
+	Taxonomy ports.TaxonomyRepository
+	Users    ports.UserProfileClient
+	Files    ports.FileResourceClient
+	Tx       ports.TransactionRunner
+	Parser   ports.BodyParserRegistry
+	Limiter  ports.RateLimiter
+	Observe  ports.ContentObserver
+	Clock    ports.Clock
 }
 
 func NewService(deps Deps) *Service {
 	return &Service{
-		posts:   deps.Posts,
-		queries: deps.Queries,
-		bodies:  deps.Bodies,
-		cleanup: deps.Cleanup,
-		repair:  deps.Repair,
-		outbox:  deps.Outbox,
-		admin:   deps.Admin,
-		users:   deps.Users,
-		files:   deps.Files,
-		tx:      deps.Tx,
-		parser:  deps.Parser,
-		limiter: deps.Limiter,
-		observe: deps.Observe,
-		clock:   deps.Clock,
+		posts:    deps.Posts,
+		queries:  deps.Queries,
+		bodies:   deps.Bodies,
+		cleanup:  deps.Cleanup,
+		repair:   deps.Repair,
+		outbox:   deps.Outbox,
+		admin:    deps.Admin,
+		taxonomy: deps.Taxonomy,
+		users:    deps.Users,
+		files:    deps.Files,
+		tx:       deps.Tx,
+		parser:   deps.Parser,
+		limiter:  deps.Limiter,
+		observe:  deps.Observe,
+		clock:    deps.Clock,
 	}
 }
