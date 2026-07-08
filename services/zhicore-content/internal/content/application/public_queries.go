@@ -21,12 +21,13 @@ const (
 )
 
 type ListPublishedPostsQuery struct {
-	AuthorID   string
-	Tag        string
-	CategoryID string
-	Cursor     string
-	Limit      int
-	Sort       string
+	AuthorID         string
+	Tag              string
+	CategoryID       string
+	Cursor           string
+	Limit            int
+	Sort             string
+	RateLimitSubject string
 }
 
 type ListPublishedPostsResult struct {
@@ -37,7 +38,8 @@ type ListPublishedPostsResult struct {
 }
 
 type GetPostDetailQuery struct {
-	PostID string
+	PostID           string
+	RateLimitSubject string
 }
 
 type GetPostDetailResult struct {
@@ -46,8 +48,9 @@ type GetPostDetailResult struct {
 }
 
 type BatchGetPublishedPostsQuery struct {
-	PostIDs        []string
-	IncludeDeleted bool
+	PostIDs          []string
+	IncludeDeleted   bool
+	RateLimitSubject string
 }
 
 type BatchGetPublishedPostsResult struct {
@@ -112,7 +115,7 @@ func (s *Service) ListPublishedPosts(ctx context.Context, query ListPublishedPos
 		return ListPublishedPostsResult{}, err
 	}
 	limit := normalizePublicPostLimit(query.Limit)
-	if err := s.enforceRateLimit(ctx, publicRateLimitRequest("posts", "list_published_posts")); err != nil {
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(query.RateLimitSubject, "posts", "list_published_posts")); err != nil {
 		return ListPublishedPostsResult{}, err
 	}
 	records, err := s.queries.ListPublishedPosts(ctx, ports.PostListQuery{
@@ -144,7 +147,7 @@ func (s *Service) GetPostDetail(ctx context.Context, query GetPostDetailQuery) (
 	if postID == "" {
 		return GetPostDetailResult{}, ErrInvalidArgument
 	}
-	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(postID, "get_post_detail")); err != nil {
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(query.RateLimitSubject, postID, "get_post_detail")); err != nil {
 		return GetPostDetailResult{}, err
 	}
 	detail, err := s.queries.GetPublishedPostDetail(ctx, postID)
@@ -169,7 +172,7 @@ func (s *Service) BatchGetPublishedPosts(ctx context.Context, query BatchGetPubl
 	if err != nil {
 		return BatchGetPublishedPostsResult{}, err
 	}
-	if err := s.enforceRateLimit(ctx, publicRateLimitRequest("batch", "batch_get_published_posts")); err != nil {
+	if err := s.enforceRateLimit(ctx, publicRateLimitRequest(query.RateLimitSubject, "batch", "batch_get_published_posts")); err != nil {
 		return BatchGetPublishedPostsResult{}, err
 	}
 	records, err := s.queries.BatchGetPublishedPostSummaries(ctx, ids)

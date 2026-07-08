@@ -81,6 +81,38 @@ func TestPublicPostQueries(t *testing.T) {
 		}
 	})
 
+	t.Run("uses explicit rate limit subject for public list", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{Outcome: ports.RateLimitOutcomeAllow}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.ListPublishedPosts(context.Background(), ListPublishedPostsQuery{RateLimitSubject: "ip:203.0.113.10"})
+		if err != nil {
+			t.Fatalf("ListPublishedPosts() error = %v", err)
+		}
+		if len(limiter.requests) != 1 || limiter.requests[0].Subject != "ip:203.0.113.10" {
+			t.Fatalf("rate limit requests = %+v, want subject ip:203.0.113.10", limiter.requests)
+		}
+	})
+
+	t.Run("falls back to anonymous rate limit subject for direct public list calls", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{Outcome: ports.RateLimitOutcomeAllow}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.ListPublishedPosts(context.Background(), ListPublishedPostsQuery{})
+		if err != nil {
+			t.Fatalf("ListPublishedPosts() error = %v", err)
+		}
+		if len(limiter.requests) != 1 || limiter.requests[0].Subject != "anonymous" {
+			t.Fatalf("rate limit requests = %+v, want anonymous subject", limiter.requests)
+		}
+	})
+
 	t.Run("gets published detail with validated body", func(t *testing.T) {
 		deps := newPublishedBodyDeps()
 		deps.posts.detailResult = ports.PostDetailRecord{
@@ -204,4 +236,14 @@ func publishedSummary(postID string, ownerID int64, publishedAt time.Time) ports
 		FavoriteCount:      1,
 		CommentCount:       4,
 	}
+}
+
+type recordingRateLimiter struct {
+	requests []ports.RateLimitRequest
+	decision ports.RateLimitDecision
+}
+
+func (l *recordingRateLimiter) Check(ctx context.Context, request ports.RateLimitRequest) ports.RateLimitDecision {
+	l.requests = append(l.requests, request)
+	return l.decision
 }

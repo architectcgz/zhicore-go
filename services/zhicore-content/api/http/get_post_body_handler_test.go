@@ -53,11 +53,15 @@ func TestGetPostBodyReturnsSuccessEnvelope(t *testing.T) {
 	}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/posts/post_pub_1/body", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
 
 	NewHandler(service).ServeHTTP(rr, req)
 
 	if service.getBodyQuery.PostID != "post_pub_1" {
 		t.Fatalf("query = %#v", service.getBodyQuery)
+	}
+	if service.getBodyQuery.RateLimitSubject != "ip:203.0.113.10" {
+		t.Fatalf("rate limit subject = %q, want ip:203.0.113.10", service.getBodyQuery.RateLimitSubject)
 	}
 	var body envelope[postBodyResp]
 	decodeJSON(t, rr.Body.Bytes(), &body)

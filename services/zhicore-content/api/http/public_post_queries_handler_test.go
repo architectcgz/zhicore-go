@@ -50,6 +50,90 @@ func TestListPublishedPostsHandler(t *testing.T) {
 	}
 }
 
+func TestListPublishedPostsHandlerPassesAnonymousRateLimitSubject(t *testing.T) {
+	service := &fakeContentService{}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+
+	NewHandler(service).ServeHTTP(rr, req)
+
+	if service.listPublishedCalls != 1 {
+		t.Fatalf("list calls = %d, want 1", service.listPublishedCalls)
+	}
+	if service.listPublishedQuery.RateLimitSubject != "ip:203.0.113.10" {
+		t.Fatalf("rate limit subject = %q, want ip:203.0.113.10", service.listPublishedQuery.RateLimitSubject)
+	}
+}
+
+func TestGetPostDetailHandlerPassesActorRateLimitSubject(t *testing.T) {
+	service := &fakeContentService{}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/posts/post_1", nil)
+	req.Header.Set("X-User-Id", "42")
+	req.RemoteAddr = "203.0.113.10:1234"
+
+	NewHandler(service).ServeHTTP(rr, req)
+
+	if service.getDetailCalls != 1 {
+		t.Fatalf("detail calls = %d, want 1", service.getDetailCalls)
+	}
+	if service.getDetailQuery.RateLimitSubject != "actor:42" {
+		t.Fatalf("rate limit subject = %q, want actor:42", service.getDetailQuery.RateLimitSubject)
+	}
+}
+
+func TestPublicReadRateLimitSubjectTrustBoundary(t *testing.T) {
+	t.Run("ignores forwarded ip and authorization", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+		req.RemoteAddr = "198.51.100.20:4321"
+		req.Header.Set("X-Forwarded-For", "203.0.113.99")
+		req.Header.Set("X-Real-IP", "203.0.113.100")
+		req.Header.Set("Authorization", "Bearer ignored")
+
+		if got := publicReadRateLimitSubject(req); got != "ip:198.51.100.20" {
+			t.Fatalf("subject = %q, want ip:198.51.100.20", got)
+		}
+	})
+
+	t.Run("ignores invalid actor header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+		req.RemoteAddr = "198.51.100.20:4321"
+		req.Header.Set("X-User-Id", "not-a-number")
+
+		if got := publicReadRateLimitSubject(req); got != "ip:198.51.100.20" {
+			t.Fatalf("subject = %q, want ip:198.51.100.20", got)
+		}
+	})
+
+	t.Run("falls back to anonymous without usable remote host", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+		req.RemoteAddr = ""
+
+		if got := publicReadRateLimitSubject(req); got != "anonymous" {
+			t.Fatalf("subject = %q, want anonymous", got)
+		}
+	})
+
+	t.Run("falls back to anonymous for malformed remote host", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+		req.RemoteAddr = "not a host"
+
+		if got := publicReadRateLimitSubject(req); got != "anonymous" {
+			t.Fatalf("subject = %q, want anonymous", got)
+		}
+	})
+
+	t.Run("accepts valid hostname remote host", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+		req.RemoteAddr = "content-gateway.local"
+
+		if got := publicReadRateLimitSubject(req); got != "ip:content-gateway.local" {
+			t.Fatalf("subject = %q, want ip:content-gateway.local", got)
+		}
+	})
+}
+
 func TestListPublishedPostsHandlerMapsInvalidQuery(t *testing.T) {
 	service := &fakeContentService{listPublishedErr: application.ErrInvalidArgument}
 	rr := httptest.NewRecorder()
@@ -122,11 +206,15 @@ func TestBatchGetPublishedPostsHandler(t *testing.T) {
 		"postIds":["post_1","post_missing"],
 		"includeDeleted":true
 	}`)))
+	req.RemoteAddr = "203.0.113.10:1234"
 
 	NewHandler(service).ServeHTTP(rr, req)
 
 	if service.batchCalls != 1 || len(service.batchQuery.PostIDs) != 2 || service.batchQuery.IncludeDeleted {
 		t.Fatalf("batch query = %+v, includeDeleted must not be enabled for anonymous calls", service.batchQuery)
+	}
+	if service.batchQuery.RateLimitSubject != "ip:203.0.113.10" {
+		t.Fatalf("rate limit subject = %q, want ip:203.0.113.10", service.batchQuery.RateLimitSubject)
 	}
 	var body envelope[batchGetPostsResp]
 	decodeJSON(t, rr.Body.Bytes(), &body)
