@@ -618,30 +618,30 @@
 
   Outcome 至少覆盖 `ALLOW`、`REJECT_TOO_FREQUENT`、`DEGRADED_ALLOW_LOCAL`、`DEGRADED_DENY_UNAVAILABLE`。
 
-- [ ] **步骤 2：补 application 限流测试**
+- [x] **步骤 2：补 application 限流测试**
 
-  覆盖草稿保存、发布、互动写、presence、admin retry 和内部 body read 的 fail-open / fail-closed / no-op 分支。
-  已完成本轮 review fix 的 runtime 接线覆盖：`Build` 缺少 `RateLimiter` / `ContentObserver` 会失败，公开读路径会调用 limiter 并上报 observer。互动、admin retry、内部 body read 和 no-op 分支仍待后续 API 切片补齐；presence 能力已从本轮范围移除。
+  覆盖草稿保存、发布、互动写/读、admin retry 和内部 body read 的 fail-open / fail-closed 分支；presence 能力已从当前 Content 范围移除，不保留 no-op 成功 outcome。
+  已完成：`Build` 缺少 `RateLimiter` / `ContentObserver` 会失败；公开读、草稿保存、发布、互动写/读、admin outbox retry 和内部正文读取都会调用 limiter 并上报 observer，fail-closed 时不会触发下游副作用。
 
 - [x] **步骤 3：实现 Redis rate limit adapter**
 
   Redis adapter 只返回 typed outcome；application 选择业务降级，不由 adapter 构造 HTTP response。
   已完成：Redis fixed-window adapter 落在 `internal/content/infrastructure/redis`，runtime 只负责创建 Redis client、ping、health checker 和规则配置映射。
 
-- [ ] **步骤 4：接入 runtime resilience policy**
+- [x] **步骤 4：接入 runtime resilience policy**
 
   为 postgres、mongo、redis、user-service、file-service、rabbitmq 的 provider + operation 固定 timeout、retry、breaker key、max-in-flight 配置和默认值。
-  已完成本轮 review fix 的子集：`redis.rate_limit.check` 由 Redis 配置驱动并进入 readiness；其他 provider 的 retry、breaker 和 max-in-flight 仍未落地。
+  已完成：`DefaultResilienceConfig` 固定 provider / operation 矩阵、默认 timeout、max attempts、breaker key 和 max-in-flight；`ZHICORE_CONTENT_RESILIENCE_*_{TIMEOUT,MAX_ATTEMPTS,MAX_IN_FLIGHT}` 支持 env override；User/File/RabbitMQ runtime wiring 使用 policy 的 timeout / attempts / publish confirm timeout。breaker 和 max-in-flight 当前仍是配置事实，真实执行器待后续切片接入。
 
-- [ ] **步骤 5：补观测测试或结构检查**
+- [x] **步骤 5：补观测测试或结构检查**
 
   覆盖关键日志字段、operation 名称、错误脱敏和 worker result counters。若 metrics kit 尚未存在，先以明确接口和测试 fake 固定调用点，不引入无 owner 的全局 metrics helper。
-  已完成本轮 review fix 的子集：`ContentObserver` 端口和 runtime/application 接线已由测试 fake 固定；真实 metrics/log 字段和 worker counters 仍未落地。
+  已完成：`ContentObserver` 端口和 runtime/application 接线已由测试 fake 固定；`NewRateLimitObserver` 通过 `libs/kit/observability` 记录 rate-limit decision 和 worker result counter，worker result 只记录稳定 `errorClass`，不把原始错误、DSN 或 broker URL 写入 label。真实 exporter 和完整结构化日志字段仍待后续切片。
 
 - [x] **步骤 6：更新 docs 和 configs**
 
   同步 `runtime-resilience.md`、`rate-limiting.md` 或服务 README 中“已落地 / 待落地”状态，避免设计文档宣称代码已实现。
-  已完成：`configs/local.example.env` 补 Redis 与 7 类限流示例，`rate-limiting.md` 只声明本轮已落地的 `limit/window/fallback/failClosed`、Redis fixed-window 和 noop observer 接线。
+  已完成：`configs/local.example.env` 补 Redis、7 类限流和 resilience policy 示例；`rate-limiting.md`、`runtime-resilience.md` 和服务 README 只声明本轮已落地的配置矩阵、限流接线和 worker counter 调用点，并保留 breaker、max-in-flight 执行器、真实 exporter 等待补项。
 
 - [ ] **步骤 7：提交限流和 resilience 切片**
 

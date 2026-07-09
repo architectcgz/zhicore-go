@@ -62,14 +62,13 @@ Content 不拥有用户资料事实、评论树、搜索索引、热榜分数、
 ## 当前设计状态
 
 - 已明确：服务职责、数据归属、主要 API 族、跨服务依赖、事件方向、Go 落点、正文发布原子切换设计。
-- 已实现：Content 发布闭环 foundation，覆盖 core migration、Post domain、application 编排、PostgreSQL repository、MongoDB body store、Content V1 body parser、HTTP handler 和 runtime module fail-fast 装配。
-- 已验证：`POST /api/v1/posts`、`PUT /api/v1/posts/{postId}/draft/body`、`POST /api/v1/posts/{postId}/publish`、`GET /api/v1/posts/{postId}/body` 已由 handler contract test 覆盖；验证证据见 `docs/reviews/backend/2026-07-05-content-publish-foundation.md`。
+- 已实现：Content 发布闭环 foundation、可运行 runtime、配置加载、真实 readiness、cleanup / repair / engagement stats / outbox worker、公开查询、作者工作台、发布生命周期、taxonomy、engagement、admin API、Redis 业务限流和 provider / operation resilience 配置矩阵。
+- 已验证：发布闭环 foundation 的 review 证据见 `docs/reviews/backend/2026-07-05-content-publish-foundation.md`；模块补全各 API family、worker、runtime、限流和 resilience 配置由服务内 focused test 与计划 checklist 跟踪，最终 review 证据仍待任务 12 收口。
 - 已登记后续计划：Content 模块补全路线见 `docs/plan/impl-plan/2026-07-05-content-module-completion-implementation-plan.md`。
-- 待实现：生产可运行 runtime、真实配置加载、依赖打开、HTTP server listen / shutdown、真实 readiness、cleanup / repair / outbox worker、Content HTTP system test、`4012` / `4021` / `4023` 依赖语义错误、剩余 API family、限流、resilience policy 和观测接入。
-- 已设计草案但未完整落地：Content engagement、公开浏览页面、业务限流和运行期 resilience 策略，见 `engagement-design.md`、[frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)、`rate-limiting.md` 与 `runtime-resilience.md`。
+- 待实现：真实 circuit breaker / max-in-flight 执行器、生产 metrics exporter、完整结构化日志字段、最终 `make check` / review 证据和任务 12 完成收口。
+- 已设计草案但未完整落地：公开浏览页面、业务限流的 burst / 冷却 / 单位时间 body 字节量和运行期 resilience 执行器，见 [frontend pages/content.md](../../../../../zhicore-frontend-vue/docs/design/pages/content.md)、`rate-limiting.md` 与 `runtime-resilience.md`。
 
 ## 下一步
 
-- 按 `2026-07-05-content-module-completion-implementation-plan.md` 先补服务可运行 runtime、真实 readiness 和配置模板。
-- 分别实现 cleanup worker、repair worker 和 outbox dispatcher，不把 disabled descriptor 伪装成生产 worker。
-- 补 Content 黑盒 HTTP system test，再按公开查询、作者工作台、发布生命周期、taxonomy、engagement 和 admin API family 逐步扩展。
+- 按 `2026-07-05-content-module-completion-implementation-plan.md` 完成任务 12：运行最终验证、补独立 review 证据并收口 checklist。
+- 后续独立切片接入真实 circuit breaker / max-in-flight 执行器和生产 metrics exporter。

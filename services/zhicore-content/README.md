@@ -19,7 +19,7 @@
 | `POST` | `/api/v1/posts/{postId}/publish` | 已实现并由 handler contract test 覆盖 |
 | `GET` | `/api/v1/posts/{postId}/body` | 已实现并由 handler contract test 覆盖 |
 
-当前 `cmd/server` 只建立进程根和 runtime 装配边界；真实配置加载、PostgreSQL / MongoDB / RabbitMQ / User / File 依赖打开、HTTP server listen / shutdown 和真实 readiness 仍待后续切片实现。
+当前 `cmd/server` 已建立配置加载、依赖打开、HTTP server listen / shutdown、readiness、Redis 业务限流和 runtime 装配边界；resilience policy 已先以 `provider + operation` 配置矩阵固定，并接入 User/File/RabbitMQ 的 timeout / retry 基线。真实熔断器、max-in-flight 执行器和生产 metrics exporter 仍待后续切片实现。
 
 ## 数据归属
 

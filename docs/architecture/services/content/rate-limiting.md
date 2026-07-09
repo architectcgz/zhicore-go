@@ -2,7 +2,7 @@
 
 本文是 `zhicore-content` 的限流和频控专题事实源。字段级 HTTP schema 只引用本文，不在每个 endpoint 重复完整矩阵。
 
-当前状态：Go 代码已落地首批业务限流接线：`RateLimiter` / `ContentObserver` 端口、Redis fixed-window adapter、production runtime Redis factory、readiness health checker、HTTP `429 / 1003` 映射，以及 7 类规则的 `limit/window/fallback/fallbackWindow/failClosed` 环境变量覆盖。尚未落地 burst、冷却窗口、单位时间 body 字节量、presence no-op / empty fallback、完整 engagement fallback、真实 metrics exporter 和全量 resilience policy。
+当前状态：Go 代码已落地首批业务限流接线：`RateLimiter` / `ContentObserver` 端口、Redis fixed-window adapter、production runtime Redis factory、readiness health checker、HTTP `429 / 1003` 映射，7 类规则的 `limit/window/fallback/fallbackWindow/failClosed` 环境变量覆盖，以及草稿保存、发布、公开读、互动写/读、管理 outbox retry 和内部正文读取的 application 限流保护。`ContentObserver` 已通过 metrics recorder 固定 rate-limit decision 和 worker result counter 调用点。尚未落地 burst、冷却窗口、单位时间 body 字节量、真实 metrics exporter、presence / empty fallback 能力和完整本机 fallback 预算执行器；presence 已退出当前 Content 范围，不保留 no-op 成功 outcome。
 
 ## 目标
 

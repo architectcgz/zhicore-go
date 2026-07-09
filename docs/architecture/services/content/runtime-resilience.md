@@ -2,7 +2,7 @@
 
 本文记录 `zhicore-content` 首次实现时必须落地的 timeout、retry、circuit breaker、max-in-flight 和降级策略。全局规则见 `docs/architecture/runtime-operations.md`；本文只补 Content 的 provider / operation 级矩阵。
 
-当前状态：本文是设计事实源，不表示 Go 代码已经实现。首次实现任一依赖调用或 worker 前，必须为对应行补配置项、adapter 行为测试或 application 编排测试。
+当前状态：Go 代码已落地 `provider + operation` resilience 配置矩阵、默认值、环境变量覆盖和校验；User/File/RabbitMQ runtime wiring 已使用对应 policy 的 timeout / max attempts / publish confirm timeout，Redis rate-limit dependency 使用 Redis timeout 配置并进入 readiness。Circuit breaker key 与 max-in-flight 目前已作为配置事实和后续执行器输入固定，但尚未接入真实 breaker / 并发闸门；PostgreSQL、MongoDB 和 Redis cache 的 operation policy 也仍未全部接到具体 repository/cache 执行路径。
 
 ## 总原则
 
