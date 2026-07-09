@@ -37,7 +37,9 @@ func (NoopMetricsRecorder) IncrementCounter(_ context.Context, name string, labe
 }
 
 func ValidateMetricName(name string) error {
-	name = strings.TrimSpace(name)
+	if name != strings.TrimSpace(name) {
+		return fmt.Errorf("metric name %q must not contain surrounding whitespace", name)
+	}
 	if name == "" {
 		return fmt.Errorf("metric name is required")
 	}
@@ -54,6 +56,12 @@ func ValidateLowCardinalityLabels(labels Labels) error {
 	for name, value := range labels {
 		normalizedName := strings.TrimSpace(name)
 		normalizedValue := strings.TrimSpace(value)
+		if name != normalizedName {
+			return fmt.Errorf("metric label name %q must not contain surrounding whitespace", name)
+		}
+		if value != normalizedValue {
+			return fmt.Errorf("metric label %q value must not contain surrounding whitespace", normalizedName)
+		}
 		if normalizedName == "" {
 			return fmt.Errorf("metric label name is required")
 		}

@@ -63,3 +63,35 @@ func TestMetricsRejectsHighCardinalityOrSensitiveLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestMetricsRejectsSurroundingWhitespace(t *testing.T) {
+	if err := ValidateMetricName(" zhicore_content_rate_limit_decisions_total"); err == nil {
+		t.Fatalf("ValidateMetricName() error = nil, want rejection for surrounding whitespace")
+	}
+
+	testCases := []struct {
+		name   string
+		labels Labels
+	}{
+		{
+			name: "label name",
+			labels: Labels{
+				" service": "zhicore-content",
+			},
+		},
+		{
+			name: "label value",
+			labels: Labels{
+				"service": " zhicore-content ",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateLowCardinalityLabels(tc.labels); err == nil {
+				t.Fatalf("ValidateLowCardinalityLabels(%#v) error = nil, want rejection for surrounding whitespace", tc.labels)
+			}
+		})
+	}
+}
