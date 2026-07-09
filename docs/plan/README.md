@@ -21,6 +21,7 @@
 | `impl-plan/2026-07-06-ranking-ledger-hot-posts-foundation-implementation-plan.md` | Ranking ledger、bucket、文章热榜、consumer、runtime 和 rebuild foundation | 待执行 |
 | `impl-plan/2026-07-06-httpapi-request-kit-handler-split-implementation-plan.md` | 共享 request kit、Content/Auth/User handler 拆分和 Comment helper 迁移 | 已完成 |
 | `impl-plan/2026-07-05-content-module-completion-implementation-plan.md` | Content 可运行 runtime、worker、系统测试、错误契约、剩余 API family、限流和观测收口 | 待执行 |
+| `exploratory/2026-07-09-content-rate-limiting-followups.md` | Content 限流剩余能力拆分：观测、resilience policy、API guard、draft body 预算、engagement fallback、admin cooldown 和 presence 边界 | 探索方案 |
 | `exploratory/2026-07-04-content-body-parser-typed-schema-design-plan.md` | Content V1 body parser 从动态 `map[string]any` 重构为强类型 schema | 探索方案 |
 
 ## 已归档计划
