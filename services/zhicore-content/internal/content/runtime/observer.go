@@ -9,6 +9,7 @@ import (
 )
 
 const contentRateLimitDecisionMetric = "zhicore_content_rate_limit_decisions_total"
+const contentWorkerJobsMetric = "zhicore_content_worker_jobs_total"
 
 type rateLimitObserver struct {
 	recorder observability.MetricsRecorder
@@ -34,10 +35,30 @@ func (o rateLimitObserver) ObserveRateLimitDecision(ctx context.Context, decisio
 	})
 }
 
+func (o rateLimitObserver) ObserveWorkerResult(ctx context.Context, result ports.WorkerResult) {
+	// Worker metrics deliberately use stable classes instead of raw errors, so
+	// broker URLs, DSNs and provider messages cannot become metric labels.
+	_ = o.recorder.IncrementCounter(ctx, contentWorkerJobsMetric, observability.Labels{
+		"service":    "zhicore-content",
+		"worker":     labelOrUnknown(result.Worker),
+		"operation":  labelOrUnknown(result.Operation),
+		"status":     labelOrUnknown(string(result.Status)),
+		"errorClass": labelOrNone(result.ErrorClass),
+	})
+}
+
 func labelOrUnknown(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return "unknown"
+	}
+	return value
+}
+
+func labelOrNone(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "none"
 	}
 	return value
 }

@@ -57,6 +57,38 @@ func TestContentRateLimitObserverIgnoresRecorderFailure(t *testing.T) {
 	})
 }
 
+func TestContentObserverRecordsWorkerResultMetric(t *testing.T) {
+	recorder := &recordingMetricsRecorder{}
+	observer := NewRateLimitObserver(recorder)
+
+	observer.ObserveWorkerResult(context.Background(), ports.WorkerResult{
+		Worker:     "content-outbox-dispatcher",
+		Operation:  "worker.run_until_idle",
+		Status:     ports.WorkerResultStatusFailed,
+		ErrorClass: "failed",
+	})
+
+	if recorder.calls != 1 {
+		t.Fatalf("recorder calls = %d, want 1", recorder.calls)
+	}
+	if recorder.name != "zhicore_content_worker_jobs_total" {
+		t.Fatalf("metric name = %q, want worker jobs counter", recorder.name)
+	}
+	wantLabels := observability.Labels{
+		"service":    "zhicore-content",
+		"worker":     "content-outbox-dispatcher",
+		"operation":  "worker.run_until_idle",
+		"status":     "failed",
+		"errorClass": "failed",
+	}
+	if !reflect.DeepEqual(recorder.labels, wantLabels) {
+		t.Fatalf("metric labels = %#v, want %#v", recorder.labels, wantLabels)
+	}
+	if err := observability.ValidateLowCardinalityLabels(recorder.labels); err != nil {
+		t.Fatalf("metric labels are not low-cardinality: %v", err)
+	}
+}
+
 type recordingMetricsRecorder struct {
 	calls  int
 	name   string

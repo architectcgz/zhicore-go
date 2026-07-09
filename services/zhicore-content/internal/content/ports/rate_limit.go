@@ -57,4 +57,20 @@ type RateLimiter interface {
 
 type ContentObserver interface {
 	ObserveRateLimitDecision(context.Context, RateLimitDecision)
+	ObserveWorkerResult(context.Context, WorkerResult)
+}
+
+type WorkerResultStatus string
+
+const (
+	WorkerResultStatusSuccess WorkerResultStatus = "success"
+	WorkerResultStatusFailed  WorkerResultStatus = "failed"
+)
+
+type WorkerResult struct {
+	Worker     string
+	Operation  string
+	Status     WorkerResultStatus
+	ErrorClass string
+	Duration   time.Duration
 }

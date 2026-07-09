@@ -93,3 +93,5 @@ type recordingApplicationObserver struct {
 func (o *recordingApplicationObserver) ObserveRateLimitDecision(_ context.Context, decision ports.RateLimitDecision) {
 	o.decisions = append(o.decisions, decision)
 }
+
+func (o *recordingApplicationObserver) ObserveWorkerResult(context.Context, ports.WorkerResult) {}

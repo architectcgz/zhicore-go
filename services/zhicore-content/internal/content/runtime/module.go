@@ -119,7 +119,7 @@ func Build(deps Deps) (*Module, error) {
 		Clock:           deps.Clock,
 	})
 
-	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock)
+	workers := configuredWorkerDescriptors(deps.Workers, deps.Config.Workers, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, deps.IntegrationEvents, bodyStore, store, deps.Clock, deps.Observer)
 	health := HealthDetails{
 		Service:    serviceName(deps.Config),
 		Postgres:   "configured",
@@ -206,8 +206,9 @@ func configuredWorkerDescriptors(
 	bodyStore ports.PostContentStore,
 	references ports.BodyReferenceChecker,
 	clock ports.Clock,
+	observer ports.ContentObserver,
 ) []WorkerDescriptor {
-	workers := configuredContentWorkers(config, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, integrationEvents, bodyStore, references, clock)
+	workers := configuredContentWorkers(config, cleanupStore, repairStore, engagementStatsStore, outboxDispatch, integrationEvents, bodyStore, references, clock, observer)
 	if len(extra) == 0 {
 		return workers
 	}
@@ -227,6 +228,7 @@ func configuredContentWorkers(
 	bodyStore ports.PostContentStore,
 	references ports.BodyReferenceChecker,
 	clock ports.Clock,
+	observer ports.ContentObserver,
 ) []WorkerDescriptor {
 	workers := []WorkerDescriptor{
 		disabledWorkerDescriptor("content-body-cleanup", "disabled by configuration"),
@@ -251,7 +253,7 @@ func configuredContentWorkers(
 			RetryBackoff:    time.Minute,
 			DeadThreshold:   3,
 		})
-		workers[0] = enabledWorkerDescriptor("content-body-cleanup", pollingWorker{name: "content-body-cleanup", interval: interval, runUntilIdle: cleanup.RunUntilIdle})
+		workers[0] = enabledWorkerDescriptor("content-body-cleanup", pollingWorker{name: "content-body-cleanup", interval: interval, observer: observer, runUntilIdle: cleanup.RunUntilIdle})
 	}
 	if config.RepairEnabled {
 		repair := application.NewBodyRepairWorker(application.BodyRepairWorkerDeps{
@@ -264,7 +266,7 @@ func configuredContentWorkers(
 			RetryBackoff:    time.Minute,
 			DeadThreshold:   1,
 		})
-		workers[1] = enabledWorkerDescriptor("content-body-repair", pollingWorker{name: "content-body-repair", interval: interval, runUntilIdle: repair.RunUntilIdle})
+		workers[1] = enabledWorkerDescriptor("content-body-repair", pollingWorker{name: "content-body-repair", interval: interval, observer: observer, runUntilIdle: repair.RunUntilIdle})
 	}
 	if config.EngagementStatsEnabled {
 		engagementStats := application.NewEngagementStatsWorker(application.EngagementStatsWorkerDeps{
@@ -277,7 +279,7 @@ func configuredContentWorkers(
 			RetryBackoff:    time.Minute,
 			DeadThreshold:   5,
 		})
-		workers[2] = enabledWorkerDescriptor("content-engagement-stats", pollingWorker{name: "content-engagement-stats", interval: interval, runUntilIdle: engagementStats.RunUntilIdle})
+		workers[2] = enabledWorkerDescriptor("content-engagement-stats", pollingWorker{name: "content-engagement-stats", interval: interval, observer: observer, runUntilIdle: engagementStats.RunUntilIdle})
 	}
 	if config.OutboxEnabled {
 		outbox := application.NewOutboxDispatcher(application.OutboxDispatcherDeps{
@@ -291,7 +293,7 @@ func configuredContentWorkers(
 			RetryBackoff:    time.Minute,
 			DeadThreshold:   5,
 		})
-		workers[3] = enabledWorkerDescriptor("content-outbox-dispatcher", pollingWorker{name: "content-outbox-dispatcher", interval: interval, runUntilIdle: outbox.RunUntilIdle})
+		workers[3] = enabledWorkerDescriptor("content-outbox-dispatcher", pollingWorker{name: "content-outbox-dispatcher", interval: interval, observer: observer, runUntilIdle: outbox.RunUntilIdle})
 	}
 	return workers
 }
@@ -307,6 +309,7 @@ func enabledWorkerDescriptor(name string, runner Worker) WorkerDescriptor {
 type pollingWorker struct {
 	name         string
 	interval     time.Duration
+	observer     ports.ContentObserver
 	runUntilIdle func(context.Context) error
 }
 
@@ -318,12 +321,15 @@ func (w pollingWorker) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		startedAt := time.Now()
 		if err := w.runUntilIdle(ctx); err != nil {
+			w.observeResult(ctx, startedAt, err)
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return err
 			}
 			return fmt.Errorf("run %s: %w", w.name, err)
 		}
+		w.observeResult(ctx, startedAt, nil)
 		timer := time.NewTimer(w.interval)
 		select {
 		case <-ctx.Done():
@@ -333,6 +339,34 @@ func (w pollingWorker) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-timer.C:
 		}
+	}
+}
+
+func (w pollingWorker) observeResult(ctx context.Context, startedAt time.Time, err error) {
+	if w.observer == nil {
+		return
+	}
+	result := ports.WorkerResult{
+		Worker:    w.name,
+		Operation: "worker.run_until_idle",
+		Status:    ports.WorkerResultStatusSuccess,
+		Duration:  time.Since(startedAt),
+	}
+	if err != nil {
+		result.Status = ports.WorkerResultStatusFailed
+		result.ErrorClass = workerErrorClass(err)
+	}
+	w.observer.ObserveWorkerResult(ctx, result)
+}
+
+func workerErrorClass(err error) string {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline_exceeded"
+	default:
+		return "failed"
 	}
 }
 

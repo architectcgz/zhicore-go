@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -129,6 +130,65 @@ func TestBuildWiresObserverIntoRateLimitedService(t *testing.T) {
 	}
 }
 
+func TestPollingWorkerObservesRunUntilIdleResult(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		observer := &recordingContentObserver{}
+		worker := pollingWorker{
+			name:     "content-body-cleanup",
+			interval: time.Hour,
+			observer: observer,
+			runUntilIdle: func(context.Context) error {
+				cancel()
+				return nil
+			},
+		}
+
+		err := worker.Run(ctx)
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Run() error = %v, want context.Canceled after first observed success", err)
+		}
+		if len(observer.workerResults) != 1 {
+			t.Fatalf("worker results = %#v, want one", observer.workerResults)
+		}
+		got := observer.workerResults[0]
+		if got.Worker != "content-body-cleanup" ||
+			got.Operation != "worker.run_until_idle" ||
+			got.Status != ports.WorkerResultStatusSuccess ||
+			got.ErrorClass != "" {
+			t.Fatalf("worker result = %#v, want success without error class", got)
+		}
+	})
+
+	t.Run("failure", func(t *testing.T) {
+		observer := &recordingContentObserver{}
+		worker := pollingWorker{
+			name:     "content-outbox-dispatcher",
+			interval: time.Hour,
+			observer: observer,
+			runUntilIdle: func(context.Context) error {
+				return errors.New("amqp://content:secret@mq closed")
+			},
+		}
+
+		err := worker.Run(context.Background())
+
+		if err == nil {
+			t.Fatal("Run() error = nil, want worker failure")
+		}
+		if len(observer.workerResults) != 1 {
+			t.Fatalf("worker results = %#v, want one", observer.workerResults)
+		}
+		got := observer.workerResults[0]
+		if got.Worker != "content-outbox-dispatcher" ||
+			got.Status != ports.WorkerResultStatusFailed ||
+			got.ErrorClass != "failed" {
+			t.Fatalf("worker result = %#v, want failed without raw error", got)
+		}
+	})
+}
+
 func TestBuildWiresTaxonomyRepository(t *testing.T) {
 	deps, mock := validDepsWithMock(t)
 	mock.ExpectQuery("FROM tags").
@@ -220,11 +280,16 @@ func (r *recordingRateLimiter) Check(ctx context.Context, request ports.RateLimi
 }
 
 type recordingContentObserver struct {
-	decisions []ports.RateLimitDecision
+	decisions     []ports.RateLimitDecision
+	workerResults []ports.WorkerResult
 }
 
 func (o *recordingContentObserver) ObserveRateLimitDecision(ctx context.Context, decision ports.RateLimitDecision) {
 	o.decisions = append(o.decisions, decision)
+}
+
+func (o *recordingContentObserver) ObserveWorkerResult(ctx context.Context, result ports.WorkerResult) {
+	o.workerResults = append(o.workerResults, result)
 }
 
 type stubUsers struct{}
