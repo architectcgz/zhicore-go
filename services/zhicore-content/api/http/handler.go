@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	userIDHeaderName        = "X-User-Id"
-	userRolesHeaderName     = "X-User-Roles"
-	maxJSONRequestBodyBytes = 512 << 10
+	userIDHeaderName          = "X-User-Id"
+	userRolesHeaderName       = "X-User-Roles"
+	callerServiceHeaderName   = "X-Caller-Service"
+	callerOperationHeaderName = "X-Caller-Operation"
+	maxJSONRequestBodyBytes   = 512 << 10
 )
 
 type Service interface {

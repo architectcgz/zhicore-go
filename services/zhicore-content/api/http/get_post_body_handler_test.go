@@ -78,6 +78,27 @@ func TestGetPostBodyReturnsSuccessEnvelope(t *testing.T) {
 	}
 }
 
+func TestGetPostBodyPassesInternalCallerHeaders(t *testing.T) {
+	service := &fakeContentService{getBodyResult: application.GetPublishedPostBodyResult{
+		BodyID:        "body_pub_1",
+		SchemaVersion: 1,
+		CanonicalJSON: json.RawMessage(`{"schemaVersion":1,"blocks":[]}`),
+		ContentHash:   "sha256:body",
+		CreatedAt:     time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
+	}}
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/posts/post_pub_1/body", nil)
+	req.Header.Set("X-Caller-Service", " zhicore-search ")
+	req.Header.Set("X-Caller-Operation", " search.index_post_body ")
+
+	NewHandler(service).ServeHTTP(rr, req)
+
+	if service.getBodyQuery.CallerService != "zhicore-search" ||
+		service.getBodyQuery.CallerOperation != "search.index_post_body" {
+		t.Fatalf("caller headers = %q/%q", service.getBodyQuery.CallerService, service.getBodyQuery.CallerOperation)
+	}
+}
+
 func TestGetPostBodyRejectsMalformedCanonicalBody(t *testing.T) {
 	service := &fakeContentService{getBodyResult: application.GetPublishedPostBodyResult{
 		BodyID:        "body_pub_1",

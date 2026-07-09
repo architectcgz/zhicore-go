@@ -10,6 +10,8 @@ type PostBodyInput struct {
 type GetPublishedPostBodyQuery struct {
 	PostID           string
 	RateLimitSubject string
+	CallerService    string
+	CallerOperation  string
 }
 
 type GetPublishedPostBodyResult struct {

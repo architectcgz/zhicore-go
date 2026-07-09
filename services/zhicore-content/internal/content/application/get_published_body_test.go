@@ -109,6 +109,40 @@ func TestGetPublishedPostBody(t *testing.T) {
 			t.Fatalf("body = %+v, want published body", got)
 		}
 	})
+
+	t.Run("uses internal caller rate limit and fail closed before reading body", func(t *testing.T) {
+		deps := newPublishedBodyDeps()
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+			Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+			Reason:  "redis_unavailable_fail_closed",
+		}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.GetPublishedPostBody(context.Background(), GetPublishedPostBodyQuery{
+			PostID:          "post_1",
+			CallerService:   "zhicore-search",
+			CallerOperation: "search.index_post_body",
+		})
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("GetPublishedPostBody() error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.posts.bodyPointerCalls != 0 || deps.bodies.readCalls != 0 {
+			t.Fatalf("body read side effects pointer=%d body=%d, want none", deps.posts.bodyPointerCalls, deps.bodies.readCalls)
+		}
+		if len(limiter.requests) != 1 {
+			t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+		}
+		got := limiter.requests[0]
+		if got.LimitType != ports.RateLimitTypeInternalClient ||
+			got.Subject != "caller:zhicore-search:search.index_post_body" ||
+			got.Resource != "post_1" ||
+			got.Operation != "get_published_post_body" {
+			t.Fatalf("rate limit request = %+v, want internal caller body read", got)
+		}
+	})
 }
 
 func newPublishedBodyDeps() createPostDeps {

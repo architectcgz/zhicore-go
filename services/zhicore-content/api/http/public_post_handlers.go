@@ -106,6 +106,8 @@ func (h *Handler) getPostBody(c *gin.Context) {
 	result, err := h.service.GetPublishedPostBody(r.Context(), application.GetPublishedPostBodyQuery{
 		PostID:           postID,
 		RateLimitSubject: publicReadRateLimitSubject(r),
+		CallerService:    strings.TrimSpace(r.Header.Get(callerServiceHeaderName)),
+		CallerOperation:  strings.TrimSpace(r.Header.Get(callerOperationHeaderName)),
 	})
 	if err != nil {
 		writeMappedError(w, err, errorOperationGetPostBody)
