@@ -56,6 +56,7 @@
 - 修改提交信息格式、commit-msg hook、`harness/policies/commit-message.json`、`scripts/check-commit-message.sh` 或 `scripts/install-githooks.sh` 前，先读 `docs/reviews/commit-message.md`。
 - 共享库必须保持朴素、明确。对于不稳定的服务本地代码，优先保留重复，不要过早提升到 `libs`。
 - 数据库 schema 演进必须显式、可审查。不要在服务启动路径里添加运行时自动迁移。
+- 存储层默认禁止把 SQL 硬编码在 Go 代码里；repository SQL 外置到 `services/<service>/internal/<domain>/infrastructure/postgres/sql/*.sql` 并用 `//go:embed` 加载。仅 `SELECT 1` 健康检查、单表按主键读写等不承载业务语义的一行语句可内联。细则和迁移口径见 `docs/architecture/go-service-design.md`。
 - 默认不破坏已发布外部 API contract；前端暂时不修改，当前开发阶段不做灰度，Gateway 只能做路由或环境切换，不能把未登记的 API 形态变化传递给前端。若服务级设计和 HTTP schema 明确登记为 Go-first API reset，则该服务以 Go schema 为新事实源；当前 `zhicore-content` 和 `zhicore-file` 属于该例外。
 
 ## 服务落点
