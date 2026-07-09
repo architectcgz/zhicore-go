@@ -24,6 +24,19 @@ type openedContentRuntime struct {
 }
 
 func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig) (openedContentRuntime, error) {
+	userPolicy, ok := cfg.Resilience.Policy("user-service", "profile.get_summary")
+	if !ok {
+		return openedContentRuntime{}, fmt.Errorf("missing user-service profile.get_summary resilience policy")
+	}
+	filePolicy, ok := cfg.Resilience.Policy("upload-service", "file.validate_ref")
+	if !ok {
+		return openedContentRuntime{}, fmt.Errorf("missing upload-service file.validate_ref resilience policy")
+	}
+	rabbitMQPolicy, ok := cfg.Resilience.Policy("rabbitmq", "outbox.publish")
+	if !ok {
+		return openedContentRuntime{}, fmt.Errorf("missing rabbitmq outbox.publish resilience policy")
+	}
+
 	postgresDB, err := sql.Open("postgres", cfg.Postgres.DSN)
 	if err != nil {
 		return openedContentRuntime{}, fmt.Errorf("open postgres dependency: %w", err)
@@ -93,12 +106,12 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		},
 		Parser:            contentruntime.NewDefaultBodyParser(),
 		Outbox:            contentruntime.NewPostgresOutboxPublisher(postgresDB),
-		IntegrationEvents: contentruntime.NewRabbitMQIntegrationEventPublisher(rabbitChannel, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.PublishConfirmTimeout),
+		IntegrationEvents: contentruntime.NewRabbitMQIntegrationEventPublisher(rabbitChannel, cfg.RabbitMQ.Exchange, rabbitMQPolicy.Timeout),
 		RateLimiter:       rateLimitDependency.Limiter,
 		Observer:          contentruntime.NewRateLimitObserver(nil),
 		Clock:             systemClock{},
-		Users:             contentruntime.NewUserProfileClient(cfg.UserService.BaseURL, cfg.HTTP.ReadTimeout),
-		Files:             contentruntime.NewFileResourceClient(cfg.FileService.BaseURL, cfg.HTTP.ReadTimeout, 2),
+		Users:             contentruntime.NewUserProfileClient(cfg.UserService.BaseURL, userPolicy.Timeout, userPolicy.MaxAttempts),
+		Files:             contentruntime.NewFileResourceClient(cfg.FileService.BaseURL, filePolicy.Timeout, filePolicy.MaxAttempts),
 	})
 	if err != nil {
 		closeNamedClosers(closers)

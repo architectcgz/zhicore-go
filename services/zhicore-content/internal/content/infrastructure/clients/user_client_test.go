@@ -122,6 +122,37 @@ func TestUserClientGetOwnerSnapshot(t *testing.T) {
 			t.Fatalf("cancel error = %v, want dependency and context canceled", err)
 		}
 	})
+
+	t.Run("retries transient provider failure up to configured attempts", func(t *testing.T) {
+		calls := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			if calls == 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			writeSuccess(t, w, usercontract.SimpleBatchResponse{
+				Items: []usercontract.SimpleUser{{
+					UserID:         42,
+					Nickname:       "architect",
+					ProfileVersion: 8,
+				}},
+			})
+		}))
+		defer server.Close()
+		client := NewUserClient(UserClientConfig{BaseURL: server.URL, HTTPClient: server.Client(), MaxAttempts: 2})
+
+		got, err := client.GetOwnerSnapshot(context.Background(), 42)
+		if err != nil {
+			t.Fatalf("GetOwnerSnapshot() error = %v", err)
+		}
+		if calls != 2 {
+			t.Fatalf("provider calls = %d, want 2", calls)
+		}
+		if got.DisplayName != "architect" || got.ProfileVersion != 8 {
+			t.Fatalf("snapshot = %+v, want retried provider DTO", got)
+		}
+	})
 }
 
 func writeSuccess(t *testing.T, w http.ResponseWriter, data any) {

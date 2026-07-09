@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
@@ -90,6 +91,9 @@ func LoadContentServerConfig(lookup func(string) (string, bool)) (ContentServerC
 		return ContentServerConfig{}, err
 	}
 	if err := overlayRateLimitConfig(&cfg, lookup); err != nil {
+		return ContentServerConfig{}, err
+	}
+	if err := overlayResilienceConfig(&cfg, lookup); err != nil {
 		return ContentServerConfig{}, err
 	}
 	if err := validateContentServerConfig(cfg); err != nil {
@@ -230,6 +234,7 @@ func overlayRabbitMQConfig(cfg *ContentServerConfig, lookup func(string) (string
 			return err
 		}
 		cfg.RabbitMQ.PublishConfirmTimeout = parsed
+		setResiliencePolicyTimeout(&cfg.Resilience, "rabbitmq", "outbox.publish", parsed)
 	}
 	return nil
 }
@@ -290,6 +295,78 @@ func overlayRateLimitConfig(cfg *ContentServerConfig, lookup func(string) (strin
 
 func rateLimitEnvPrefix(limitType contentruntime.RateLimitType) string {
 	return "ZHICORE_CONTENT_RATE_LIMIT_" + strings.ToUpper(string(limitType))
+}
+
+func overlayResilienceConfig(cfg *ContentServerConfig, lookup func(string) (string, bool)) error {
+	for key, policy := range cfg.Resilience.Policies {
+		prefix := resilienceEnvPrefix(policy.Provider, policy.Operation)
+		if value, ok, err := lookupOptionalEnv(lookup, prefix+"_TIMEOUT"); err != nil {
+			return err
+		} else if ok {
+			parsed, err := parseDurationEnv(prefix+"_TIMEOUT", value)
+			if err != nil {
+				return err
+			}
+			policy.Timeout = parsed
+		}
+		if value, ok, err := lookupOptionalEnv(lookup, prefix+"_MAX_ATTEMPTS"); err != nil {
+			return err
+		} else if ok {
+			parsed, err := parsePositiveIntEnv(prefix+"_MAX_ATTEMPTS", value)
+			if err != nil {
+				return err
+			}
+			policy.MaxAttempts = parsed
+		}
+		if value, ok, err := lookupOptionalEnv(lookup, prefix+"_MAX_IN_FLIGHT"); err != nil {
+			return err
+		} else if ok {
+			parsed, err := parsePositiveIntEnv(prefix+"_MAX_IN_FLIGHT", value)
+			if err != nil {
+				return err
+			}
+			policy.MaxInFlight = parsed
+		}
+		cfg.Resilience.Policies[key] = policy
+	}
+	return nil
+}
+
+func resilienceEnvPrefix(provider, operation string) string {
+	return "ZHICORE_CONTENT_RESILIENCE_" + envToken(provider) + "_" + envToken(operation)
+}
+
+func setResiliencePolicyTimeout(cfg *contentruntime.ResilienceConfig, provider, operation string, timeout time.Duration) {
+	if cfg == nil {
+		return
+	}
+	policy, ok := cfg.Policy(provider, operation)
+	if !ok {
+		return
+	}
+	policy.Timeout = timeout
+	cfg.Policies[contentruntime.ResiliencePolicyKey(provider, operation)] = policy
+}
+
+func envToken(value string) string {
+	var builder strings.Builder
+	lastUnderscore := false
+	for _, r := range strings.TrimSpace(value) {
+		switch {
+		case r >= 'a' && r <= 'z':
+			builder.WriteRune(r - 'a' + 'A')
+			lastUnderscore = false
+		case (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			builder.WriteRune(r)
+			lastUnderscore = false
+		default:
+			if !lastUnderscore {
+				builder.WriteByte('_')
+				lastUnderscore = true
+			}
+		}
+	}
+	return strings.Trim(builder.String(), "_")
 }
 
 func overlayWorkerConfig(cfg *ContentServerConfig, lookup func(string) (string, bool)) error {

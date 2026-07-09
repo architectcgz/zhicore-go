@@ -20,6 +20,7 @@ type ContentServerConfig struct {
 	FileService ContentDependencyConfig
 	Workers     ContentWorkersConfig
 	RateLimit   contentruntime.RateLimitConfig
+	Resilience  contentruntime.ResilienceConfig
 }
 
 type ContentHTTPConfig struct {
@@ -98,7 +99,7 @@ func (c ContentDependencyConfig) GoString() string {
 
 func (c ContentServerConfig) RedactedSummary() string {
 	return fmt.Sprintf(
-		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s redis.addr=%s redis.db=%d redis.dialTimeout=%s redis.readTimeout=%s redis.writeTimeout=%s redis.poolSize=%d rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t workers.engagementStats=%t",
+		"service=%s http.addr=%s http.readHeaderTimeout=%s http.readTimeout=%s http.writeTimeout=%s http.idleTimeout=%s http.shutdownTimeout=%s http.maxJSONBodyBytes=%d postgres=%s mongo.uri=%s mongo.database=%s mongo.bodyCollection=%s redis.addr=%s redis.db=%d redis.dialTimeout=%s redis.readTimeout=%s redis.writeTimeout=%s redis.poolSize=%d rabbitmq.url=%s rabbitmq.exchange=%s rabbitmq.publishConfirmTimeout=%s userService=%s fileService=%s workers.cleanup=%t workers.repair=%t workers.outbox=%t workers.engagementStats=%t resilience.policies=%d",
 		c.ServiceName,
 		c.HTTP.Addr,
 		c.HTTP.ReadHeaderTimeout,
@@ -126,6 +127,7 @@ func (c ContentServerConfig) RedactedSummary() string {
 		c.Workers.RepairEnabled,
 		c.Workers.OutboxEnabled,
 		c.Workers.EngagementStatsEnabled,
+		len(c.Resilience.Policies),
 	)
 }
 

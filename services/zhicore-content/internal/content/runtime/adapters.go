@@ -30,10 +30,11 @@ func NewRabbitMQIntegrationEventPublisher(channel *amqp.Channel, exchange string
 	return contentrabbitmq.NewIntegrationEventPublisher(topicPublisher)
 }
 
-func NewUserProfileClient(baseURL string, timeout time.Duration) ports.UserProfileClient {
+func NewUserProfileClient(baseURL string, timeout time.Duration, maxAttempts int) ports.UserProfileClient {
 	return contentclients.NewUserClient(contentclients.UserClientConfig{
-		BaseURL: baseURL,
-		Timeout: timeout,
+		BaseURL:     baseURL,
+		Timeout:     timeout,
+		MaxAttempts: maxAttempts,
 	})
 }
 

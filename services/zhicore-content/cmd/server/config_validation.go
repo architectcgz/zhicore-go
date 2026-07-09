@@ -87,6 +87,9 @@ func validateContentServerConfig(cfg ContentServerConfig) error {
 	if err := validateURLWithSchemes(envFileServiceBaseURL, cfg.FileService.BaseURL, "http", "https"); err != nil {
 		return err
 	}
+	if err := cfg.Resilience.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -27,6 +27,7 @@ func DefaultContentServerConfig() ContentServerConfig {
 			Exchange:              "zhicore.events",
 			PublishConfirmTimeout: 3 * time.Second,
 		},
-		RateLimit: contentruntime.DefaultRateLimitConfig(),
+		RateLimit:  contentruntime.DefaultRateLimitConfig(),
+		Resilience: contentruntime.DefaultResilienceConfig(),
 	}
 }

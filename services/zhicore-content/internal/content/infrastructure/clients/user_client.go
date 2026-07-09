@@ -15,16 +15,22 @@ import (
 const callerServiceContent = "zhicore-content"
 
 type UserClientConfig struct {
-	BaseURL    string
-	HTTPClient *http.Client
-	Timeout    time.Duration
+	BaseURL     string
+	HTTPClient  *http.Client
+	Timeout     time.Duration
+	MaxAttempts int
 }
 
 type UserClient struct {
-	client *httpclient.Client
+	client      *httpclient.Client
+	maxAttempts int
 }
 
 func NewUserClient(config UserClientConfig) *UserClient {
+	maxAttempts := config.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 1
+	}
 	return &UserClient{
 		client: httpclient.New(httpclient.Config{
 			BaseURL:       config.BaseURL,
@@ -32,34 +38,58 @@ func NewUserClient(config UserClientConfig) *UserClient {
 			HTTPClient:    config.HTTPClient,
 			Timeout:       config.Timeout,
 		}),
+		maxAttempts: maxAttempts,
 	}
 }
 
 func (c *UserClient) GetOwnerSnapshot(ctx context.Context, userID int64) (ports.OwnerSnapshot, error) {
-	var payload usercontract.SimpleBatchResponse
-	err := c.client.DoJSON(
-		ctx,
-		http.MethodPost,
-		usercontract.BatchSimplePath,
-		usercontract.OperationContentGetOwnerSnapshot,
-		usercontract.IDsRequest{UserIDs: []int64{userID}},
-		&payload,
-	)
-	if err != nil {
-		return ports.OwnerSnapshot{}, mapDependencyError(err, "get owner snapshot")
-	}
-
-	for _, item := range payload.Items {
-		if item.UserID != userID {
+	var lastErr error
+	for attempt := 1; attempt <= c.maxAttempts; attempt++ {
+		var payload usercontract.SimpleBatchResponse
+		err := c.client.DoJSON(
+			ctx,
+			http.MethodPost,
+			usercontract.BatchSimplePath,
+			usercontract.OperationContentGetOwnerSnapshot,
+			usercontract.IDsRequest{UserIDs: []int64{userID}},
+			&payload,
+		)
+		if err != nil {
+			mapped := mapDependencyError(err, "get owner snapshot")
+			if !shouldRetryUserSnapshot(err) {
+				return ports.OwnerSnapshot{}, mapped
+			}
+			lastErr = mapped
 			continue
 		}
-		return ports.OwnerSnapshot{
-			DisplayName:    item.Nickname,
-			AvatarFileID:   item.AvatarFileID,
-			ProfileVersion: item.ProfileVersion,
-		}, nil
+
+		for _, item := range payload.Items {
+			if item.UserID != userID {
+				continue
+			}
+			return ports.OwnerSnapshot{
+				DisplayName:    item.Nickname,
+				AvatarFileID:   item.AvatarFileID,
+				ProfileVersion: item.ProfileVersion,
+			}, nil
+		}
+		return ports.OwnerSnapshot{}, fmt.Errorf("%w: user snapshot missing", ports.ErrDependencyUnavailable)
+	}
+	if lastErr != nil {
+		return ports.OwnerSnapshot{}, lastErr
 	}
 	return ports.OwnerSnapshot{}, fmt.Errorf("%w: user snapshot missing", ports.ErrDependencyUnavailable)
+}
+
+func shouldRetryUserSnapshot(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var providerErr httpclient.ProviderError
+	if errors.As(err, &providerErr) {
+		return providerErr.StatusCode >= http.StatusInternalServerError || providerErr.Code == 1004
+	}
+	return true
 }
 
 func mapDependencyError(err error, operation string) error {
