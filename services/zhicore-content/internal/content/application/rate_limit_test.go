@@ -50,6 +50,35 @@ func TestEnforceRateLimitMapsDecisions(t *testing.T) {
 	}
 }
 
+func TestEnforceRateLimitBackfillsDecisionOperation(t *testing.T) {
+	observer := &recordingApplicationObserver{}
+	service := NewService(Deps{
+		Limiter: &fixedDecisionLimiter{decision: ports.RateLimitDecision{
+			Outcome: ports.RateLimitOutcomeAllow,
+			Reason:  "allow",
+		}},
+		Observe: observer,
+	})
+
+	err := service.enforceRateLimit(context.Background(), ports.RateLimitRequest{
+		LimitType: ports.RateLimitTypeDraftWrite,
+		Operation: "save_draft_body",
+	})
+
+	if err != nil {
+		t.Fatalf("enforceRateLimit() error = %v, want nil", err)
+	}
+	if len(observer.decisions) != 1 {
+		t.Fatalf("observer decisions = %#v, want one decision", observer.decisions)
+	}
+	if observer.decisions[0].LimitType != ports.RateLimitTypeDraftWrite {
+		t.Fatalf("decision limit type = %q, want request limit type", observer.decisions[0].LimitType)
+	}
+	if observer.decisions[0].Operation != "save_draft_body" {
+		t.Fatalf("decision operation = %q, want request operation", observer.decisions[0].Operation)
+	}
+}
+
 type fixedDecisionLimiter struct {
 	decision ports.RateLimitDecision
 }

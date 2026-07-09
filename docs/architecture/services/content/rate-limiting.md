@@ -75,6 +75,7 @@ type RateLimitDecision struct {
     PublicCode  int
     Reason      string
     LimitType   string
+    Operation   string
     RetryAfter  time.Duration
     Fallback    RateLimitFallback
 }
@@ -93,6 +94,7 @@ type RateLimitDecision struct {
 
 - `Reason` 必须是稳定机器码，例如 `actor_post_operation_limit`、`redis_unavailable_fail_closed`，不能写入原始错误文本。
 - `LimitType` 使用低基数枚举，例如 `public_read`、`draft_write`、`publish_lifecycle`、`engagement_write`、`admin_command`、`internal_client`。
+- `Operation` 使用稳定 operation 名称，由 application 从 `RateLimitRequest.Operation` 回填到 observer decision；不得写入资源 ID、用户 ID、IP、完整 URL 或原始请求文本。
 - Engagement 读路径使用独立 `LimitType`，例如 `engagement_read` 和 `engagement_db_fallback`，避免和互动写路径共享同一预算。
 - `Fallback` 区分 `none`、`local_memory`、`gateway_only`，便于 metrics 和日志聚合。
 - `FallbackWindow` 表示 Redis 连续不可用后允许本机或 Gateway 兜底的最长时间；它是每个实例内的保护窗口，不提供跨实例全局限流语义。

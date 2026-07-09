@@ -47,6 +47,7 @@ type RateLimitDecision struct {
 	PublicCode int
 	Reason     string
 	LimitType  RateLimitType
+	Operation  string
 	RetryAfter time.Duration
 	Fallback   RateLimitFallback
 }

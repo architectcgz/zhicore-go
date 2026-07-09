@@ -95,7 +95,7 @@ func openContentRuntimeDependencies(ctx context.Context, cfg ContentServerConfig
 		Outbox:            contentruntime.NewPostgresOutboxPublisher(postgresDB),
 		IntegrationEvents: contentruntime.NewRabbitMQIntegrationEventPublisher(rabbitChannel, cfg.RabbitMQ.Exchange, cfg.RabbitMQ.PublishConfirmTimeout),
 		RateLimiter:       rateLimitDependency.Limiter,
-		Observer:          contentruntime.NewNoopObserver(),
+		Observer:          contentruntime.NewRateLimitObserver(nil),
 		Clock:             systemClock{},
 		Users:             contentruntime.NewUserProfileClient(cfg.UserService.BaseURL, cfg.HTTP.ReadTimeout),
 		Files:             contentruntime.NewFileResourceClient(cfg.FileService.BaseURL, cfg.HTTP.ReadTimeout, 2),

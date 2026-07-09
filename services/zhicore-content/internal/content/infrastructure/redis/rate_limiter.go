@@ -63,6 +63,7 @@ func (l *fixedWindowRateLimiter) Check(ctx context.Context, request ports.RateLi
 			PublicCode: 1003,
 			Reason:     "fixed_window_limit_exceeded",
 			LimitType:  request.LimitType,
+			Operation:  strings.TrimSpace(request.Operation),
 			RetryAfter: l.retryAfter(ctx, key, rule),
 			Fallback:   ports.RateLimitFallbackNone,
 		}
@@ -71,6 +72,7 @@ func (l *fixedWindowRateLimiter) Check(ctx context.Context, request ports.RateLi
 		Outcome:   ports.RateLimitOutcomeAllow,
 		Reason:    "fixed_window_allow",
 		LimitType: request.LimitType,
+		Operation: strings.TrimSpace(request.Operation),
 		Fallback:  ports.RateLimitFallbackNone,
 	}
 }
@@ -90,6 +92,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			PublicCode: 1004,
 			Reason:     "redis_unavailable_fail_closed",
 			LimitType:  request.LimitType,
+			Operation:  strings.TrimSpace(request.Operation),
 			Fallback:   rule.Fallback,
 		}
 	}
@@ -99,6 +102,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			PublicCode: 1004,
 			Reason:     "redis_unavailable_fallback_window_exceeded",
 			LimitType:  request.LimitType,
+			Operation:  strings.TrimSpace(request.Operation),
 			Fallback:   rule.Fallback,
 		}
 	}
@@ -112,6 +116,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 				PublicCode: 1003,
 				Reason:     "local_memory_limit_exceeded",
 				LimitType:  request.LimitType,
+				Operation:  strings.TrimSpace(request.Operation),
 				RetryAfter: retryAfter,
 				Fallback:   ports.RateLimitFallbackLocalMemory,
 			}
@@ -120,6 +125,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			Outcome:   ports.RateLimitOutcomeDegradedAllowLocal,
 			Reason:    "redis_unavailable_local_memory_allow",
 			LimitType: request.LimitType,
+			Operation: strings.TrimSpace(request.Operation),
 			Fallback:  ports.RateLimitFallbackLocalMemory,
 		}
 	case ports.RateLimitFallbackGatewayOnly:
@@ -127,6 +133,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			Outcome:   ports.RateLimitOutcomeDegradedAllowLocal,
 			Reason:    "redis_unavailable_gateway_only_allow",
 			LimitType: request.LimitType,
+			Operation: strings.TrimSpace(request.Operation),
 			Fallback:  ports.RateLimitFallbackGatewayOnly,
 		}
 	default:
@@ -135,6 +142,7 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			PublicCode: 1004,
 			Reason:     "redis_unavailable_unknown_fallback",
 			LimitType:  request.LimitType,
+			Operation:  strings.TrimSpace(request.Operation),
 			Fallback:   rule.Fallback,
 		}
 	}

@@ -168,11 +168,3 @@ type redisHealthChecker struct {
 func (c redisHealthChecker) Check(ctx context.Context) error {
 	return c.client.Ping(ctx).Err()
 }
-
-type noopContentObserver struct{}
-
-func NewNoopObserver() ports.ContentObserver {
-	return noopContentObserver{}
-}
-
-func (noopContentObserver) ObserveRateLimitDecision(context.Context, ports.RateLimitDecision) {}

@@ -17,6 +17,9 @@ func (s *Service) enforceRateLimit(ctx context.Context, request ports.RateLimitR
 	if decision.LimitType == "" {
 		decision.LimitType = request.LimitType
 	}
+	if strings.TrimSpace(decision.Operation) == "" {
+		decision.Operation = request.Operation
+	}
 	if s.observe != nil {
 		s.observe.ObserveRateLimitDecision(ctx, decision)
 	}
