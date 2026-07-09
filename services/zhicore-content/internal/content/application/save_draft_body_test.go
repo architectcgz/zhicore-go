@@ -10,6 +10,36 @@ import (
 )
 
 func TestSaveDraftBody(t *testing.T) {
+	t.Run("rate limit fail closed before loading post or writing body", func(t *testing.T) {
+		deps := newSaveDraftDeps()
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+			Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+			Reason:  "redis_unavailable_fail_closed",
+		}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.SaveDraftBody(context.Background(), saveDraftCommand())
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("SaveDraftBody() error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.posts.getCalls != 0 || deps.bodies.writeDraftCalls != 0 || deps.tx.calls != 0 {
+			t.Fatalf("side effects get/write/tx = %d/%d/%d, want none", deps.posts.getCalls, deps.bodies.writeDraftCalls, deps.tx.calls)
+		}
+		if len(limiter.requests) != 1 {
+			t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+		}
+		got := limiter.requests[0]
+		if got.LimitType != ports.RateLimitTypeDraftWrite ||
+			got.Subject != "actor:1001" ||
+			got.Resource != "post_1" ||
+			got.Operation != "save_draft_body" {
+			t.Fatalf("rate limit request = %+v, want draft write actor/post/operation", got)
+		}
+	})
+
 	t.Run("rejects non owner before body write", func(t *testing.T) {
 		deps := newSaveDraftDeps()
 		deps.posts.getResult.OwnerID = 2002

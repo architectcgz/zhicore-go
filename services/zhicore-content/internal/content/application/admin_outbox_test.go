@@ -151,6 +151,41 @@ func TestAdminOutboxUseCases(t *testing.T) {
 			t.Fatalf("RetryAdminOutboxEvent() error = %v, want ErrOutboxEventNotFound", err)
 		}
 	})
+
+	t.Run("rate limits retry before repository mutation", func(t *testing.T) {
+		deps := newCreatePostDeps()
+		deps.outboxAdmin = &fakeOutboxAdminRepository{}
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+			Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+			Reason:  "redis_unavailable_fail_closed",
+		}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.RetryAdminOutboxEvent(context.Background(), RetryAdminOutboxEventCommand{
+			Actor:   &Actor{UserID: 1001, Roles: []string{"admin"}},
+			EventID: "evt_post_published_1",
+			Reason:  "manual replay",
+		})
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("RetryAdminOutboxEvent() error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.outboxAdmin.retryCalls != 0 {
+			t.Fatalf("retry calls = %d, want none", deps.outboxAdmin.retryCalls)
+		}
+		if len(limiter.requests) != 1 {
+			t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+		}
+		got := limiter.requests[0]
+		if got.LimitType != ports.RateLimitTypeAdminCommand ||
+			got.Subject != "actor:1001" ||
+			got.Resource != "evt_post_published_1" ||
+			got.Operation != "retry_admin_outbox_event" {
+			t.Fatalf("rate limit request = %+v, want admin command event retry", got)
+		}
+	})
 }
 
 type fakeOutboxAdminRepository struct {

@@ -12,6 +12,36 @@ import (
 )
 
 func TestPublishPost(t *testing.T) {
+	t.Run("rate limit fail closed before loading post or reading draft body", func(t *testing.T) {
+		deps := newPublishPostDeps()
+		limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+			Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+			Reason:  "redis_unavailable_fail_closed",
+		}}
+		serviceDeps := deps.asDeps()
+		serviceDeps.Limiter = limiter
+		service := NewService(serviceDeps)
+
+		_, err := service.PublishPost(context.Background(), publishCommand())
+
+		if !errors.Is(err, ErrDependencyUnavailable) {
+			t.Fatalf("PublishPost() error = %v, want ErrDependencyUnavailable", err)
+		}
+		if deps.posts.getCalls != 0 || deps.bodies.readCalls != 0 || deps.tx.calls != 0 {
+			t.Fatalf("side effects get/read/tx = %d/%d/%d, want none", deps.posts.getCalls, deps.bodies.readCalls, deps.tx.calls)
+		}
+		if len(limiter.requests) != 1 {
+			t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+		}
+		got := limiter.requests[0]
+		if got.LimitType != ports.RateLimitTypePublishLifecycle ||
+			got.Subject != "actor:1001" ||
+			got.Resource != "post_1" ||
+			got.Operation != "publish_post" {
+			t.Fatalf("rate limit request = %+v, want publish lifecycle actor/post/operation", got)
+		}
+	})
+
 	t.Run("rejects non owner", func(t *testing.T) {
 		deps := newPublishPostDeps()
 		deps.posts.getResult.OwnerID = 2002

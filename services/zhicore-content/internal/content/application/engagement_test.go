@@ -137,6 +137,100 @@ func TestEngagementCommandIgnoresCacheWriteFailureAfterTransaction(t *testing.T)
 	}
 }
 
+func TestEngagementWriteRateLimitFailsClosedBeforeMutation(t *testing.T) {
+	deps := newCreatePostDeps()
+	limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+		Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+		Reason:  "redis_unavailable_fail_closed",
+	}}
+	serviceDeps := deps.asDeps()
+	serviceDeps.Limiter = limiter
+	service := NewService(serviceDeps)
+
+	_, err := service.LikePost(context.Background(), EngagementCommand{Actor: &Actor{UserID: 42}, PostID: "post_1"})
+
+	if !errors.Is(err, ErrDependencyUnavailable) {
+		t.Fatalf("LikePost() error = %v, want ErrDependencyUnavailable", err)
+	}
+	if deps.tx.calls != 0 || deps.engagement.mutateCalls != 0 {
+		t.Fatalf("side effects tx=%d mutate=%d, want none", deps.tx.calls, deps.engagement.mutateCalls)
+	}
+	if len(limiter.requests) != 1 {
+		t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+	}
+	got := limiter.requests[0]
+	if got.LimitType != ports.RateLimitTypeEngagementWrite ||
+		got.Subject != "actor:42" ||
+		got.Resource != "post_1" ||
+		got.Operation != "like_post" {
+		t.Fatalf("rate limit request = %+v, want engagement write actor/post/operation", got)
+	}
+}
+
+func TestGetPostEngagementUsesEngagementReadRateLimit(t *testing.T) {
+	deps := newCreatePostDeps()
+	deps.engagement = &fakeEngagementRepository{
+		statsResult: ports.PostEngagementRecord{
+			PostID: "post_1",
+			Stats:  ports.PostStatsRecord{LikeCount: 3, FavoriteCount: 2},
+		},
+		statusResult: []ports.EngagementStatusRecord{{PostID: "post_1", Liked: true}},
+	}
+	limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{Outcome: ports.RateLimitOutcomeAllow}}
+	serviceDeps := deps.asDeps()
+	serviceDeps.Limiter = limiter
+	service := NewService(serviceDeps)
+
+	_, err := service.GetPostEngagement(context.Background(), GetPostEngagementQuery{Actor: &Actor{UserID: 42}, PostID: "post_1"})
+
+	if err != nil {
+		t.Fatalf("GetPostEngagement() error = %v", err)
+	}
+	if len(limiter.requests) != 1 {
+		t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+	}
+	got := limiter.requests[0]
+	if got.LimitType != ports.RateLimitTypeEngagementRead ||
+		got.Subject != "actor:42" ||
+		got.Resource != "post_1" ||
+		got.Operation != "get_post_engagement" {
+		t.Fatalf("rate limit request = %+v, want engagement read actor/post/operation", got)
+	}
+}
+
+func TestBatchGetEngagementStatusRateLimitFailsClosedBeforeCacheOrDB(t *testing.T) {
+	deps := newCreatePostDeps()
+	limiter := &recordingRateLimiter{decision: ports.RateLimitDecision{
+		Outcome: ports.RateLimitOutcomeDegradedDenyUnavailable,
+		Reason:  "redis_unavailable_fail_closed",
+	}}
+	serviceDeps := deps.asDeps()
+	serviceDeps.Limiter = limiter
+	service := NewService(serviceDeps)
+
+	_, err := service.BatchGetEngagementStatus(context.Background(), BatchGetEngagementStatusQuery{
+		Actor:   &Actor{UserID: 42},
+		PostIDs: []string{"post_1", "post_2"},
+	})
+
+	if !errors.Is(err, ErrDependencyUnavailable) {
+		t.Fatalf("BatchGetEngagementStatus() error = %v, want ErrDependencyUnavailable", err)
+	}
+	if deps.engagementCache.readCalls != 0 || deps.engagement.statusCalls != 0 {
+		t.Fatalf("status side effects cache=%d db=%d, want none", deps.engagementCache.readCalls, deps.engagement.statusCalls)
+	}
+	if len(limiter.requests) != 1 {
+		t.Fatalf("rate limit requests = %+v, want one", limiter.requests)
+	}
+	got := limiter.requests[0]
+	if got.LimitType != ports.RateLimitTypeEngagementRead ||
+		got.Subject != "actor:42" ||
+		got.Resource != "post_1,post_2" ||
+		got.Operation != "batch_get_engagement_status" {
+		t.Fatalf("rate limit request = %+v, want engagement read actor/batch/operation", got)
+	}
+}
+
 func TestGetPostEngagementReturnsUnknownViewerWhenFallbackCannotConfirm(t *testing.T) {
 	deps := newCreatePostDeps()
 	deps.engagement = &fakeEngagementRepository{

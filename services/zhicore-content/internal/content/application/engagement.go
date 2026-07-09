@@ -100,12 +100,15 @@ func (s *Service) mutateEngagement(ctx context.Context, cmd EngagementCommand, a
 	if cmd.Actor == nil || cmd.Actor.UserID == 0 {
 		return EngagementResult{}, ErrLoginRequired
 	}
-	if s.engagement == nil || s.tx == nil || s.clock == nil {
-		return EngagementResult{}, ErrDependencyUnavailable
-	}
 	postID := strings.TrimSpace(cmd.PostID)
 	if postID == "" {
 		return EngagementResult{}, ErrInvalidArgument
+	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeEngagementWrite, cmd.Actor, postID, engagementRateLimitOperation(action))); err != nil {
+		return EngagementResult{}, err
+	}
+	if s.engagement == nil || s.tx == nil || s.clock == nil {
+		return EngagementResult{}, ErrDependencyUnavailable
 	}
 	now := s.clock.Now()
 	var record ports.EngagementMutationRecord
@@ -145,12 +148,15 @@ func (s *Service) mutateEngagement(ctx context.Context, cmd EngagementCommand, a
 }
 
 func (s *Service) GetPostEngagement(ctx context.Context, query GetPostEngagementQuery) (PostEngagementResult, error) {
-	if s.engagement == nil {
-		return PostEngagementResult{}, ErrDependencyUnavailable
-	}
 	postID := strings.TrimSpace(query.PostID)
 	if postID == "" {
 		return PostEngagementResult{}, ErrInvalidArgument
+	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeEngagementRead, query.Actor, postID, "get_post_engagement")); err != nil {
+		return PostEngagementResult{}, err
+	}
+	if s.engagement == nil {
+		return PostEngagementResult{}, ErrDependencyUnavailable
 	}
 	record, err := s.engagement.GetPostEngagement(ctx, postID)
 	if err != nil {
@@ -179,6 +185,9 @@ func (s *Service) BatchGetEngagementStatus(ctx context.Context, query BatchGetEn
 	}
 	ids, err := normalizeEngagementPostIDs(query.PostIDs)
 	if err != nil {
+		return BatchEngagementStatusResult{}, err
+	}
+	if err := s.enforceRateLimit(ctx, actorRateLimitRequest(ports.RateLimitTypeEngagementRead, query.Actor, strings.Join(ids, ","), "batch_get_engagement_status")); err != nil {
 		return BatchEngagementStatusResult{}, err
 	}
 	status, ok := s.readViewerStatus(ctx, query.Actor.UserID, ids)
@@ -286,6 +295,19 @@ func engagementStatsDelta(action ports.EngagementAction) (string, int) {
 		return "FAVORITE", -1
 	default:
 		return "LIKE", 1
+	}
+}
+
+func engagementRateLimitOperation(action ports.EngagementAction) string {
+	switch action {
+	case ports.EngagementActionUnlike:
+		return "unlike_post"
+	case ports.EngagementActionFavorite:
+		return "favorite_post"
+	case ports.EngagementActionUnfavorite:
+		return "unfavorite_post"
+	default:
+		return "like_post"
 	}
 }
 
