@@ -32,9 +32,6 @@ func (s *Service) enforceRateLimit(ctx context.Context, request ports.RateLimitR
 	case ports.RateLimitOutcomeDegradedDenyUnavailable:
 		// High-side-effect paths fail closed when the distributed budget cannot be confirmed.
 		return fmt.Errorf("%w: %s", ErrDependencyUnavailable, decisionReason(decision))
-	case ports.RateLimitOutcomeNoopSuccess:
-		// No-op success must be handled by a use case that can return an empty success without side effects.
-		return fmt.Errorf("%w: noop rate limit outcome requires explicit use case handling", ErrDependencyUnavailable)
 	default:
 		return fmt.Errorf("%w: unknown rate limit outcome", ErrDependencyUnavailable)
 	}

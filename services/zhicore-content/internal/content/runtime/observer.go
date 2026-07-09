@@ -50,8 +50,6 @@ func rateLimitStatus(outcome ports.RateLimitOutcome) string {
 		return "rate_limited"
 	case ports.RateLimitOutcomeDegradedDenyUnavailable:
 		return "dependency_unavailable"
-	case ports.RateLimitOutcomeNoopSuccess:
-		return "noop_success"
 	default:
 		return "unknown"
 	}

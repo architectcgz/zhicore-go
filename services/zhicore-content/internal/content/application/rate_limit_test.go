@@ -18,7 +18,6 @@ func TestEnforceRateLimitMapsDecisions(t *testing.T) {
 		{name: "degraded local allow", outcome: ports.RateLimitOutcomeDegradedAllowLocal},
 		{name: "too frequent", outcome: ports.RateLimitOutcomeRejectTooFrequent, wantErr: ErrRateLimited},
 		{name: "fail closed", outcome: ports.RateLimitOutcomeDegradedDenyUnavailable, wantErr: ErrDependencyUnavailable},
-		{name: "noop requires explicit use case handling", outcome: ports.RateLimitOutcomeNoopSuccess, wantErr: ErrDependencyUnavailable},
 		{name: "unknown outcome fails closed", outcome: ports.RateLimitOutcome("UNKNOWN"), wantErr: ErrDependencyUnavailable},
 	}
 

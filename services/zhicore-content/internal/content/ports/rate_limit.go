@@ -24,7 +24,6 @@ const (
 	RateLimitOutcomeRejectTooFrequent       RateLimitOutcome = "REJECT_TOO_FREQUENT"
 	RateLimitOutcomeDegradedAllowLocal      RateLimitOutcome = "DEGRADED_ALLOW_LOCAL"
 	RateLimitOutcomeDegradedDenyUnavailable RateLimitOutcome = "DEGRADED_DENY_UNAVAILABLE"
-	RateLimitOutcomeNoopSuccess             RateLimitOutcome = "NOOP_SUCCESS"
 )
 
 type RateLimitFallback string
