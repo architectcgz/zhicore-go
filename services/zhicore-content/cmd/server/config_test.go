@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
 	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
 
@@ -362,13 +361,13 @@ func TestLoadContentServerConfigAppliesRateLimitDefaults(t *testing.T) {
 		t.Fatalf("LoadContentServerConfig() error = %v", err)
 	}
 
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublicRead, 120, time.Minute, ports.RateLimitFallbackLocalMemory, false)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeDraftWrite, 30, time.Minute, ports.RateLimitFallbackLocalMemory, false)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublishLifecycle, 5, time.Minute, ports.RateLimitFallbackNone, true)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeEngagementWrite, 60, time.Minute, ports.RateLimitFallbackLocalMemory, false)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeEngagementRead, 120, time.Minute, ports.RateLimitFallbackLocalMemory, false)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeAdminCommand, 10, time.Minute, ports.RateLimitFallbackNone, true)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeInternalClient, 120, time.Minute, ports.RateLimitFallbackNone, true)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypePublicRead, 120, time.Minute, contentruntime.RateLimitFallbackLocalMemory, 2*time.Minute, false)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeDraftWrite, 30, time.Minute, contentruntime.RateLimitFallbackLocalMemory, 30*time.Second, false)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypePublishLifecycle, 5, time.Minute, contentruntime.RateLimitFallbackNone, 0, true)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeEngagementWrite, 60, time.Minute, contentruntime.RateLimitFallbackLocalMemory, 30*time.Second, false)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeEngagementRead, 120, time.Minute, contentruntime.RateLimitFallbackLocalMemory, 2*time.Minute, false)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeAdminCommand, 10, time.Minute, contentruntime.RateLimitFallbackNone, 0, true)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeInternalClient, 120, time.Minute, contentruntime.RateLimitFallbackNone, 0, true)
 }
 
 func TestLoadContentServerConfigAppliesRateLimitEnvOverrides(t *testing.T) {
@@ -376,6 +375,7 @@ func TestLoadContentServerConfigAppliesRateLimitEnvOverrides(t *testing.T) {
 	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_LIMIT"] = "42"
 	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW"] = "30s"
 	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK"] = "gateway_only"
+	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK_WINDOW"] = "45s"
 	values["ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FAIL_CLOSED"] = "true"
 
 	cfg, err := LoadContentServerConfig(mapLookup(values))
@@ -383,8 +383,8 @@ func TestLoadContentServerConfigAppliesRateLimitEnvOverrides(t *testing.T) {
 		t.Fatalf("LoadContentServerConfig() error = %v", err)
 	}
 
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypePublicRead, 42, 30*time.Second, ports.RateLimitFallbackGatewayOnly, true)
-	assertRateLimitRule(t, cfg.RateLimit, ports.RateLimitTypeDraftWrite, 30, time.Minute, ports.RateLimitFallbackLocalMemory, false)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypePublicRead, 42, 30*time.Second, contentruntime.RateLimitFallbackGatewayOnly, 45*time.Second, true)
+	assertRateLimitRule(t, cfg.RateLimit, contentruntime.RateLimitTypeDraftWrite, 30, time.Minute, contentruntime.RateLimitFallbackLocalMemory, 30*time.Second, false)
 }
 
 func TestLoadContentServerConfigRejectsInvalidRateLimitEnv(t *testing.T) {
@@ -398,6 +398,8 @@ func TestLoadContentServerConfigRejectsInvalidRateLimitEnv(t *testing.T) {
 		{name: "window invalid", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW", value: "soon"},
 		{name: "window zero", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_WINDOW", value: "0s"},
 		{name: "fallback invalid", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK", value: "redis"},
+		{name: "fallback window invalid", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK_WINDOW", value: "soon"},
+		{name: "fallback window zero", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FALLBACK_WINDOW", value: "0s"},
 		{name: "fail closed non canonical", envName: "ZHICORE_CONTENT_RATE_LIMIT_PUBLIC_READ_FAIL_CLOSED", value: "TRUE"},
 	}
 
@@ -414,14 +416,14 @@ func TestLoadContentServerConfigRejectsInvalidRateLimitEnv(t *testing.T) {
 	}
 }
 
-func assertRateLimitRule(t *testing.T, cfg contentruntime.RateLimitConfig, limitType ports.RateLimitType, limit int, window time.Duration, fallback ports.RateLimitFallback, failClosed bool) {
+func assertRateLimitRule(t *testing.T, cfg contentruntime.RateLimitConfig, limitType contentruntime.RateLimitType, limit int, window time.Duration, fallback contentruntime.RateLimitFallback, fallbackWindow time.Duration, failClosed bool) {
 	t.Helper()
 	rule, ok := cfg.Rules[limitType]
 	if !ok {
 		t.Fatalf("rate limit rule %s missing", limitType)
 	}
-	if rule.Limit != limit || rule.Window != window || rule.Fallback != fallback || rule.FailClosed != failClosed {
-		t.Fatalf("rate limit rule %s = %#v, want limit=%d window=%s fallback=%s failClosed=%t", limitType, rule, limit, window, fallback, failClosed)
+	if rule.Limit != limit || rule.Window != window || rule.Fallback != fallback || rule.FallbackWindow != fallbackWindow || rule.FailClosed != failClosed {
+		t.Fatalf("rate limit rule %s = %#v, want limit=%d window=%s fallback=%s fallbackWindow=%s failClosed=%t", limitType, rule, limit, window, fallback, fallbackWindow, failClosed)
 	}
 }
 

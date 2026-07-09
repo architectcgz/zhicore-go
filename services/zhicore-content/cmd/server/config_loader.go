@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
+	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
 
 const (
@@ -265,6 +265,15 @@ func overlayRateLimitConfig(cfg *ContentServerConfig, lookup func(string) (strin
 			}
 			rule.Fallback = parsed
 		}
+		if value, ok, err := lookupOptionalEnv(lookup, prefix+"_FALLBACK_WINDOW"); err != nil {
+			return err
+		} else if ok {
+			parsed, err := parseDurationEnv(prefix+"_FALLBACK_WINDOW", value)
+			if err != nil {
+				return err
+			}
+			rule.FallbackWindow = parsed
+		}
 		if value, ok, err := lookupOptionalEnv(lookup, prefix+"_FAIL_CLOSED"); err != nil {
 			return err
 		} else if ok {
@@ -279,7 +288,7 @@ func overlayRateLimitConfig(cfg *ContentServerConfig, lookup func(string) (strin
 	return nil
 }
 
-func rateLimitEnvPrefix(limitType ports.RateLimitType) string {
+func rateLimitEnvPrefix(limitType contentruntime.RateLimitType) string {
 	return "ZHICORE_CONTENT_RATE_LIMIT_" + strings.ToUpper(string(limitType))
 }
 

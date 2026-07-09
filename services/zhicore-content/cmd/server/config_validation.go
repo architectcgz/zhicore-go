@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/ports"
+	contentruntime "github.com/architectcgz/zhicore-go/services/zhicore-content/internal/content/runtime"
 )
 
 func lookupRequiredEnv(lookup func(string) (string, bool), name string) (string, bool, error) {
@@ -112,14 +112,14 @@ func parseNonNegativeIntEnv(name, raw string) (int, error) {
 	return value, nil
 }
 
-func parseRateLimitFallbackEnv(name, raw string) (ports.RateLimitFallback, error) {
-	switch ports.RateLimitFallback(strings.TrimSpace(raw)) {
-	case ports.RateLimitFallbackNone:
-		return ports.RateLimitFallbackNone, nil
-	case ports.RateLimitFallbackLocalMemory:
-		return ports.RateLimitFallbackLocalMemory, nil
-	case ports.RateLimitFallbackGatewayOnly:
-		return ports.RateLimitFallbackGatewayOnly, nil
+func parseRateLimitFallbackEnv(name, raw string) (contentruntime.RateLimitFallback, error) {
+	switch contentruntime.RateLimitFallback(strings.TrimSpace(raw)) {
+	case contentruntime.RateLimitFallbackNone:
+		return contentruntime.RateLimitFallbackNone, nil
+	case contentruntime.RateLimitFallbackLocalMemory:
+		return contentruntime.RateLimitFallbackLocalMemory, nil
+	case contentruntime.RateLimitFallbackGatewayOnly:
+		return contentruntime.RateLimitFallbackGatewayOnly, nil
 	default:
 		return "", fmt.Errorf("%s: value must be none, local_memory, or gateway_only", name)
 	}

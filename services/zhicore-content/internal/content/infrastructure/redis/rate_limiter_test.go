@@ -36,7 +36,12 @@ func TestFixedWindowRateLimiterAllowsAndRejectsByRedisWindow(t *testing.T) {
 func TestFixedWindowRateLimiterUsesLocalFallbackDuringRedisOutage(t *testing.T) {
 	client := &stubCmdable{incrErr: errors.New("redis unavailable")}
 	limiter := NewFixedWindowRateLimiter(client, map[ports.RateLimitType]RateLimitRule{
-		ports.RateLimitTypeDraftWrite: {Limit: 1, Window: time.Minute, Fallback: ports.RateLimitFallbackLocalMemory},
+		ports.RateLimitTypeDraftWrite: {
+			Limit:          1,
+			Window:         time.Minute,
+			Fallback:       ports.RateLimitFallbackLocalMemory,
+			FallbackWindow: 30 * time.Second,
+		},
 	})
 	request := ports.RateLimitRequest{LimitType: ports.RateLimitTypeDraftWrite, Subject: "actor:1", Resource: "post:1", Operation: "save"}
 
@@ -52,6 +57,36 @@ func TestFixedWindowRateLimiterUsesLocalFallbackDuringRedisOutage(t *testing.T) 
 		second.Fallback != ports.RateLimitFallbackLocalMemory ||
 		second.RetryAfter <= 0 {
 		t.Fatalf("second decision = %#v, want local fallback rejection", second)
+	}
+}
+
+func TestFixedWindowRateLimiterStopsLocalFallbackAfterFallbackWindow(t *testing.T) {
+	start := time.Unix(1_700_000_000, 0)
+	client := &stubCmdable{incrErr: errors.New("redis unavailable")}
+	limiter := NewFixedWindowRateLimiter(client, map[ports.RateLimitType]RateLimitRule{
+		ports.RateLimitTypeDraftWrite: {
+			Limit:          100,
+			Window:         time.Minute,
+			Fallback:       ports.RateLimitFallbackLocalMemory,
+			FallbackWindow: 30 * time.Second,
+		},
+	}).(*fixedWindowRateLimiter)
+	limiter.now = func() time.Time { return start }
+	request := ports.RateLimitRequest{LimitType: ports.RateLimitTypeDraftWrite, Subject: "actor:1", Resource: "post:1", Operation: "save"}
+
+	first := limiter.Check(context.Background(), request)
+	if first.Outcome != ports.RateLimitOutcomeDegradedAllowLocal ||
+		first.Fallback != ports.RateLimitFallbackLocalMemory {
+		t.Fatalf("first decision = %#v, want local fallback allow", first)
+	}
+
+	limiter.now = func() time.Time { return start.Add(31 * time.Second) }
+	expired := limiter.Check(context.Background(), request)
+	if expired.Outcome != ports.RateLimitOutcomeDegradedDenyUnavailable ||
+		expired.PublicCode != 1004 ||
+		expired.Reason != "redis_unavailable_fallback_window_exceeded" ||
+		expired.Fallback != ports.RateLimitFallbackLocalMemory {
+		t.Fatalf("expired decision = %#v, want fallback window denial", expired)
 	}
 }
 

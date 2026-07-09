@@ -14,26 +14,30 @@ import (
 )
 
 type RateLimitRule struct {
-	Limit      int
-	Window     time.Duration
-	Fallback   ports.RateLimitFallback
-	FailClosed bool
+	Limit          int
+	Window         time.Duration
+	Fallback       ports.RateLimitFallback
+	FallbackWindow time.Duration
+	FailClosed     bool
 }
 
 func NewFixedWindowRateLimiter(client goredis.Cmdable, rules map[ports.RateLimitType]RateLimitRule) ports.RateLimiter {
 	return &fixedWindowRateLimiter{
-		client:   client,
-		rules:    rules,
-		fallback: newLocalMemoryRateLimiter(),
-		now:      time.Now,
+		client:        client,
+		rules:         rules,
+		fallback:      newLocalMemoryRateLimiter(),
+		degradedSince: make(map[ports.RateLimitType]time.Time),
+		now:           time.Now,
 	}
 }
 
 type fixedWindowRateLimiter struct {
-	client   goredis.Cmdable
-	rules    map[ports.RateLimitType]RateLimitRule
-	fallback *localMemoryRateLimiter
-	now      func() time.Time
+	client        goredis.Cmdable
+	rules         map[ports.RateLimitType]RateLimitRule
+	fallback      *localMemoryRateLimiter
+	degradedMu    sync.Mutex
+	degradedSince map[ports.RateLimitType]time.Time
+	now           func() time.Time
 }
 
 func (l *fixedWindowRateLimiter) Check(ctx context.Context, request ports.RateLimitRequest) ports.RateLimitDecision {
@@ -52,6 +56,7 @@ func (l *fixedWindowRateLimiter) Check(ctx context.Context, request ports.RateLi
 			return l.degradedDecision(request, rule, now)
 		}
 	}
+	l.markRedisHealthy(request.LimitType)
 	if count > int64(rule.Limit) {
 		return ports.RateLimitDecision{
 			Outcome:    ports.RateLimitOutcomeRejectTooFrequent,
@@ -88,9 +93,18 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			Fallback:   rule.Fallback,
 		}
 	}
+	if !l.fallbackWindowAllows(request.LimitType, rule, now) {
+		return ports.RateLimitDecision{
+			Outcome:    ports.RateLimitOutcomeDegradedDenyUnavailable,
+			PublicCode: 1004,
+			Reason:     "redis_unavailable_fallback_window_exceeded",
+			LimitType:  request.LimitType,
+			Fallback:   rule.Fallback,
+		}
+	}
 	switch rule.Fallback {
 	case ports.RateLimitFallbackLocalMemory:
-		// Local fallback preserves a bounded budget for read and low-risk write paths during short Redis outages.
+		// Local fallback is only a short outage budget; it is per process and cannot enforce a global quota in multi-instance deployments.
 		allowed, retryAfter := l.fallback.allow(localMemoryRateLimitKey(request, rule, now), rule, now)
 		if !allowed {
 			return ports.RateLimitDecision{
@@ -124,6 +138,27 @@ func (l *fixedWindowRateLimiter) degradedDecision(request ports.RateLimitRequest
 			Fallback:   rule.Fallback,
 		}
 	}
+}
+
+func (l *fixedWindowRateLimiter) fallbackWindowAllows(limitType ports.RateLimitType, rule RateLimitRule, now time.Time) bool {
+	if rule.FallbackWindow <= 0 {
+		return false
+	}
+	l.degradedMu.Lock()
+	defer l.degradedMu.Unlock()
+
+	startedAt, ok := l.degradedSince[limitType]
+	if !ok {
+		l.degradedSince[limitType] = now
+		return true
+	}
+	return !now.After(startedAt.Add(rule.FallbackWindow))
+}
+
+func (l *fixedWindowRateLimiter) markRedisHealthy(limitType ports.RateLimitType) {
+	l.degradedMu.Lock()
+	defer l.degradedMu.Unlock()
+	delete(l.degradedSince, limitType)
 }
 
 func redisRateLimitKey(request ports.RateLimitRequest, rule RateLimitRule, now time.Time) string {

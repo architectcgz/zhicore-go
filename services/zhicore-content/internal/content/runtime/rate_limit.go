@@ -12,6 +12,30 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
+// RateLimitType is re-exported from ports so process-root config loading can
+// name runtime-owned rules without importing application ports directly.
+type RateLimitType = ports.RateLimitType
+
+const (
+	RateLimitTypePublicRead       RateLimitType = ports.RateLimitTypePublicRead
+	RateLimitTypeDraftWrite       RateLimitType = ports.RateLimitTypeDraftWrite
+	RateLimitTypePublishLifecycle RateLimitType = ports.RateLimitTypePublishLifecycle
+	RateLimitTypeEngagementWrite  RateLimitType = ports.RateLimitTypeEngagementWrite
+	RateLimitTypeEngagementRead   RateLimitType = ports.RateLimitTypeEngagementRead
+	RateLimitTypeAdminCommand     RateLimitType = ports.RateLimitTypeAdminCommand
+	RateLimitTypeInternalClient   RateLimitType = ports.RateLimitTypeInternalClient
+)
+
+// RateLimitFallback is re-exported for runtime configuration parsing while the
+// limiter decision contract remains owned by ports.
+type RateLimitFallback = ports.RateLimitFallback
+
+const (
+	RateLimitFallbackNone        RateLimitFallback = ports.RateLimitFallbackNone
+	RateLimitFallbackLocalMemory RateLimitFallback = ports.RateLimitFallbackLocalMemory
+	RateLimitFallbackGatewayOnly RateLimitFallback = ports.RateLimitFallbackGatewayOnly
+)
+
 type RedisConfig struct {
 	Addr         string
 	Username     string
@@ -46,14 +70,15 @@ func (c RedisConfig) GoString() string {
 }
 
 type RateLimitConfig struct {
-	Rules map[ports.RateLimitType]RateLimitRuleConfig
+	Rules map[RateLimitType]RateLimitRuleConfig
 }
 
 type RateLimitRuleConfig struct {
-	Limit      int
-	Window     time.Duration
-	Fallback   ports.RateLimitFallback
-	FailClosed bool
+	Limit          int
+	Window         time.Duration
+	Fallback       RateLimitFallback
+	FallbackWindow time.Duration
+	FailClosed     bool
 }
 
 type RedisRateLimitDependency struct {
@@ -72,14 +97,14 @@ func DefaultRedisConfig() RedisConfig {
 }
 
 func DefaultRateLimitConfig() RateLimitConfig {
-	return RateLimitConfig{Rules: map[ports.RateLimitType]RateLimitRuleConfig{
-		ports.RateLimitTypePublicRead:       {Limit: 120, Window: time.Minute, Fallback: ports.RateLimitFallbackLocalMemory},
-		ports.RateLimitTypeDraftWrite:       {Limit: 30, Window: time.Minute, Fallback: ports.RateLimitFallbackLocalMemory},
-		ports.RateLimitTypePublishLifecycle: {Limit: 5, Window: time.Minute, Fallback: ports.RateLimitFallbackNone, FailClosed: true},
-		ports.RateLimitTypeEngagementWrite:  {Limit: 60, Window: time.Minute, Fallback: ports.RateLimitFallbackLocalMemory},
-		ports.RateLimitTypeEngagementRead:   {Limit: 120, Window: time.Minute, Fallback: ports.RateLimitFallbackLocalMemory},
-		ports.RateLimitTypeAdminCommand:     {Limit: 10, Window: time.Minute, Fallback: ports.RateLimitFallbackNone, FailClosed: true},
-		ports.RateLimitTypeInternalClient:   {Limit: 120, Window: time.Minute, Fallback: ports.RateLimitFallbackNone, FailClosed: true},
+	return RateLimitConfig{Rules: map[RateLimitType]RateLimitRuleConfig{
+		RateLimitTypePublicRead:       {Limit: 120, Window: time.Minute, Fallback: RateLimitFallbackLocalMemory, FallbackWindow: 2 * time.Minute},
+		RateLimitTypeDraftWrite:       {Limit: 30, Window: time.Minute, Fallback: RateLimitFallbackLocalMemory, FallbackWindow: 30 * time.Second},
+		RateLimitTypePublishLifecycle: {Limit: 5, Window: time.Minute, Fallback: RateLimitFallbackNone, FailClosed: true},
+		RateLimitTypeEngagementWrite:  {Limit: 60, Window: time.Minute, Fallback: RateLimitFallbackLocalMemory, FallbackWindow: 30 * time.Second},
+		RateLimitTypeEngagementRead:   {Limit: 120, Window: time.Minute, Fallback: RateLimitFallbackLocalMemory, FallbackWindow: 2 * time.Minute},
+		RateLimitTypeAdminCommand:     {Limit: 10, Window: time.Minute, Fallback: RateLimitFallbackNone, FailClosed: true},
+		RateLimitTypeInternalClient:   {Limit: 120, Window: time.Minute, Fallback: RateLimitFallbackNone, FailClosed: true},
 	}}
 }
 
@@ -110,21 +135,27 @@ func rateLimitRulesFromConfig(config RateLimitConfig) map[ports.RateLimitType]co
 	rules := make(map[ports.RateLimitType]contentredis.RateLimitRule, len(defaults.Rules))
 	for limitType, rule := range defaults.Rules {
 		rules[limitType] = contentredis.RateLimitRule{
-			Limit:      rule.Limit,
-			Window:     rule.Window,
-			Fallback:   rule.Fallback,
-			FailClosed: rule.FailClosed,
+			Limit:          rule.Limit,
+			Window:         rule.Window,
+			Fallback:       rule.Fallback,
+			FallbackWindow: rule.FallbackWindow,
+			FailClosed:     rule.FailClosed,
 		}
 	}
 	for limitType, rule := range config.Rules {
 		if rule.Limit <= 0 || rule.Window <= 0 {
 			continue
 		}
+		fallbackWindow := rule.FallbackWindow
+		if fallbackWindow <= 0 {
+			fallbackWindow = rules[limitType].FallbackWindow
+		}
 		rules[limitType] = contentredis.RateLimitRule{
-			Limit:      rule.Limit,
-			Window:     rule.Window,
-			Fallback:   rule.Fallback,
-			FailClosed: rule.FailClosed,
+			Limit:          rule.Limit,
+			Window:         rule.Window,
+			Fallback:       rule.Fallback,
+			FallbackWindow: fallbackWindow,
+			FailClosed:     rule.FailClosed,
 		}
 	}
 	return rules
