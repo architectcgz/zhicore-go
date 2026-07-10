@@ -15,6 +15,29 @@ type markAllNotificationsReadResp struct {
 	AffectedCount int64  `json:"affectedCount"`
 }
 
+type markNotificationGroupReadResp struct {
+	GroupID      string `json:"groupId"`
+	Read         bool   `json:"read"`
+	ChangedCount int64  `json:"changedCount"`
+	UnreadCount  int64  `json:"unreadCount"`
+	ReadAt       string `json:"readAt"`
+}
+type notificationActorSnapshotResp struct {
+	PublicID    string  `json:"publicId"`
+	DisplayName string  `json:"displayName"`
+	AvatarURL   *string `json:"avatarUrl"`
+}
+type notificationActorResp struct {
+	Actor            notificationActorSnapshotResp `json:"actor"`
+	EventCount       int64                         `json:"eventCount"`
+	LatestOccurredAt string                        `json:"latestOccurredAt"`
+}
+type notificationActorPageResp struct {
+	Items      []notificationActorResp `json:"items"`
+	NextCursor string                  `json:"nextCursor,omitempty"`
+	HasMore    bool                    `json:"hasMore"`
+}
+
 type unreadCountResp struct {
 	UnreadCount int64 `json:"unreadCount"`
 }
@@ -35,16 +58,30 @@ type notificationPageResp struct {
 }
 
 type aggregatedNotificationResp struct {
-	Type              string          `json:"type"`
-	Category          string          `json:"category"`
-	TargetType        string          `json:"targetType"`
-	TargetID          string          `json:"targetId"`
-	TotalCount        int64           `json:"totalCount"`
-	UnreadCount       int64           `json:"unreadCount"`
-	LatestTime        string          `json:"latestTime"`
-	LatestContent     string          `json:"latestContent"`
-	ActorIDs          []int64         `json:"actorIds"`
-	AggregatedContent json.RawMessage `json:"aggregatedContent"`
+	GroupID          string                          `json:"groupId"`
+	Type             string                          `json:"type"`
+	Category         string                          `json:"category"`
+	TotalCount       int64                           `json:"totalCount"`
+	UnreadCount      int64                           `json:"unreadCount"`
+	ActorTotalCount  int64                           `json:"actorTotalCount"`
+	LatestOccurredAt string                          `json:"latestOccurredAt"`
+	Content          notificationContentResp         `json:"content"`
+	RecentActors     []notificationActorSnapshotResp `json:"recentActors"`
+	Target           *notificationTargetResp         `json:"target"`
+}
+
+type notificationContentResp struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+type notificationTargetResp struct {
+	Resource notificationTargetRefResp  `json:"resource"`
+	Anchor   *notificationTargetRefResp `json:"anchor,omitempty"`
+	Snapshot json.RawMessage            `json:"snapshot"`
+}
+type notificationTargetRefResp struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
 }
 
 type notificationChannelPreferencePayload struct {

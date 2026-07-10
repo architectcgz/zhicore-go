@@ -58,6 +58,82 @@ func TestMarkAllNotificationsReadAliasRoutesToSameCommand(t *testing.T) {
 	}
 }
 
+func TestMarkNotificationGroupReadRoutesPublicGroupID(t *testing.T) {
+	router := NewHandler(&fakeService{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/notification-groups/ng1F7qK2m/read", nil)
+	req.Header.Set("X-User-Id", "42")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestListNotificationsUsesGroupContractShape(t *testing.T) {
+	service := &fakeService{listResult: application.NotificationPage{Items: []application.AggregatedNotification{{
+		GroupID: "ng1abc", Type: "NEW_FUTURE_TYPE", Category: "INTERACTION", TotalCount: 5, UnreadCount: 2,
+		ActorTotalCount: 4,
+		RecentActors: []application.NotificationActorSnapshot{
+			{PublicID: "user_1", DisplayName: "陈立"},
+			{PublicID: "user_2", DisplayName: "小郑"},
+			{PublicID: "user_3", DisplayName: "阿宋"},
+		},
+		LatestTime: time.Date(2026, 7, 10, 5, 30, 0, 0, time.UTC), LatestContent: "陈立赞了你的文章",
+	}}}}
+	router := NewHandler(service)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/notifications", nil)
+	req.Header.Set("X-User-Id", "42")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+	var body struct {
+		Data struct {
+			Items []struct {
+				GroupID         string `json:"groupId"`
+				Type            string `json:"type"`
+				ActorTotalCount int64  `json:"actorTotalCount"`
+				RecentActors    []struct {
+					PublicID string `json:"publicId"`
+				} `json:"recentActors"`
+				Target *json.RawMessage `json:"target"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(body.Data.Items) != 1 || body.Data.Items[0].GroupID != "ng1abc" || body.Data.Items[0].Type != "NEW_FUTURE_TYPE" || body.Data.Items[0].ActorTotalCount != 4 || len(body.Data.Items[0].RecentActors) != 3 || body.Data.Items[0].RecentActors[0].PublicID != "user_1" || body.Data.Items[0].Target != nil {
+		t.Fatalf("data = %#v", body.Data.Items)
+	}
+}
+
+func TestListNotificationGroupActorsHidesNonOwnerAsNotFound(t *testing.T) {
+	router := NewHandler(&fakeService{listGroupActorsErr: application.ErrNotificationNotFound})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/notification-groups/ng1other/actors", nil)
+	req.Header.Set("X-User-Id", "42")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestListNotificationsRejectsInvalidContractFilters(t *testing.T) {
+	router := NewHandler(&fakeService{})
+	for _, rawQuery := range []string{"category=UNKNOWN", "unreadOnly=not-a-bool", "size=51"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/notifications?"+rawQuery, nil)
+		req.Header.Set("X-User-Id", "42")
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Fatalf("query %q status = %d, want 400; body=%s", rawQuery, rr.Code, rr.Body.String())
+		}
+	}
+}
+
 func TestNotificationPreferenceCanonicalAndAliasRoutes(t *testing.T) {
 	service := &fakeService{}
 	router := NewHandler(service)
@@ -132,6 +208,8 @@ type fakeService struct {
 	lastPreference         application.UpdateNotificationPreferencesCommand
 	lastDND                application.UpdateNotificationDNDCommand
 	lastRetry              application.RetryDeliveryCommand
+	listResult             application.NotificationPage
+	listGroupActorsErr     error
 }
 
 func (f *fakeService) MarkNotificationRead(ctx context.Context, cmd application.MarkNotificationReadCommand) (application.MarkNotificationReadResult, error) {
@@ -155,7 +233,15 @@ func (f *fakeService) GetUnreadBreakdown(ctx context.Context, query application.
 }
 
 func (f *fakeService) ListAggregatedNotifications(ctx context.Context, query application.ListNotificationsQuery) (application.NotificationPage, error) {
-	return application.NotificationPage{}, nil
+	return f.listResult, nil
+}
+
+func (f *fakeService) ListNotificationGroupActors(ctx context.Context, query application.ListNotificationGroupActorsQuery) (application.NotificationActorPage, error) {
+	return application.NotificationActorPage{}, f.listGroupActorsErr
+}
+
+func (f *fakeService) MarkNotificationGroupRead(ctx context.Context, cmd application.MarkNotificationGroupReadCommand) (application.MarkNotificationGroupReadResult, error) {
+	return application.MarkNotificationGroupReadResult{GroupID: cmd.GroupID, Read: true, ReadAt: time.Now().UTC()}, nil
 }
 
 func (f *fakeService) GetNotificationPreferences(ctx context.Context, query application.GetNotificationPreferencesQuery) (application.NotificationPreferencesResult, error) {
