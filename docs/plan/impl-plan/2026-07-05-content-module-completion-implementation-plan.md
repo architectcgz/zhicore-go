@@ -643,39 +643,41 @@
   同步 `runtime-resilience.md`、`rate-limiting.md` 或服务 README 中“已落地 / 待落地”状态，避免设计文档宣称代码已实现。
   已完成：`configs/local.example.env` 补 Redis、7 类限流和 resilience policy 示例；`rate-limiting.md`、`runtime-resilience.md` 和服务 README 只声明本轮已落地的配置矩阵、限流接线和 worker counter 调用点，并保留 breaker、max-in-flight 执行器、真实 exporter 等待补项。
 
-- [ ] **步骤 7：提交限流和 resilience 切片**
+- [x] **步骤 7：提交限流和 resilience 切片**
 
   rate limiter、policy config、observability 分开提交。
+  已完成：observability 原语 `1e8ac92`、限流观测适配器 `e1a398a`、resilience 配置矩阵 `d84a879`、写路径与内部读限流保护 `2d7a71f` / `e4fc1c0`、worker 观测指标 `58474e2`、docs 状态同步 `2c15b80` 已按 rate limiter / policy config / observability 分开提交。
 
 ## 任务 12：最终验证、review 证据和完成收口
 
 **测试立场：** 验证门禁切片。
 
-- [ ] **步骤 1：运行服务内测试**
+- [x] **步骤 1：运行服务内测试**
 
   运行：`cd services/zhicore-content && go test ./...`
 
   预期：通过。
 
-- [ ] **步骤 2：运行系统测试**
+- [x] **步骤 2：运行系统测试**
 
   运行：`go test ./tests/system/http -run TestContent`
 
   预期：有真实依赖时通过；若跳过，review 证据必须写清楚跳过原因。
+  已完成：本地无真实依赖，测试按设计跳过并返回 `ok`；跳过原因已记入 `docs/reviews/backend/2026-07-10-content-module-completion.md`。
 
-- [ ] **步骤 3：运行测试规模检查**
+- [x] **步骤 3：运行测试规模检查**
 
   运行：`python3 scripts/check-test-size.py --files services/zhicore-content tests/system/http tests/testkit`
 
   预期：通过。
 
-- [ ] **步骤 4：运行结构检查**
+- [x] **步骤 4：运行结构检查**
 
   运行：`bash scripts/check-structure.sh`
 
   预期：`structure ok`。
 
-- [ ] **步骤 5：运行最终 diff 检查**
+- [x] **步骤 5：运行最终 diff 检查**
 
   运行：`git diff --check`
 
@@ -684,10 +686,12 @@
 - [ ] **步骤 6：请求独立 review**
 
   对完整 diff、计划 checkbox、验证证据和残余风险做代码 review。若有 finding，先用 @receiving-code-review 判断是否有效，再按最小正确修复。
+  进行中：独立 review 已完成，结论见 `docs/reviews/backend/2026-07-10-content-module-completion.md`；发现 1 个 Blocker（worker 永久退出且 readiness 假绿），最小正确修复尚未应用，本步骤在修复合入前不勾选。
 
-- [ ] **步骤 7：记录 review 证据**
+- [x] **步骤 7：记录 review 证据**
 
   新增 `docs/reviews/backend/<date>-content-module-completion.md`，记录范围、提交、验证命令、review finding、残余风险和未验证外部依赖。
+  已完成：`docs/reviews/backend/2026-07-10-content-module-completion.md`。
 
 - [ ] **步骤 8：最终提交 review 证据**
 
