@@ -28,7 +28,7 @@
 | `zhicore-admin` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-admin-moderation-facade-foundation-implementation-plan.md` |
 | `zhicore-gateway` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-gateway-routing-auth-foundation-implementation-plan.md` |
 | `zhicore-message` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-message-module-foundation-implementation-plan.md` |
-| `zhicore-notification` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md` |
+| `zhicore-notification` | 已完成并归档 | `docs/plan/archive/impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md` |
 | `zhicore-search` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-search-post-index-foundation-implementation-plan.md` |
 | `zhicore-ranking` | 正式实现计划 | `docs/plan/impl-plan/2026-07-06-ranking-ledger-hot-posts-foundation-implementation-plan.md` |
 | `zhicore-ops` | 当前不写服务实现计划 | 未固定首个运维 use case；候选 `/api/v1/ops/*` 不是 contract backlog。 |

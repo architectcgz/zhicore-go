@@ -3,7 +3,7 @@
 ## 范围
 
 - Worktree: `task/2026-07-06-notification-module-foundation`
-- 计划: `docs/plan/impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md`
+- 计划: `docs/plan/archive/impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md`
 - 重点: campaign shard fanout、lease 安全、runtime worker lifecycle、migration 和质量门禁。
 
 ## 独立 review 结论
