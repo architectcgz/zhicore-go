@@ -16,11 +16,11 @@
 | `impl-plan/2026-07-06-admin-moderation-facade-foundation-implementation-plan.md` | Admin 管理审核 facade、举报处理、审计和 provider 委托基础 | 待执行 |
 | `impl-plan/2026-07-06-gateway-routing-auth-foundation-implementation-plan.md` | Gateway 路由清单、认证、Auth fallback、身份 header 注入和诊断基础 | 待执行 |
 | `impl-plan/2026-07-06-message-module-foundation-implementation-plan.md` | Message 私信发送、会话投影、未读数、runtime、召回和 outbox 基础 | 待执行 |
-| `impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md` | Notification 收件箱、未读、consumer、偏好、delivery 和 campaign 基础 | 待执行 |
 | `impl-plan/2026-07-06-search-post-index-foundation-implementation-plan.md` | Search HTTP contract、PostgreSQL 搜索读模型、Content 事件索引、查询和历史基础 | 待执行 |
 | `impl-plan/2026-07-06-ranking-ledger-hot-posts-foundation-implementation-plan.md` | Ranking ledger、bucket、文章热榜、consumer、runtime 和 rebuild foundation | 待执行 |
 | `impl-plan/2026-07-06-httpapi-request-kit-handler-split-implementation-plan.md` | 共享 request kit、Content/Auth/User handler 拆分和 Comment helper 迁移 | 已完成 |
-| `impl-plan/2026-07-05-content-module-completion-implementation-plan.md` | Content 可运行 runtime、worker、系统测试、错误契约、剩余 API family、限流和观测收口 | 待执行 |
+| `impl-plan/2026-07-05-content-module-completion-implementation-plan.md` | Content 可运行 runtime、worker、系统测试、错误契约、剩余 API family、限流和观测收口 | 任务 0-11 完成；任务 12 独立 review 已做，发现 worker 永久退出 + readiness 假绿 Blocker，待修复后收口 |
+| `impl-plan/2026-07-10-shared-worker-loop-primitive-implementation-plan.md` | 提取共享 `libs/kit/worker` 循环 + supervisor 原语，统一 Content/Notification/Comment 三套 worker 骨架，消灭静默退出和 readiness 盲区 | 待执行 |
 | `exploratory/2026-07-09-content-rate-limiting-followups.md` | Content 限流剩余能力拆分：观测、resilience policy、API guard、draft body 预算、engagement fallback、admin cooldown 和 presence 边界 | 探索方案 |
 | `exploratory/2026-07-04-content-body-parser-typed-schema-design-plan.md` | Content V1 body parser 从动态 `map[string]any` 重构为强类型 schema | 探索方案 |
 
@@ -38,3 +38,4 @@
 | `archive/impl-plan/2026-07-04-comment-interaction-outbox-implementation-plan.md` | Comment 删除、点赞、计数 delta、outbox worker 和 runtime 收口 | 检查项已完成 |
 | `archive/impl-plan/2026-07-05-gin-http-migration-implementation-plan.md` | 已有 HTTP handler 统一迁移到 Gin 并去除中间状态 | 检查项已完成 |
 | `archive/impl-plan/2026-07-05-content-publish-foundation-implementation-plan.md` | Content 创建草稿、保存正文、发布文章和读取 published body 最小闭环 | 检查项已完成 |
+| `archive/impl-plan/2026-07-06-notification-module-foundation-implementation-plan.md` | Notification 收件箱、未读、consumer 双层幂等、偏好 / DND、delivery ledger 和 campaign HOT shard fanout 基础 | 检查项已完成；独立 review 见 `docs/reviews/backend/2026-07-07-notification-module-foundation-review.md` |

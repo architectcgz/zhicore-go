@@ -16,6 +16,9 @@
 - [file-cleanup-orphan.md](file-cleanup-orphan.md)：File 服务孤儿文件清理。
 - [auth-remember-me-refresh-ttl.md](auth-remember-me-refresh-ttl.md)：Auth 记住我 refresh TTL 目标契约待实现。
 - [unimplemented-service-modules.md](unimplemented-service-modules.md)：未实现服务模块盘点。
+- [content-worker-lifecycle-no-restart.md](content-worker-lifecycle-no-restart.md)：Content 后台 worker 瞬时错误后永久退出且 readiness 假绿。
+- [notification-unimplemented-delivery-workers.md](notification-unimplemented-delivery-workers.md)：Notification digest 投递和 consumed_events 清理 worker 未实现。
+- [content-outbox-modeled-as-optional-toggle.md](content-outbox-modeled-as-optional-toggle.md)：Content outbox 等事件正确性必需 worker 被默认关闭的可选开关建模。
 
 ## 已处理条目
 
