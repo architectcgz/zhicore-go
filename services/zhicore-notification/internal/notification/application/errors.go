@@ -8,6 +8,8 @@ import (
 
 func mapPortsError(err error) error {
 	switch {
+	case errors.Is(err, ports.ErrInvalidQuery):
+		return ErrInvalidRequest
 	case errors.Is(err, ports.ErrNotificationNotFound):
 		return ErrNotificationNotFound
 	case errors.Is(err, ports.ErrDependencyUnavailable):

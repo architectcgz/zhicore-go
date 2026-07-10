@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 
 	"github.com/architectcgz/zhicore-go/services/zhicore-notification/internal/notification/ports"
 )
@@ -72,6 +73,7 @@ func (s *Service) ListAggregatedNotifications(ctx context.Context, query ListNot
 	items := make([]AggregatedNotification, 0, len(page.Items))
 	for _, item := range page.Items {
 		items = append(items, AggregatedNotification{
+			GroupID:           item.GroupID,
 			Type:              item.Type,
 			Category:          item.Category,
 			TargetType:        item.TargetType,
@@ -81,8 +83,43 @@ func (s *Service) ListAggregatedNotifications(ctx context.Context, query ListNot
 			LatestTime:        item.LatestTime,
 			LatestContent:     item.LatestContent,
 			ActorIDs:          item.ActorIDs,
+			ActorTotalCount:   item.ActorTotalCount,
+			RecentActors:      notificationActorSnapshots(item.RecentActors),
 			AggregatedContent: item.AggregatedContent,
 		})
 	}
 	return NotificationPage{Items: items, NextCursor: page.NextCursor, HasMore: page.HasMore, RepairSignal: page.RepairSignal}, nil
+}
+
+func notificationActorSnapshots(items []ports.NotificationActorSnapshot) []NotificationActorSnapshot {
+	result := make([]NotificationActorSnapshot, 0, len(items))
+	for _, item := range items {
+		result = append(result, NotificationActorSnapshot{PublicID: item.PublicID, DisplayName: item.DisplayName, AvatarURL: item.AvatarURL})
+	}
+	return result
+}
+
+func (s *Service) ListNotificationGroupActors(ctx context.Context, query ListNotificationGroupActorsQuery) (NotificationActorPage, error) {
+	if err := requireActor(query.Actor); err != nil {
+		return NotificationActorPage{}, err
+	}
+	if strings.TrimSpace(query.GroupID) == "" {
+		return NotificationActorPage{}, ErrInvalidRequest
+	}
+	size := query.Size
+	if size <= 0 {
+		size = defaultListSize
+	}
+	if size > maxListSize {
+		size = maxListSize
+	}
+	page, err := s.queries.ListGroupActors(ctx, ports.ListGroupActorsQuery{RecipientID: query.Actor.UserID, GroupID: query.GroupID, Cursor: query.Cursor, Size: size})
+	if err != nil {
+		return NotificationActorPage{}, mapPortsError(err)
+	}
+	items := make([]NotificationActor, 0, len(page.Items))
+	for _, item := range page.Items {
+		items = append(items, NotificationActor{PublicID: item.PublicID, DisplayName: item.DisplayName, AvatarURL: item.AvatarURL, EventCount: item.EventCount, LatestOccurredAt: item.LatestOccurredAt})
+	}
+	return NotificationActorPage{Items: items, NextCursor: page.NextCursor, HasMore: page.HasMore}, nil
 }
