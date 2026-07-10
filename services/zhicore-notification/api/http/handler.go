@@ -21,6 +21,8 @@ type Service interface {
 	GetUnreadCount(ctx context.Context, query application.GetUnreadCountQuery) (application.UnreadCountResult, error)
 	GetUnreadBreakdown(ctx context.Context, query application.GetUnreadBreakdownQuery) (application.UnreadBreakdownResult, error)
 	ListAggregatedNotifications(ctx context.Context, query application.ListNotificationsQuery) (application.NotificationPage, error)
+	ListNotificationGroupActors(ctx context.Context, query application.ListNotificationGroupActorsQuery) (application.NotificationActorPage, error)
+	MarkNotificationGroupRead(ctx context.Context, cmd application.MarkNotificationGroupReadCommand) (application.MarkNotificationGroupReadResult, error)
 	GetNotificationPreferences(ctx context.Context, query application.GetNotificationPreferencesQuery) (application.NotificationPreferencesResult, error)
 	UpdateNotificationPreferences(ctx context.Context, cmd application.UpdateNotificationPreferencesCommand) (application.NotificationPreferencesResult, error)
 	GetNotificationDND(ctx context.Context, query application.GetNotificationDNDQuery) (application.NotificationDNDResult, error)
@@ -44,6 +46,8 @@ func NewHandler(service Service) *gin.Engine {
 
 func (h *Handler) routes() {
 	h.router.GET("/api/v1/notifications", h.listNotifications)
+	h.router.GET("/api/v1/notification-groups/:groupId/actors", h.listNotificationGroupActors)
+	h.router.POST("/api/v1/notification-groups/:groupId/read", h.markNotificationGroupRead)
 	h.router.POST("/api/v1/notifications/:notificationId/read", h.markNotificationRead)
 	h.router.POST("/api/v1/notifications/read-all", h.markAllNotificationsRead)
 	h.router.POST("/api/v1/notifications/mark-all-read", h.markAllNotificationsRead)
@@ -66,6 +70,51 @@ func (h *Handler) routes() {
 	h.router.POST("/api/v1/notification-deliveries/:deliveryId/retry", h.retryDelivery)
 	h.router.GET("/api/v1/notifications/deliveries", h.listDeliveries)
 	h.router.POST("/api/v1/notifications/deliveries/:deliveryId/retry", h.retryDelivery)
+}
+
+func (h *Handler) markNotificationGroupRead(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	groupID := strings.TrimSpace(c.Param("groupId"))
+	if groupID == "" {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.MarkNotificationGroupRead(r.Context(), application.MarkNotificationGroupReadCommand{Actor: actor, GroupID: groupID})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	sharedhttp.WriteSuccess(w, markNotificationGroupReadResp{GroupID: result.GroupID, Read: result.Read, ChangedCount: result.ChangedCount, UnreadCount: result.UnreadCount, ReadAt: sharedhttp.FormatRFC3339UTC(result.ReadAt)})
+}
+
+func (h *Handler) listNotificationGroupActors(c *gin.Context) {
+	w, r := c.Writer, c.Request
+	actor, ok := actorFromRequest(r)
+	if !ok {
+		writeMappedError(w, application.ErrLoginRequired)
+		return
+	}
+	groupID := strings.TrimSpace(c.Param("groupId"))
+	size, err := sharedhttp.ParsePositiveInt(r.URL.Query().Get("size"), 20, 50)
+	if groupID == "" || err != nil {
+		writeValidationError(w)
+		return
+	}
+	result, err := h.service.ListNotificationGroupActors(r.Context(), application.ListNotificationGroupActorsQuery{Actor: actor, GroupID: groupID, Cursor: strings.TrimSpace(r.URL.Query().Get("cursor")), Size: size})
+	if err != nil {
+		writeMappedError(w, err)
+		return
+	}
+	items := make([]notificationActorResp, 0, len(result.Items))
+	for _, item := range result.Items {
+		items = append(items, notificationActorResp{Actor: notificationActorSnapshotResp{PublicID: item.PublicID, DisplayName: item.DisplayName, AvatarURL: item.AvatarURL}, EventCount: item.EventCount, LatestOccurredAt: sharedhttp.FormatRFC3339UTC(item.LatestOccurredAt)})
+	}
+	sharedhttp.WriteSuccess(w, notificationActorPageResp{Items: items, NextCursor: result.NextCursor, HasMore: result.HasMore})
 }
 
 func (h *Handler) markNotificationRead(c *gin.Context) {
@@ -161,18 +210,48 @@ func (h *Handler) listNotifications(c *gin.Context) {
 		writeValidationError(w)
 		return
 	}
+	category := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("category")))
+	if category != "" && !validNotificationCategory(category) {
+		writeValidationError(w)
+		return
+	}
+	unreadOnly, ok := parseOptionalBool(r.URL.Query().Get("unreadOnly"))
+	if !ok {
+		writeValidationError(w)
+		return
+	}
 	result, err := h.service.ListAggregatedNotifications(r.Context(), application.ListNotificationsQuery{
 		Actor:      actor,
 		Cursor:     strings.TrimSpace(r.URL.Query().Get("cursor")),
 		Size:       size,
-		Category:   strings.TrimSpace(r.URL.Query().Get("category")),
-		UnreadOnly: strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("unreadOnly")), "true"),
+		Category:   category,
+		UnreadOnly: unreadOnly,
 	})
 	if err != nil {
 		writeMappedError(w, err)
 		return
 	}
 	sharedhttp.WriteSuccess(w, notificationPageResponse(result))
+}
+
+func validNotificationCategory(category string) bool {
+	switch category {
+	case "INTERACTION", "CONTENT", "SOCIAL", "SYSTEM", "SECURITY":
+		return true
+	default:
+		return false
+	}
+}
+
+func parseOptionalBool(raw string) (bool, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "false":
+		return false, true
+	case "true":
+		return true, true
+	default:
+		return false, false
+	}
 }
 
 func (h *Handler) getNotificationPreferences(c *gin.Context) {
@@ -358,24 +437,46 @@ func (h *Handler) retryDelivery(c *gin.Context) {
 func notificationPageResponse(page application.NotificationPage) notificationPageResp {
 	items := make([]aggregatedNotificationResp, 0, len(page.Items))
 	for _, item := range page.Items {
-		content := json.RawMessage(item.AggregatedContent)
-		if len(content) == 0 {
-			content = json.RawMessage(`{}`)
-		}
 		items = append(items, aggregatedNotificationResp{
-			Type:              item.Type,
-			Category:          item.Category,
-			TargetType:        item.TargetType,
-			TargetID:          item.TargetID,
-			TotalCount:        item.TotalCount,
-			UnreadCount:       item.UnreadCount,
-			LatestTime:        sharedhttp.FormatRFC3339UTC(item.LatestTime),
-			LatestContent:     item.LatestContent,
-			ActorIDs:          item.ActorIDs,
-			AggregatedContent: content,
+			GroupID:          item.GroupID,
+			Type:             item.Type,
+			Category:         item.Category,
+			TotalCount:       item.TotalCount,
+			UnreadCount:      item.UnreadCount,
+			ActorTotalCount:  item.ActorTotalCount,
+			LatestOccurredAt: sharedhttp.FormatRFC3339UTC(item.LatestTime),
+			Content:          notificationContentResp{Title: item.Type, Body: item.LatestContent},
+			RecentActors:     notificationActorSnapshotResponses(item.RecentActors),
+			Target:           targetFromPayload(item.TargetType, item.AggregatedContent),
 		})
 	}
 	return notificationPageResp{Items: items, NextCursor: page.NextCursor, HasMore: page.HasMore}
+}
+
+func notificationActorSnapshotResponses(items []application.NotificationActorSnapshot) []notificationActorSnapshotResp {
+	actors := make([]notificationActorSnapshotResp, 0, len(items))
+	for _, item := range items {
+		actors = append(actors, notificationActorSnapshotResp{PublicID: item.PublicID, DisplayName: item.DisplayName, AvatarURL: item.AvatarURL})
+	}
+	return actors
+}
+
+func targetFromPayload(targetType string, payload []byte) *notificationTargetResp {
+	var snapshot struct {
+		PublicID       string `json:"publicId"`
+		TargetPublicID string `json:"targetPublicId"`
+	}
+	if json.Unmarshal(payload, &snapshot) != nil {
+		return nil
+	}
+	publicID := strings.TrimSpace(snapshot.PublicID)
+	if publicID == "" {
+		publicID = strings.TrimSpace(snapshot.TargetPublicID)
+	}
+	if publicID == "" || strings.TrimSpace(targetType) == "" {
+		return nil
+	}
+	return &notificationTargetResp{Resource: notificationTargetRefResp{Type: targetType, ID: publicID}, Snapshot: json.RawMessage(`{}`)}
 }
 
 func actorFromRequest(r *http.Request) (application.Actor, bool) {

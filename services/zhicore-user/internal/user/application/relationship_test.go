@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -123,6 +124,20 @@ func TestFollowUserHonorsIdempotencyStatsAndBlockGuards(t *testing.T) {
 	assertFollowStats(t, relationships, actor.UserID, 0, 1)
 	assertFollowStats(t, relationships, target.UserID, 1, 0)
 	assertEventTypes(t, outbox.messages, []string{"user.followed"})
+	var followed struct {
+		Actor struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"actor"`
+		TargetPublicID string `json:"targetPublicId"`
+	}
+	if err := json.Unmarshal(outbox.messages[0].Payload, &followed); err != nil {
+		t.Fatalf("decode followed payload: %v", err)
+	}
+	if followed.Actor.PublicID != string(actor.PublicID) || followed.Actor.DisplayName != actor.Nickname || followed.Actor.AvatarURL != "" || followed.TargetPublicID != string(target.PublicID) {
+		t.Fatalf("followed payload = %#v", followed)
+	}
 
 	if err := service.FollowUser(context.Background(), FollowUserCommand{ActorUserID: UserID(actor.UserID), TargetPublicID: PublicID(target.PublicID)}); err != nil {
 		t.Fatalf("duplicate FollowUser() error = %v", err)

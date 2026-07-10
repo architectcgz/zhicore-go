@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrNotificationNotFound   = errors.New("notification not found")
+	ErrInvalidQuery           = errors.New("invalid notification query")
 	ErrDependencyUnavailable  = errors.New("dependency unavailable")
 	ErrDuplicateConsumedEvent = errors.New("duplicate consumed event")
 	ErrRebuildLocked          = errors.New("notification rebuild already running")
@@ -26,6 +27,7 @@ type Clock interface {
 type NotificationCommandRepository interface {
 	MarkRead(ctx context.Context, input MarkReadInput) (MarkReadResult, error)
 	MarkAllRead(ctx context.Context, input MarkAllReadInput) (MarkAllReadResult, error)
+	MarkGroupRead(ctx context.Context, input MarkGroupReadInput) (MarkGroupReadResult, error)
 }
 
 type MarkReadInput struct {
@@ -51,10 +53,24 @@ type MarkAllReadResult struct {
 	ReadAt        time.Time
 }
 
+type MarkGroupReadInput struct {
+	RecipientID int64
+	GroupID     string
+	ReadAt      time.Time
+}
+
+type MarkGroupReadResult struct {
+	GroupID      string
+	ChangedCount int64
+	UnreadCount  int64
+	ReadAt       time.Time
+}
+
 type NotificationQueryRepository interface {
 	GetUnreadCount(ctx context.Context, recipientID int64) (int64, error)
 	GetUnreadBreakdown(ctx context.Context, recipientID int64) (UnreadBreakdown, error)
 	ListAggregated(ctx context.Context, query ListAggregatedQuery) (AggregatedNotificationPage, error)
+	ListGroupActors(ctx context.Context, query ListGroupActorsQuery) (NotificationActorPage, error)
 }
 
 type ListAggregatedQuery struct {
@@ -73,6 +89,7 @@ type AggregatedNotificationPage struct {
 }
 
 type AggregatedNotification struct {
+	GroupID           string
 	Type              string
 	Category          string
 	TargetType        string
@@ -82,7 +99,38 @@ type AggregatedNotification struct {
 	LatestTime        time.Time
 	LatestContent     string
 	ActorIDs          []int64
+	ActorTotalCount   int64
+	RecentActors      []NotificationActorSnapshot
 	AggregatedContent []byte
+}
+
+// NotificationActorSnapshot is the display fact captured when an event was produced.
+// It deliberately contains no internal user identifier because list responses are public contracts.
+type NotificationActorSnapshot struct {
+	PublicID    string  `json:"publicId"`
+	DisplayName string  `json:"displayName"`
+	AvatarURL   *string `json:"avatarUrl"`
+}
+
+type ListGroupActorsQuery struct {
+	RecipientID int64
+	GroupID     string
+	Cursor      string
+	Size        int
+}
+
+type NotificationActorPage struct {
+	Items      []NotificationActor
+	NextCursor string
+	HasMore    bool
+}
+
+type NotificationActor struct {
+	PublicID         string
+	DisplayName      string
+	AvatarURL        *string
+	EventCount       int64
+	LatestOccurredAt time.Time
 }
 
 type UnreadBreakdown struct {
@@ -114,6 +162,9 @@ type CreateInteractionNotificationInput struct {
 	Event            ConsumedEventMetadata
 	RecipientID      int64
 	ActorID          *int64
+	ActorPublicID    string
+	ActorDisplayName string
+	ActorAvatarURL   *string
 	Category         string
 	NotificationType string
 	EventCode        string
@@ -216,6 +267,9 @@ type MaterializeCampaignFollowersInput struct {
 	EventCode        string
 	TargetType       string
 	TargetID         string
+	ActorPublicID    string
+	ActorDisplayName string
+	ActorAvatarURL   *string
 	Title            string
 	Content          string
 	Payload          []byte

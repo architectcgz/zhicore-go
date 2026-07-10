@@ -8,3 +8,8 @@ type MarkNotificationReadCommand struct {
 type MarkAllNotificationsReadCommand struct {
 	Actor Actor
 }
+
+type MarkNotificationGroupReadCommand struct {
+	Actor   Actor
+	GroupID string
+}

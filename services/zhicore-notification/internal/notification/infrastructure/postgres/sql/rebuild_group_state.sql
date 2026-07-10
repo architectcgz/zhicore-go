@@ -2,6 +2,7 @@ WITH rebuilt AS (
     INSERT INTO notification_group_state (
         recipient_id,
         group_key,
+        group_id,
         notification_type,
         category,
         target_type,
@@ -19,23 +20,24 @@ WITH rebuilt AS (
     )
     SELECT recipient_id,
            group_key,
+           group_id,
            notification_type,
            category,
            target_type,
            target_id,
-           (ARRAY_AGG(id ORDER BY created_at DESC, id DESC))[1] AS latest_notification_id,
+           (ARRAY_AGG(id ORDER BY occurred_at DESC, id DESC))[1] AS latest_notification_id,
            COUNT(*) AS total_count,
            COUNT(*) FILTER (WHERE is_read = FALSE) AS unread_count,
-           MAX(created_at) AS latest_time,
-           (ARRAY_AGG(content ORDER BY created_at DESC, id DESC))[1] AS latest_content,
-           ARRAY_REMOVE((ARRAY_AGG(actor_id ORDER BY created_at DESC, id DESC))[1:5], NULL) AS latest_actor_ids,
-           '{}'::jsonb AS aggregated_content,
+           MAX(occurred_at) AS latest_time,
+           (ARRAY_AGG(content ORDER BY occurred_at DESC, id DESC))[1] AS latest_content,
+           ARRAY_REMOVE((ARRAY_AGG(actor_id ORDER BY occurred_at DESC, id DESC))[1:5], NULL) AS latest_actor_ids,
+           (ARRAY_AGG(payload ORDER BY occurred_at DESC, id DESC))[1] AS aggregated_content,
            FALSE AS repair_required,
            $2 AS created_at,
            $2 AS updated_at
     FROM notifications
     WHERE recipient_id = $1
-    GROUP BY recipient_id, group_key, notification_type, category, target_type, target_id
+    GROUP BY recipient_id, group_key, group_id, notification_type, category, target_type, target_id
     RETURNING group_key
 )
 SELECT COUNT(*) FROM rebuilt;

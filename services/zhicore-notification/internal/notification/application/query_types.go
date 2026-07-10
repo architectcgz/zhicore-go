@@ -26,6 +26,7 @@ type NotificationPage struct {
 }
 
 type AggregatedNotification struct {
+	GroupID           string
 	Type              string
 	Category          string
 	TargetType        string
@@ -35,5 +36,34 @@ type AggregatedNotification struct {
 	LatestTime        time.Time
 	LatestContent     string
 	ActorIDs          []int64
+	ActorTotalCount   int64
+	RecentActors      []NotificationActorSnapshot
 	AggregatedContent []byte
+}
+
+type NotificationActorSnapshot struct {
+	PublicID    string
+	DisplayName string
+	AvatarURL   *string
+}
+
+type ListNotificationGroupActorsQuery struct {
+	Actor   Actor
+	GroupID string
+	Cursor  string
+	Size    int
+}
+
+type NotificationActorPage struct {
+	Items      []NotificationActor
+	NextCursor string
+	HasMore    bool
+}
+
+type NotificationActor struct {
+	PublicID         string
+	DisplayName      string
+	AvatarURL        *string
+	EventCount       int64
+	LatestOccurredAt time.Time
 }
