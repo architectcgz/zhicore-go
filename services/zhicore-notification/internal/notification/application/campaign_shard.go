@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -103,6 +104,10 @@ func (e *CampaignShardExecutor) ExecuteOnce(ctx context.Context) (CampaignShardE
 		})
 		return CampaignShardExecutionResult{}, err
 	}
+	deliverySnapshot, err := postPublishedDeliverySnapshot(claim.Payload)
+	if err != nil {
+		return CampaignShardExecutionResult{}, fmt.Errorf("decode persisted post published snapshot: %w", err)
+	}
 	fanout, err := e.campaigns.MaterializeCampaignFollowers(ctx, ports.MaterializeCampaignFollowersInput{
 		ShardID:          claim.ShardID,
 		CampaignID:       claim.CampaignID,
@@ -113,7 +118,10 @@ func (e *CampaignShardExecutor) ExecuteOnce(ctx context.Context) (CampaignShardE
 		Category:         "CONTENT",
 		EventCode:        "content.post.published",
 		TargetType:       "POST",
-		TargetID:         fmt.Sprintf("%d", claim.PostID),
+		TargetID:         deliverySnapshot.PostPublicID,
+		ActorPublicID:    deliverySnapshot.ActorPublicID,
+		ActorDisplayName: deliverySnapshot.ActorDisplayName,
+		ActorAvatarURL:   deliverySnapshot.ActorAvatarURL,
 		Title:            claim.Title,
 		Content:          claim.Excerpt,
 		Payload:          claim.Payload,
@@ -146,4 +154,34 @@ func (e *CampaignShardExecutor) ExecuteOnce(ctx context.Context) (CampaignShardE
 		NextCursor:    page.NextCursor,
 		HasMore:       page.HasMore,
 	}, nil
+}
+
+type postPublishedSnapshot struct {
+	PostPublicID     string
+	ActorPublicID    string
+	ActorDisplayName string
+	ActorAvatarURL   *string
+}
+
+func postPublishedDeliverySnapshot(raw []byte) (postPublishedSnapshot, error) {
+	var payload struct {
+		PublicID string `json:"publicId"`
+		Author   struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"author"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return postPublishedSnapshot{}, err
+	}
+	if strings.TrimSpace(payload.PublicID) == "" || strings.TrimSpace(payload.Author.PublicID) == "" || strings.TrimSpace(payload.Author.DisplayName) == "" {
+		return postPublishedSnapshot{}, fmt.Errorf("post published payload lacks public delivery snapshot")
+	}
+	snapshot := postPublishedSnapshot{PostPublicID: payload.PublicID, ActorPublicID: payload.Author.PublicID, ActorDisplayName: payload.Author.DisplayName}
+	if strings.TrimSpace(payload.Author.AvatarURL) != "" {
+		avatarURL := payload.Author.AvatarURL
+		snapshot.ActorAvatarURL = &avatarURL
+	}
+	return snapshot, nil
 }

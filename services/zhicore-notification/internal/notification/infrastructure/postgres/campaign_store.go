@@ -184,6 +184,9 @@ func (s *Store) MaterializeCampaignFollowers(ctx context.Context, input ports.Ma
 		notificationInput := ports.CreateInteractionNotificationInput{
 			RecipientID:      followerID,
 			ActorID:          &actorID,
+			ActorPublicID:    input.ActorPublicID,
+			ActorDisplayName: input.ActorDisplayName,
+			ActorAvatarURL:   input.ActorAvatarURL,
 			Category:         input.Category,
 			NotificationType: input.NotificationType,
 			EventCode:        input.EventCode,

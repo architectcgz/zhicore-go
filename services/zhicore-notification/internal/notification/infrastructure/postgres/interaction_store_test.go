@@ -33,6 +33,9 @@ func TestStoreCreateInteractionNotificationPersistsEventAndInboxInOneTransaction
 			"ntf_10001",
 			int64(1001),
 			sql.NullInt64{Int64: actorID, Valid: true},
+			"",
+			"",
+			nil,
 			"INTERACTION",
 			"POST_LIKED",
 			"content.post.liked",
@@ -42,6 +45,7 @@ func TestStoreCreateInteractionNotificationPersistsEventAndInboxInOneTransaction
 			"evt_like_1",
 			"post_liked:41:2002",
 			"post_liked:41",
+			groupPublicID(1001, "post_liked:41"),
 			"New like",
 			"liked your post",
 			[]byte(`{"internalId":41}`),
@@ -50,7 +54,7 @@ func TestStoreCreateInteractionNotificationPersistsEventAndInboxInOneTransaction
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(10001)))
 	mock.ExpectExec("INSERT INTO notification_group_state").
-		WithArgs(int64(1001), "post_liked:41", "POST_LIKED", "INTERACTION", "POST", "41", int64(10001), now, "liked your post", sql.NullInt64{Int64: actorID, Valid: true}, []byte(`{"internalId":41}`), now).
+		WithArgs(int64(1001), "post_liked:41", groupPublicID(1001, "post_liked:41"), "POST_LIKED", "INTERACTION", "POST", "41", int64(10001), now, "liked your post", sql.NullInt64{Int64: actorID, Valid: true}, []byte(`{"internalId":41}`), now).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("INSERT INTO notification_stats").
 		WithArgs(int64(1001), "INTERACTION", now).
