@@ -15,6 +15,14 @@ import (
 
 func (s *Service) publishCreated(ctx context.Context, event domain.CommentCreated, post ports.CommentablePost, occurredAt time.Time) error {
 	comment := event.CreatedComment()
+	summaries, err := s.userProfiles.BatchGetAuthorSummaries(ctx, []domain.UserID{comment.AuthorID})
+	if err != nil {
+		return fmt.Errorf("load comment actor snapshot: %w", err)
+	}
+	actor, ok := summaries[comment.AuthorID]
+	if !ok || actor.Unavailable || strings.TrimSpace(actor.PublicID) == "" || strings.TrimSpace(actor.DisplayName) == "" {
+		return fmt.Errorf("comment actor snapshot is unavailable")
+	}
 	payload := commentevents.CommentCreatedPayload{
 		CommentID:    int64(comment.ID),
 		PublicID:     string(post.PostID),
@@ -24,6 +32,7 @@ func (s *Service) publishCreated(ctx context.Context, event domain.CommentCreate
 		HasImages:    len(comment.Media.ImageFileIDs) > 0,
 		HasVoice:     strings.TrimSpace(comment.Media.VoiceFileID) != "",
 		CreatedAt:    occurredAt.UTC().Format(time.RFC3339),
+		Actor:        commentevents.ActorSnapshot{PublicID: actor.PublicID, DisplayName: actor.DisplayName, AvatarURL: actor.AvatarURL},
 	}
 	if root, ok := event.RootComment(); ok {
 		parent, _ := event.ParentComment()

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -168,9 +167,14 @@ func (c *InteractionConsumer) postPublishedCampaignInput(envelope integrationEnv
 		return ports.PlanPostPublishedCampaignInput{}, fmt.Errorf("occurredAt is invalid")
 	}
 	var payload struct {
-		PublicID    string    `json:"publicId"`
-		InternalID  int64     `json:"internalId"`
-		AuthorID    int64     `json:"authorId"`
+		PublicID   string `json:"publicId"`
+		InternalID int64  `json:"internalId"`
+		AuthorID   int64  `json:"authorId"`
+		Author     struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"author"`
 		Title       string    `json:"title"`
 		Summary     string    `json:"summary"`
 		PublishedAt time.Time `json:"publishedAt"`
@@ -178,7 +182,7 @@ func (c *InteractionConsumer) postPublishedCampaignInput(envelope integrationEnv
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return ports.PlanPostPublishedCampaignInput{}, err
 	}
-	if payload.PublicID == "" || payload.InternalID <= 0 || payload.AuthorID <= 0 || strings.TrimSpace(payload.Title) == "" || payload.PublishedAt.IsZero() {
+	if payload.PublicID == "" || payload.InternalID <= 0 || payload.AuthorID <= 0 || strings.TrimSpace(payload.Author.PublicID) == "" || strings.TrimSpace(payload.Author.DisplayName) == "" || strings.TrimSpace(payload.Title) == "" || payload.PublishedAt.IsZero() {
 		return ports.PlanPostPublishedCampaignInput{}, fmt.Errorf("content.post.published payload is incomplete")
 	}
 	// Regular post fanout only plans HOT active followers so a normal publish
@@ -248,14 +252,20 @@ func (c *InteractionConsumer) notificationInput(envelope integrationEnvelope, ev
 
 func postLikedNotification(base ports.CreateInteractionNotificationInput, raw json.RawMessage) (ports.CreateInteractionNotificationInput, bool, error) {
 	var payload struct {
-		InternalID int64 `json:"internalId"`
-		AuthorID   int64 `json:"authorId"`
-		LikedBy    int64 `json:"likedBy"`
+		InternalID int64  `json:"internalId"`
+		PublicID   string `json:"publicId"`
+		AuthorID   int64  `json:"authorId"`
+		LikedBy    int64  `json:"likedBy"`
+		Actor      struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"actor"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return ports.CreateInteractionNotificationInput{}, false, err
 	}
-	if payload.InternalID <= 0 || payload.AuthorID <= 0 || payload.LikedBy <= 0 {
+	if payload.InternalID <= 0 || strings.TrimSpace(payload.PublicID) == "" || payload.AuthorID <= 0 || payload.LikedBy <= 0 || strings.TrimSpace(payload.Actor.PublicID) == "" || strings.TrimSpace(payload.Actor.DisplayName) == "" {
 		return ports.CreateInteractionNotificationInput{}, false, fmt.Errorf("content.post.liked payload is incomplete")
 	}
 	if payload.AuthorID == payload.LikedBy {
@@ -266,7 +276,13 @@ func postLikedNotification(base ports.CreateInteractionNotificationInput, raw js
 	base.ActorID = &actorID
 	base.NotificationType = "POST_LIKED"
 	base.TargetType = "POST"
-	base.TargetID = strconv.FormatInt(payload.InternalID, 10)
+	base.TargetID = payload.PublicID
+	base.ActorPublicID = payload.Actor.PublicID
+	base.ActorDisplayName = payload.Actor.DisplayName
+	if strings.TrimSpace(payload.Actor.AvatarURL) != "" {
+		avatarURL := payload.Actor.AvatarURL
+		base.ActorAvatarURL = &avatarURL
+	}
 	base.DedupeKey = fmt.Sprintf("post_liked:%d:%d", payload.InternalID, payload.LikedBy)
 	base.GroupKey = fmt.Sprintf("post_liked:%d", payload.InternalID)
 	base.Title = "New like"
@@ -276,19 +292,25 @@ func postLikedNotification(base ports.CreateInteractionNotificationInput, raw js
 
 func commentCreatedNotification(base ports.CreateInteractionNotificationInput, raw json.RawMessage) (ports.CreateInteractionNotificationInput, bool, error) {
 	var payload struct {
-		CommentID      int64 `json:"commentId"`
-		InternalID     int64 `json:"internalId"`
-		PostAuthorID   int64 `json:"postAuthorId"`
-		AuthorID       int64 `json:"authorId"`
-		RootID         int64 `json:"rootId"`
-		RootAuthorID   int64 `json:"rootAuthorId"`
-		ParentID       int64 `json:"parentId"`
-		ParentAuthorID int64 `json:"parentAuthorId"`
+		CommentID      int64  `json:"commentId"`
+		PublicID       string `json:"publicId"`
+		InternalID     int64  `json:"internalId"`
+		PostAuthorID   int64  `json:"postAuthorId"`
+		AuthorID       int64  `json:"authorId"`
+		RootID         int64  `json:"rootId"`
+		RootAuthorID   int64  `json:"rootAuthorId"`
+		ParentID       int64  `json:"parentId"`
+		ParentAuthorID int64  `json:"parentAuthorId"`
+		Actor          struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"actor"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return ports.CreateInteractionNotificationInput{}, false, err
 	}
-	if payload.CommentID <= 0 || payload.InternalID <= 0 || payload.PostAuthorID <= 0 || payload.AuthorID <= 0 {
+	if payload.CommentID <= 0 || strings.TrimSpace(payload.PublicID) == "" || payload.InternalID <= 0 || payload.PostAuthorID <= 0 || payload.AuthorID <= 0 || strings.TrimSpace(payload.Actor.PublicID) == "" || strings.TrimSpace(payload.Actor.DisplayName) == "" {
 		return ports.CreateInteractionNotificationInput{}, false, fmt.Errorf("comment.created payload is incomplete")
 	}
 	if payload.ParentID > 0 || payload.RootID > 0 {
@@ -302,8 +324,14 @@ func commentCreatedNotification(base ports.CreateInteractionNotificationInput, r
 		base.RecipientID = payload.ParentAuthorID
 		base.ActorID = &actorID
 		base.NotificationType = "COMMENT_REPLIED"
-		base.TargetType = "COMMENT"
-		base.TargetID = strconv.FormatInt(payload.ParentID, 10)
+		base.TargetType = "POST"
+		base.TargetID = payload.PublicID
+		base.ActorPublicID = payload.Actor.PublicID
+		base.ActorDisplayName = payload.Actor.DisplayName
+		if strings.TrimSpace(payload.Actor.AvatarURL) != "" {
+			avatarURL := payload.Actor.AvatarURL
+			base.ActorAvatarURL = &avatarURL
+		}
 		base.DedupeKey = fmt.Sprintf("comment_replied:%d:%d", payload.ParentID, payload.CommentID)
 		base.GroupKey = fmt.Sprintf("comment_replied:%d", payload.ParentID)
 		base.Title = "New reply"
@@ -318,7 +346,13 @@ func commentCreatedNotification(base ports.CreateInteractionNotificationInput, r
 	base.ActorID = &actorID
 	base.NotificationType = "POST_COMMENTED"
 	base.TargetType = "POST"
-	base.TargetID = strconv.FormatInt(payload.InternalID, 10)
+	base.TargetID = payload.PublicID
+	base.ActorPublicID = payload.Actor.PublicID
+	base.ActorDisplayName = payload.Actor.DisplayName
+	if strings.TrimSpace(payload.Actor.AvatarURL) != "" {
+		avatarURL := payload.Actor.AvatarURL
+		base.ActorAvatarURL = &avatarURL
+	}
 	base.DedupeKey = fmt.Sprintf("post_commented:%d:%d", payload.InternalID, payload.CommentID)
 	base.GroupKey = fmt.Sprintf("post_commented:%d", payload.InternalID)
 	base.Title = "New comment"
@@ -328,13 +362,19 @@ func commentCreatedNotification(base ports.CreateInteractionNotificationInput, r
 
 func userFollowedNotification(base ports.CreateInteractionNotificationInput, raw json.RawMessage) (ports.CreateInteractionNotificationInput, bool, error) {
 	var payload struct {
-		FollowerID  int64 `json:"followerId"`
-		FollowingID int64 `json:"followingId"`
+		FollowerID     int64  `json:"followerId"`
+		FollowingID    int64  `json:"followingId"`
+		TargetPublicID string `json:"targetPublicId"`
+		Actor          struct {
+			PublicID    string `json:"publicId"`
+			DisplayName string `json:"displayName"`
+			AvatarURL   string `json:"avatarUrl"`
+		} `json:"actor"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return ports.CreateInteractionNotificationInput{}, false, err
 	}
-	if payload.FollowerID <= 0 || payload.FollowingID <= 0 {
+	if payload.FollowerID <= 0 || payload.FollowingID <= 0 || strings.TrimSpace(payload.TargetPublicID) == "" || strings.TrimSpace(payload.Actor.PublicID) == "" || strings.TrimSpace(payload.Actor.DisplayName) == "" {
 		return ports.CreateInteractionNotificationInput{}, false, fmt.Errorf("user.followed payload is incomplete")
 	}
 	if payload.FollowerID == payload.FollowingID {
@@ -346,7 +386,13 @@ func userFollowedNotification(base ports.CreateInteractionNotificationInput, raw
 	base.ActorID = &actorID
 	base.NotificationType = "USER_FOLLOWED"
 	base.TargetType = "USER"
-	base.TargetID = strconv.FormatInt(payload.FollowerID, 10)
+	base.TargetID = payload.TargetPublicID
+	base.ActorPublicID = payload.Actor.PublicID
+	base.ActorDisplayName = payload.Actor.DisplayName
+	if strings.TrimSpace(payload.Actor.AvatarURL) != "" {
+		avatarURL := payload.Actor.AvatarURL
+		base.ActorAvatarURL = &avatarURL
+	}
 	base.DedupeKey = fmt.Sprintf("user_followed:%d:%d", payload.FollowingID, payload.FollowerID)
 	base.GroupKey = fmt.Sprintf("user_followed:%d", payload.FollowerID)
 	base.Title = "New follower"

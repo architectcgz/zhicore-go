@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -86,6 +87,9 @@ func insertNotification(ctx context.Context, tx *sql.Tx, id int64, publicID stri
 		publicID,
 		input.RecipientID,
 		nullableInt64(input.ActorID),
+		input.ActorPublicID,
+		input.ActorDisplayName,
+		input.ActorAvatarURL,
 		input.Category,
 		input.NotificationType,
 		input.EventCode,
@@ -95,6 +99,7 @@ func insertNotification(ctx context.Context, tx *sql.Tx, id int64, publicID stri
 		input.SourceEventID,
 		input.DedupeKey,
 		input.GroupKey,
+		groupPublicID(input.RecipientID, input.GroupKey),
 		input.Title,
 		input.Content,
 		input.Payload,
@@ -114,6 +119,7 @@ func upsertGroupState(ctx context.Context, tx *sql.Tx, notificationID int64, inp
 	_, err := tx.ExecContext(ctx, upsertInteractionNotificationGroupSQL,
 		input.RecipientID,
 		input.GroupKey,
+		groupPublicID(input.RecipientID, input.GroupKey),
 		input.NotificationType,
 		input.Category,
 		input.TargetType,
@@ -129,6 +135,11 @@ func upsertGroupState(ctx context.Context, tx *sql.Tx, notificationID int64, inp
 		return fmt.Errorf("upsert notification group state: %w", err)
 	}
 	return nil
+}
+
+func groupPublicID(recipientID int64, groupKey string) string {
+	sum := md5.Sum([]byte(fmt.Sprintf("%d:%s", recipientID, groupKey)))
+	return fmt.Sprintf("ng%x", sum[:15])
 }
 
 func incrementNotificationStats(ctx context.Context, tx *sql.Tx, input ports.CreateInteractionNotificationInput) error {

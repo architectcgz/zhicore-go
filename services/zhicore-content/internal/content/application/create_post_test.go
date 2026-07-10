@@ -287,6 +287,7 @@ func newCreatePostDeps() createPostDeps {
 		engagementCache: &fakeEngagementCache{},
 		files:           &fakeFileResourceClient{},
 		users: &fakeUserProfileClient{snapshot: ports.OwnerSnapshot{
+			PublicID:       "user_pub_42",
 			DisplayName:    "architect",
 			AvatarFileID:   "file_avatar",
 			ProfileVersion: 3,

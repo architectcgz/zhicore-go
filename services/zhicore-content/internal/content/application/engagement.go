@@ -123,10 +123,14 @@ func (s *Service) mutateEngagement(ctx context.Context, cmd EngagementCommand, a
 		if err != nil || !record.Changed {
 			return err
 		}
-		if s.outbox == nil || s.engagementStats == nil {
+		if s.outbox == nil || s.engagementStats == nil || s.users == nil {
 			return ErrDependencyUnavailable
 		}
-		event, err := newEngagementOutboxEvent(record, action, now)
+		actorSnapshot, err := s.users.GetOwnerSnapshot(ctx, cmd.Actor.UserID)
+		if err != nil || strings.TrimSpace(actorSnapshot.PublicID) == "" || strings.TrimSpace(actorSnapshot.DisplayName) == "" {
+			return ErrDependencyUnavailable
+		}
+		event, err := newEngagementOutboxEvent(record, action, actorSnapshot, now)
 		if err != nil {
 			return err
 		}
@@ -311,13 +315,14 @@ func engagementRateLimitOperation(action ports.EngagementAction) string {
 	}
 }
 
-func newEngagementOutboxEvent(record ports.EngagementMutationRecord, action ports.EngagementAction, occurredAt time.Time) (ports.OutboxEvent, error) {
+func newEngagementOutboxEvent(record ports.EngagementMutationRecord, action ports.EngagementAction, actor ports.OwnerSnapshot, occurredAt time.Time) (ports.OutboxEvent, error) {
 	eventType, actorField := engagementEventShape(action)
 	payload := map[string]any{
 		"publicId":   record.PostID,
 		"internalId": record.PostInternalID,
 		"authorId":   record.AuthorID,
 		actorField:   record.ActorID,
+		"actor":      map[string]string{"publicId": actor.PublicID, "displayName": actor.DisplayName, "avatarUrl": actor.AvatarURL},
 	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {

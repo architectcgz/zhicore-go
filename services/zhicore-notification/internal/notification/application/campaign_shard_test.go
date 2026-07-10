@@ -23,7 +23,7 @@ func TestCampaignShardExecutorRequestsHotActiveFollowerShard(t *testing.T) {
 			FollowerCursor:      "cursor-1",
 			Title:               "New post",
 			Excerpt:             "excerpt",
-			Payload:             []byte(`{"postId":41}`),
+			Payload:             []byte(`{"publicId":"post_41","author":{"publicId":"user_1001","displayName":"作者","avatarUrl":"https://cdn.example/u1.png"}}`),
 		},
 		materialized: ports.MaterializeCampaignFollowersResult{ProcessedCount: 2, SuccessCount: 1, SkippedCount: 1},
 	}
@@ -83,7 +83,7 @@ func TestCampaignShardExecutorRequestsHotActiveFollowerShard(t *testing.T) {
 		t.Fatalf("materialize inputs = %+v, want one fanout write before completion", campaigns.materializeInputs)
 	}
 	materialize := campaigns.materializeInputs[0]
-	if materialize.ShardID != 8001 || materialize.CampaignID != 7001 || len(materialize.FollowerIDs) != 2 || materialize.FollowerIDs[0] != 2001 {
+	if materialize.ShardID != 8001 || materialize.CampaignID != 7001 || materialize.TargetID != "post_41" || materialize.ActorPublicID != "user_1001" || materialize.ActorDisplayName != "作者" || materialize.ActorAvatarURL == nil || len(materialize.FollowerIDs) != 2 || materialize.FollowerIDs[0] != 2001 {
 		t.Fatalf("materialize input = %+v", materialize)
 	}
 }

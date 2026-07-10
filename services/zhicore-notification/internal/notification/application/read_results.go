@@ -15,6 +15,14 @@ type MarkAllNotificationsReadResult struct {
 	ReadAt        time.Time
 }
 
+type MarkNotificationGroupReadResult struct {
+	GroupID      string
+	Read         bool
+	ChangedCount int64
+	UnreadCount  int64
+	ReadAt       time.Time
+}
+
 type UnreadCountResult struct {
 	UnreadCount int64
 }

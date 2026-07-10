@@ -198,6 +198,12 @@ func (fakeNotificationService) GetUnreadBreakdown(context.Context, application.G
 func (fakeNotificationService) ListAggregatedNotifications(context.Context, application.ListNotificationsQuery) (application.NotificationPage, error) {
 	return application.NotificationPage{}, nil
 }
+func (fakeNotificationService) ListNotificationGroupActors(context.Context, application.ListNotificationGroupActorsQuery) (application.NotificationActorPage, error) {
+	return application.NotificationActorPage{}, nil
+}
+func (fakeNotificationService) MarkNotificationGroupRead(context.Context, application.MarkNotificationGroupReadCommand) (application.MarkNotificationGroupReadResult, error) {
+	return application.MarkNotificationGroupReadResult{}, nil
+}
 func (fakeNotificationService) GetNotificationPreferences(context.Context, application.GetNotificationPreferencesQuery) (application.NotificationPreferencesResult, error) {
 	return application.NotificationPreferencesResult{}, nil
 }

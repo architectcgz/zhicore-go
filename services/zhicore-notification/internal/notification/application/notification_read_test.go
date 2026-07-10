@@ -93,6 +93,23 @@ func TestMarkAllNotificationsReadInvalidatesUserNotificationKeys(t *testing.T) {
 	}
 }
 
+func TestMarkNotificationGroupReadScopesCommandAndInvalidatesCaches(t *testing.T) {
+	deps := newReadTestDeps()
+	deps.commands.markGroupReadResult = ports.MarkGroupReadResult{GroupID: "ng1abc", ChangedCount: 2, UnreadCount: 0, ReadAt: deps.clock.now}
+	service := mustNewService(t, deps.dependencies())
+
+	result, err := service.MarkNotificationGroupRead(context.Background(), MarkNotificationGroupReadCommand{Actor: Actor{UserID: 42}, GroupID: "ng1abc"})
+	if err != nil {
+		t.Fatalf("MarkNotificationGroupRead() error = %v", err)
+	}
+	if result.ChangedCount != 2 || result.UnreadCount != 0 || deps.commands.lastMarkGroupRead.RecipientID != 42 {
+		t.Fatalf("result/command = %#v/%#v", result, deps.commands.lastMarkGroupRead)
+	}
+	if deps.cache.deleted["notification:42:unread"] == 0 || deps.cache.deleted["notification:42:aggregation"] == 0 {
+		t.Fatalf("cache invalidation = %#v", deps.cache.deleted)
+	}
+}
+
 type readTestDeps struct {
 	commands *fakeCommandRepository
 	queries  *fakeQueryRepository
@@ -131,13 +148,15 @@ func mustNewService(t *testing.T, deps Dependencies) *Service {
 }
 
 type fakeCommandRepository struct {
-	markReadCalls     int
-	lastMarkRead      ports.MarkReadInput
-	markReadResult    ports.MarkReadResult
-	markReadErr       error
-	lastMarkAllRead   ports.MarkAllReadInput
-	markAllReadResult ports.MarkAllReadResult
-	markAllReadErr    error
+	markReadCalls       int
+	lastMarkRead        ports.MarkReadInput
+	markReadResult      ports.MarkReadResult
+	markReadErr         error
+	lastMarkAllRead     ports.MarkAllReadInput
+	markAllReadResult   ports.MarkAllReadResult
+	markAllReadErr      error
+	lastMarkGroupRead   ports.MarkGroupReadInput
+	markGroupReadResult ports.MarkGroupReadResult
 }
 
 func (f *fakeCommandRepository) MarkRead(ctx context.Context, input ports.MarkReadInput) (ports.MarkReadResult, error) {
@@ -149,6 +168,14 @@ func (f *fakeCommandRepository) MarkRead(ctx context.Context, input ports.MarkRe
 func (f *fakeCommandRepository) MarkAllRead(ctx context.Context, input ports.MarkAllReadInput) (ports.MarkAllReadResult, error) {
 	f.lastMarkAllRead = input
 	return f.markAllReadResult, f.markAllReadErr
+}
+
+func (f *fakeCommandRepository) MarkGroupRead(ctx context.Context, input ports.MarkGroupReadInput) (ports.MarkGroupReadResult, error) {
+	f.lastMarkGroupRead = input
+	if f.markGroupReadResult.GroupID == "" {
+		return ports.MarkGroupReadResult{GroupID: input.GroupID, ReadAt: input.ReadAt}, nil
+	}
+	return f.markGroupReadResult, nil
 }
 
 type fakeQueryRepository struct{}
@@ -163,6 +190,10 @@ func (f *fakeQueryRepository) GetUnreadBreakdown(ctx context.Context, recipientI
 
 func (f *fakeQueryRepository) ListAggregated(ctx context.Context, query ports.ListAggregatedQuery) (ports.AggregatedNotificationPage, error) {
 	return ports.AggregatedNotificationPage{}, nil
+}
+
+func (f *fakeQueryRepository) ListGroupActors(ctx context.Context, query ports.ListGroupActorsQuery) (ports.NotificationActorPage, error) {
+	return ports.NotificationActorPage{}, nil
 }
 
 type fakeUnreadCache struct {

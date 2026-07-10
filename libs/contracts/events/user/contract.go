@@ -56,7 +56,15 @@ type RestoredPayload struct {
 type FollowedPayload struct {
 	FollowerID  int64     `json:"followerId"`
 	FollowingID int64     `json:"followingId"`
+	Actor       ProfileSnapshot `json:"actor"`
+	TargetPublicID string `json:"targetPublicId"`
 	OccurredAt  time.Time `json:"occurredAt"`
+}
+
+type ProfileSnapshot struct {
+	PublicID    string `json:"publicId"`
+	DisplayName string `json:"displayName"`
+	AvatarURL   string `json:"avatarUrl,omitempty"`
 }
 
 type UnfollowedPayload struct {

@@ -21,11 +21,16 @@ func hasPostPublishedEvent(events []domain.DomainEvent) bool {
 // Application owns the mapping from domain publish facts to the cross-service
 // outbox contract so the domain model stays free of MQ / JSON concerns.
 
-func newPostPublishedOutboxEvent(current, published ports.PostRecord, publishedBodyID, publishedBodyHash string, publishedAt time.Time) (ports.OutboxEvent, error) {
+func newPostPublishedOutboxEvent(current, published ports.PostRecord, author ports.OwnerSnapshot, publishedBodyID, publishedBodyHash string, publishedAt time.Time) (ports.OutboxEvent, error) {
 	payloadJSON, err := json.Marshal(contentevents.PostPublishedPayload{
-		PublicID:          current.PublicID,
-		InternalID:        current.ID,
-		AuthorID:          current.OwnerID,
+		PublicID:   current.PublicID,
+		InternalID: current.ID,
+		AuthorID:   current.OwnerID,
+		Author: contentevents.AuthorSnapshot{
+			PublicID:    author.PublicID,
+			DisplayName: author.DisplayName,
+			AvatarURL:   author.AvatarURL,
+		},
 		Title:             current.DraftTitle,
 		Summary:           current.DraftSummary,
 		CoverFileID:       current.DraftCoverFileID,

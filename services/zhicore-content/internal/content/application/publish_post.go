@@ -116,6 +116,19 @@ func (s *Service) PublishPost(ctx context.Context, cmd PublishPostCommand) (Publ
 		return PublishPostResult{}, err
 	}
 	domainEvents := post.PullEvents()
+	var author ports.OwnerSnapshot
+	if s.outbox != nil && hasPostPublishedEvent(domainEvents) {
+		// The durable publish event must carry a public author snapshot. Resolving
+		// it before both snapshot storage and the SQL transaction avoids an external
+		// dependency inside a transaction and prevents creating an orphan on failure.
+		if s.users == nil {
+			return PublishPostResult{}, ErrDependencyUnavailable
+		}
+		author, err = s.users.GetOwnerSnapshot(ctx, current.OwnerID)
+		if err != nil || author.PublicID == "" || author.DisplayName == "" {
+			return PublishPostResult{}, ErrDependencyUnavailable
+		}
+	}
 
 	publishedAt := s.clock.Now()
 	snapshot, err := s.bodies.WriteSnapshotBody(ctx, ports.WriteBodyInput{
@@ -152,7 +165,7 @@ func (s *Service) PublishPost(ctx context.Context, cmd PublishPostCommand) (Publ
 			return err
 		}
 		if s.outbox != nil && hasPostPublishedEvent(domainEvents) {
-			event, err := newPostPublishedOutboxEvent(current, published, snapshot.ID, normalized.ContentHash, publishedAt)
+			event, err := newPostPublishedOutboxEvent(current, published, author, snapshot.ID, normalized.ContentHash, publishedAt)
 			if err != nil {
 				return err
 			}

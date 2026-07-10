@@ -16,6 +16,7 @@
 | `impl-plan/2026-07-06-admin-moderation-facade-foundation-implementation-plan.md` | Admin 管理审核 facade、举报处理、审计和 provider 委托基础 | 待执行 |
 | `impl-plan/2026-07-06-gateway-routing-auth-foundation-implementation-plan.md` | Gateway 路由清单、认证、Auth fallback、身份 header 注入和诊断基础 | 待执行 |
 | `impl-plan/2026-07-06-message-module-foundation-implementation-plan.md` | Message 私信发送、会话投影、未读数、runtime、召回和 outbox 基础 | 待执行 |
+| `impl-plan/2026-07-10-notification-group-contract-implementation-plan.md` | Notification 聚合组列表、actor 分页、组级已读和 Vue contract 迁移 | 执行中 |
 | `impl-plan/2026-07-06-search-post-index-foundation-implementation-plan.md` | Search HTTP contract、PostgreSQL 搜索读模型、Content 事件索引、查询和历史基础 | 待执行 |
 | `impl-plan/2026-07-06-ranking-ledger-hot-posts-foundation-implementation-plan.md` | Ranking ledger、bucket、文章热榜、consumer、runtime 和 rebuild foundation | 待执行 |
 | `impl-plan/2026-07-06-httpapi-request-kit-handler-split-implementation-plan.md` | 共享 request kit、Content/Auth/User handler 拆分和 Comment helper 迁移 | 已完成 |

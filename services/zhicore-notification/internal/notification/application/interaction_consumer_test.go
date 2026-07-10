@@ -28,7 +28,7 @@ func TestInteractionConsumerCreatesPostLikedNotification(t *testing.T) {
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"post",
 			"aggregateId":"post_1",
-			"payload":{"publicId":"post_1","internalId":41,"authorId":1001,"likedBy":2002}
+			"payload":{"publicId":"post_1","internalId":41,"authorId":1001,"likedBy":2002,"actor":{"publicId":"user_2","displayName":"Alice","avatarUrl":"https://cdn.example/avatar.png"}}
 		}`),
 	})
 
@@ -45,8 +45,11 @@ func TestInteractionConsumerCreatesPostLikedNotification(t *testing.T) {
 	if created.RecipientID != 1001 || created.ActorID == nil || *created.ActorID != 2002 {
 		t.Fatalf("recipient/actor = %d/%v", created.RecipientID, created.ActorID)
 	}
-	if created.NotificationType != "POST_LIKED" || created.Category != "INTERACTION" || created.TargetType != "POST" || created.TargetID != "41" {
+	if created.NotificationType != "POST_LIKED" || created.Category != "INTERACTION" || created.TargetType != "POST" || created.TargetID != "post_1" {
 		t.Fatalf("notification target = %+v", created)
+	}
+	if created.ActorPublicID != "user_2" || created.ActorDisplayName != "Alice" || created.ActorAvatarURL == nil || *created.ActorAvatarURL != "https://cdn.example/avatar.png" {
+		t.Fatalf("actor snapshot = %+v", created)
 	}
 	if created.DedupeKey != "post_liked:41:2002" || created.GroupKey != "post_liked:41" {
 		t.Fatalf("dedupe/group = %q/%q", created.DedupeKey, created.GroupKey)
@@ -70,7 +73,7 @@ func TestInteractionConsumerPlansPostPublishedCampaignWithoutFollowerFanout(t *t
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"post",
 			"aggregateId":"post_41",
-			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
+			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"author":{"publicId":"user_1001","displayName":"作者"},"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
 		}`),
 	})
 
@@ -109,7 +112,7 @@ func TestInteractionConsumerAcksSelfInteractionWithoutWriting(t *testing.T) {
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"user",
 			"aggregateId":"1001",
-			"payload":{"followerId":1001,"followingId":1001,"occurredAt":"2026-07-06T10:00:00Z"}
+			"payload":{"followerId":1001,"followingId":1001,"targetPublicId":"user_1001","actor":{"publicId":"user_1001","displayName":"Self"},"occurredAt":"2026-07-06T10:00:00Z"}
 		}`),
 	})
 
@@ -135,7 +138,7 @@ func TestInteractionConsumerCreatesUserFollowedNotification(t *testing.T) {
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"user",
 			"aggregateId":"1001",
-			"payload":{"followerId":2002,"followingId":1001,"occurredAt":"2026-07-06T10:00:00Z"}
+			"payload":{"followerId":2002,"followingId":1001,"targetPublicId":"user_2002","actor":{"publicId":"user_2002","displayName":"Alice"},"occurredAt":"2026-07-06T10:00:00Z"}
 		}`),
 	})
 
@@ -149,7 +152,7 @@ func TestInteractionConsumerCreatesUserFollowedNotification(t *testing.T) {
 	if created.RecipientID != 1001 || created.ActorID == nil || *created.ActorID != 2002 {
 		t.Fatalf("recipient/actor = %d/%v", created.RecipientID, created.ActorID)
 	}
-	if created.NotificationType != "USER_FOLLOWED" || created.Category != "SOCIAL" || created.TargetType != "USER" || created.TargetID != "2002" {
+	if created.NotificationType != "USER_FOLLOWED" || created.Category != "SOCIAL" || created.TargetType != "USER" || created.TargetID != "user_2002" || created.ActorPublicID != "user_2002" {
 		t.Fatalf("notification = %+v", created)
 	}
 }
@@ -170,7 +173,7 @@ func TestInteractionConsumerCreatesCommentReplyNotificationFromPayloadFacts(t *t
 	if created.RecipientID != 3003 || created.ActorID == nil || *created.ActorID != 2002 {
 		t.Fatalf("recipient/actor = %d/%v", created.RecipientID, created.ActorID)
 	}
-	if created.NotificationType != "COMMENT_REPLIED" || created.TargetType != "COMMENT" || created.TargetID != "8002" {
+	if created.NotificationType != "COMMENT_REPLIED" || created.TargetType != "POST" || created.TargetID != "post_1" || created.ActorPublicID != "user_2002" {
 		t.Fatalf("notification = %+v", created)
 	}
 }
@@ -228,7 +231,7 @@ func TestInteractionConsumerDeadLettersInvalidPostPublishedPayload(t *testing.T)
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"post",
 			"aggregateId":"post_bad",
-			"payload":{"publicId":"post_bad","authorId":1001,"title":"Hello","publishedAt":"2026-07-06T09:59:00Z"}
+			"payload":{"publicId":"post_bad","internalId":41,"authorId":1001,"title":"Hello","publishedAt":"2026-07-06T09:59:00Z"}
 		}`),
 	})
 
@@ -307,7 +310,7 @@ func validCommentReplyEvent() IncomingEvent {
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"comment",
 			"aggregateId":"9001",
-			"payload":{"commentId":9001,"publicId":"post_1","internalId":41,"postAuthorId":1001,"authorId":2002,"rootId":8001,"rootAuthorId":3003,"parentId":8002,"parentAuthorId":3003,"hasImages":false,"hasVoice":false,"createdAt":"2026-07-06T10:00:00Z"}
+			"payload":{"commentId":9001,"publicId":"post_1","internalId":41,"postAuthorId":1001,"authorId":2002,"rootId":8001,"rootAuthorId":3003,"parentId":8002,"parentAuthorId":3003,"hasImages":false,"hasVoice":false,"createdAt":"2026-07-06T10:00:00Z","actor":{"publicId":"user_2002","displayName":"Alice"}}
 		}`),
 	}
 }
@@ -323,7 +326,7 @@ func validPostPublishedEvent() IncomingEvent {
 			"occurredAt":"2026-07-06T10:00:00Z",
 			"aggregateType":"post",
 			"aggregateId":"post_41",
-			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
+			"payload":{"publicId":"post_41","internalId":41,"authorId":1001,"author":{"publicId":"user_1001","displayName":"作者"},"title":"Hello","summary":"Short summary","publishedAt":"2026-07-06T09:59:00Z"}
 		}`),
 	}
 }
