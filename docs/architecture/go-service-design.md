@@ -166,6 +166,8 @@ libs/contracts/events/<domain>/
 
 唯一豁免是极简且不承载业务语义的一次性语句，例如 `SELECT 1` 健康检查、`TRUNCATE`、单表按主键的 `SELECT` / `DELETE` 这类不会成为稳定契约、无需逐行审查的一行 SQL。这类语句可以内联，但一旦语句变成多行、进入热路径、承载业务规则或成为稳定契约，就必须外置。既有硬编码 SQL 可在聚焦重构中迁移到 `sql/*.sql`，不混入无关功能提交。
 
+这条规则由 `scripts/check-inline-sql.py`（`make inline-sql`，已并入 `make check`）机械兜底，扫描范围是 `services/*/internal/*/infrastructure/postgres/**/*.go`（排除 `_test.go`）。它拦截两类硬编码：数据库方法调用点直接传 SQL 字面量、反引号里内联 SQL 语句。确属上面豁免情形时，在命中行或上一行加 `// inline-sql-allow: <理由>` 显式放行，理由必须写清为何无需外置。
+
 ## 命名和映射归属
 
 - Go 内部包名、类型名、字段名、变量名和 receiver 名属于代码风格，默认遵循 Go 习惯和服务内现有写法。

@@ -9,7 +9,8 @@
 
 ## 常用命令
 
-- `make check`：本地统一交付门禁，运行脚手架检查、架构依赖方向检查、测试文件规模检查和所有 Go 模块测试。
+- `make check`：本地统一交付门禁，运行脚手架检查、架构依赖方向检查、存储层 SQL 硬编码检查、测试文件规模检查和所有 Go 模块测试。
+- `python3 scripts/check-inline-sql.py --root .`：检查 `infrastructure/postgres` 下是否把 SQL 硬编码在 Go 代码里；细则见 `docs/architecture/go-service-design.md`。
 - `make test`：在每个 Go workspace 模块内运行 `go test ./...`。
 - `make test-size`：全量运行 `scripts/check-test-size.py`，检查 `*_test.go` 文件规模；局部模式见 `docs/architecture/testing.md`。
 - `bash scripts/check-structure.sh`：检查服务入口、模块目录、文档入口和 agent 入口是否齐全。
