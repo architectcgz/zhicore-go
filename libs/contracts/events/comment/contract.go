@@ -22,6 +22,14 @@ type CommentCreatedPayload struct {
 	HasImages      bool   `json:"hasImages"`
 	HasVoice       bool   `json:"hasVoice"`
 	CreatedAt      string `json:"createdAt"`
+	Actor          ActorSnapshot `json:"actor"`
+}
+
+// ActorSnapshot is the event-time display fact consumed by Notification.
+type ActorSnapshot struct {
+	PublicID    string `json:"publicId"`
+	DisplayName string `json:"displayName"`
+	AvatarURL   string `json:"avatarUrl,omitempty"`
 }
 
 // CommentDeletedPayload is the version 1 payload for comment.deleted.
