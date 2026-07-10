@@ -238,6 +238,7 @@ required_files=(
   "harness/policies/commit-message.json"
   "scripts/check-commit-message.sh"
   "scripts/install-githooks.sh"
+  "scripts/check-inline-sql.py"
 )
 
 for file in "${required_files[@]}"; do

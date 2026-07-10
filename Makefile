@@ -1,6 +1,6 @@
-.PHONY: check test test-size structure architecture
+.PHONY: check test test-size structure architecture inline-sql
 
-check: structure architecture test-size test
+check: structure architecture inline-sql test-size test
 
 structure:
 	bash scripts/check-structure.sh
@@ -8,6 +8,9 @@ structure:
 architecture:
 	python3 -m unittest tests/architecture/check_boundaries_test.py
 	python3 tests/architecture/check_boundaries.py --root .
+
+inline-sql:
+	python3 scripts/check-inline-sql.py --root .
 
 test-size:
 	python3 scripts/check-test-size.py --root .
