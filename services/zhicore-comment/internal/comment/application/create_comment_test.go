@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,7 +25,7 @@ func TestCreateCommentCreatesTopLevelCommentWithStatsRanksAndOutbox(t *testing.T
 		Stats:         store,
 		PostStats:     store,
 		ContentPosts:  &fakeContentPostClient{post: ports.CommentablePost{PostID: "post_pub_1", ContentInternalID: 9001, AuthorID: 501}},
-		UserProfiles:  &fakeUserProfileClient{},
+		UserProfiles:  &fakeUserProfileClient{summaries: map[domain.UserID]ports.AuthorSummary{42: {UserID: 42, PublicID: "user_pub_42", DisplayName: "Alice", AvatarURL: "https://cdn.example/avatar.png"}}},
 		UserRelations: &fakeUserRelationClient{},
 		Files:         &fakeFileReferenceClient{},
 		IDs:           publicIDCodec{},
@@ -73,6 +74,7 @@ func TestCreateCommentCreatesTopLevelCommentWithStatsRanksAndOutbox(t *testing.T
 		"postAuthorId": float64(501),
 		"hasImages":    true,
 		"hasVoice":     false,
+		"actor":        map[string]any{"publicId": "user_pub_42", "displayName": "Alice", "avatarUrl": "https://cdn.example/avatar.png"},
 	})
 }
 
@@ -91,7 +93,7 @@ func TestCreateCommentCreatesReplyAfterCheckingParentInsideTransaction(t *testin
 		Stats:         store,
 		PostStats:     store,
 		ContentPosts:  &fakeContentPostClient{post: ports.CommentablePost{PostID: "post_pub_2", ContentInternalID: 9002, AuthorID: 501}},
-		UserProfiles:  &fakeUserProfileClient{},
+		UserProfiles:  &fakeUserProfileClient{summaries: map[domain.UserID]ports.AuthorSummary{44: {UserID: 44, PublicID: "user_pub_44", DisplayName: "Bob"}}},
 		UserRelations: relations,
 		Files:         &fakeFileReferenceClient{},
 		IDs:           publicIDCodec{},
@@ -288,7 +290,7 @@ func assertCreatedOutboxPayload(t *testing.T, message ports.OutboxMessage, want 
 		t.Fatalf("unmarshal payload: %v", err)
 	}
 	for key, wantValue := range want {
-		if got := payload[key]; got != wantValue {
+		if got := payload[key]; !reflect.DeepEqual(got, wantValue) {
 			t.Fatalf("payload[%s] = %#v, want %#v; payload=%#v", key, got, wantValue, payload)
 		}
 	}
