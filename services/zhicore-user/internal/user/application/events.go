@@ -31,10 +31,22 @@ func (s *Service) publishRelationshipEvent(ctx context.Context, event domain.Rel
 	// the outward integration event name and JSON payload that enter outbox.
 	switch e := event.(type) {
 	case domain.UserFollowed:
+		actor, err := s.queries.GetByUserID(ctx, e.FollowerID)
+		if err != nil {
+			return err
+		}
+		target, err := s.queries.GetByUserID(ctx, e.FollowingID)
+		if err != nil {
+			return err
+		}
 		return s.publish(ctx, relationshipEventUserFollowed, e.FollowerID, occurredAt, userevents.FollowedPayload{
 			FollowerID:  int64(e.FollowerID),
 			FollowingID: int64(e.FollowingID),
-			OccurredAt:  occurredAt,
+			// AvatarFileID is a storage reference, not a browser-safe URL. Omit it
+			// until the user service owns a URL resolver for this event snapshot.
+			Actor:          userevents.ProfileSnapshot{PublicID: string(actor.PublicID), DisplayName: actor.Nickname},
+			TargetPublicID: string(target.PublicID),
+			OccurredAt:     occurredAt,
 		})
 	case domain.UserUnfollowed:
 		return s.publish(ctx, relationshipEventUserUnfollowed, e.FollowerID, occurredAt, userevents.UnfollowedPayload{
