@@ -23,8 +23,10 @@ type FileResourceClient interface {
 }
 
 type OwnerSnapshot struct {
+	PublicID       string
 	DisplayName    string
 	AvatarFileID   string
+	AvatarURL      string
 	ProfileVersion int64
 }
 

@@ -53,6 +53,10 @@ func TestLikePostIsIdempotentAndAppendsOutboxOnlyOnFirstMutation(t *testing.T) {
 	if deps.outbox.events[0].EventType != "content.post.liked" || payload["likedBy"].(float64) != 42 {
 		t.Fatalf("outbox = %+v payload=%s", deps.outbox.events[0], deps.outbox.events[0].PayloadJSON)
 	}
+	actor, ok := payload["actor"].(map[string]any)
+	if !ok || actor["publicId"] != "user_pub_42" || actor["displayName"] != "architect" {
+		t.Fatalf("actor snapshot = %#v", payload["actor"])
+	}
 
 	deps = newCreatePostDeps()
 	deps.engagement = &fakeEngagementRepository{

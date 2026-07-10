@@ -68,8 +68,10 @@ func (c *UserClient) GetOwnerSnapshot(ctx context.Context, userID int64) (ports.
 				continue
 			}
 			return ports.OwnerSnapshot{
+				PublicID:       item.PublicID,
 				DisplayName:    item.Nickname,
 				AvatarFileID:   item.AvatarFileID,
+				AvatarURL:      item.AvatarURL,
 				ProfileVersion: item.ProfileVersion,
 			}, nil
 		}
