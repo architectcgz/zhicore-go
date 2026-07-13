@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Reviewer"
+  short_description: "Review changes for correctness, regressions, security, tests, and merge risk"
+  default_prompt: "Use the code reviewer skill to review diffs, patches, or pull requests with strong attention to correctness, regressions, architecture impact, security, test quality, and clear reviewer communication."
