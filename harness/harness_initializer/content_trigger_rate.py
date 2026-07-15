@@ -13,7 +13,7 @@ def test_trigger_rate_script() -> str:
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cwd="$(cd "$script_dir/.." && pwd)"
+cwd="$(cd "$script_dir/../.." && pwd)"
 
 agents_home="${AGENTS_HOME:-$HOME/.agents}"
 python_script="$agents_home/harness/test-trigger-rate.py"

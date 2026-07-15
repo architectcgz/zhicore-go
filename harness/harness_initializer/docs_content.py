@@ -57,11 +57,11 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 ## 本项目落点
 
-- 长期架构事实进入 `docs/architecture/`。
-- API 合同进入 `docs/contracts/`。
-- 结构性实施进入 `docs/plan/impl-plan/`。
-- Review 证据进入 `docs/reviews/`。
-- 反复出现的问题进入 `feedback/` 或 `docs/improvements/`。
+- 长期架构事实进入 `.arccgz-harness/docs/architecture/`。
+- API 合同进入 `.arccgz-harness/docs/contracts/`。
+- 结构性实施进入 `.arccgz-harness/docs/plan/`。
+- Review 证据进入 `.arccgz-harness/docs/reviews/`。
+- 反复出现的问题进入 `.arccgz-harness/feedback/` 或 `.arccgz-harness/docs/improvements/`。
 """,
         "concepts/02-mechanical-enforcement.md": """# Mechanical Enforcement
 
@@ -69,7 +69,7 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 ## 本项目落点
 
-- `scripts/check-harness-consistency.sh` 检查 harness 目录、导航和计数声明。
+- `.arccgz-harness/scripts/check-harness-consistency.sh` 检查 harness 目录、导航和计数声明。
 - `.githooks/pre-commit` 在提交前执行一致性检查。
 - 适合脚本化的规则应优先进入检查脚本，而不是只写进说明。
 """,
@@ -79,8 +79,8 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 ## 本项目落点
 
-- `feedback/` 记录 harness 使用中的踩坑和修正。
-- `docs/improvements/` 记录工程改进项。
+- `.arccgz-harness/feedback/` 记录 harness 使用中的踩坑和修正。
+- `.arccgz-harness/docs/improvements/` 记录工程改进项。
 - 当反馈已经固化为规则或脚本，回链到对应文件。
 """,
         "concepts/04-agent-readability.md": """# Agent Readability
@@ -110,8 +110,8 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 ## 组件清单
 
 - Guides：`AGENTS.md`、`concepts/`、`prompts/`
-- Sensors：`scripts/check-harness-consistency.sh`、hook、review 记录
-- Memory：`feedback/`、`thinking/`、`references/`
+- Sensors：`.arccgz-harness/scripts/check-harness-consistency.sh`、hook、review 记录
+- Memory：`.arccgz-harness/feedback/`、`thinking/`、`references/`
 - Practice：`practice/`
 - Output：`works/`
 """,
@@ -126,7 +126,7 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 ## 下一步
 
-需要验证的判断进入 `practice/`；出现踩坑进入 `feedback/`。
+需要验证的判断进入 `practice/`；出现踩坑进入 `.arccgz-harness/feedback/`。
 """,
         "thinking/ctf-harness-boundary.md": f"""# CTF Harness Boundary
 
@@ -153,7 +153,7 @@ Harness 层负责让 agent 找到事实源和反馈，不把所有 CTF 架构内
 
 ## 下一步
 
-实践中的问题进入 `feedback/`。
+实践中的问题进入 `.arccgz-harness/feedback/`。
 """,
         "practice/01-ctf-harness-initialization/README.md": f"""# CTF Harness Initialization
 
@@ -163,15 +163,15 @@ Harness 层负责让 agent 找到事实源和反馈，不把所有 CTF 架构内
 
 ## 方法
 
-- 创建 `concepts/ thinking/ practice/ feedback/ works/ prompts/ references/`。
+- 创建 `concepts/ thinking/ practice/ .arccgz-harness/feedback/ works/ prompts/ references/`。
 - 为每个目录创建 `AGENTS.md`。
-- 创建 `scripts/check-harness-consistency.sh`。
+- 创建 `.arccgz-harness/scripts/check-harness-consistency.sh`。
 - 接入 `.githooks/pre-commit`。
 
 ## 验证
 
 ```bash
-bash scripts/check-harness-consistency.sh
+bash .arccgz-harness/scripts/check-harness-consistency.sh
 ```
 """,
         "practice/01-ctf-harness-initialization/AGENTS.md": """# practice/01-ctf-harness-initialization
@@ -181,10 +181,10 @@ bash scripts/check-harness-consistency.sh
 更新本实验时同步检查：
 
 - 根 `AGENTS.md` 是否指向严格 harness 目录。
-- `scripts/check-harness-consistency.sh` 是否覆盖新增目录。
-- `feedback/` 是否记录初始化过程中的偏差。
+- `.arccgz-harness/scripts/check-harness-consistency.sh` 是否覆盖新增目录。
+- `.arccgz-harness/feedback/` 是否记录初始化过程中的偏差。
 """,
-        "feedback/AGENTS.md": """# feedback/ — 反馈记录
+        "feedback/AGENTS.md": """# .arccgz-harness/feedback/ — 反馈记录
 
 实践中的踩坑、修正、迭代心得。把失败变成可复用经验。
 
@@ -206,7 +206,7 @@ bash scripts/check-harness-consistency.sh
 
 ## 解决方案
 
-改为创建参考仓库同构的顶层目录：`concepts/`、`thinking/`、`practice/`、`feedback/`、`works/`、`prompts/`、`references/`，并用 `scripts/check-harness-consistency.sh` 检查这些目录和导航。
+改为创建参考仓库同构的顶层目录：`concepts/`、`thinking/`、`practice/`、`.arccgz-harness/feedback/`、`works/`、`prompts/`、`references/`，并用 `.arccgz-harness/scripts/check-harness-consistency.sh` 检查这些目录和导航。
 
 ## 收获
 
@@ -230,7 +230,7 @@ bash scripts/check-harness-consistency.sh
 - `concepts/`：补充项目 `AGENTS.md` 的长期概念与原则
 - `thinking/`：判断与取舍
 - `practice/`：实验和初始化记录
-- `feedback/`：踩坑与修正
+- `.arccgz-harness/feedback/`：踩坑与修正
 - `works/`：可展示输出
 - `prompts/`：可复用提示词
 - `references/`：外部资料索引
@@ -252,7 +252,7 @@ bash scripts/check-harness-consistency.sh
 
 ## Prompt
 
-请严格参考 `https://github.com/deusyu/harness-engineering` 的仓库结构，为当前项目创建顶层 `concepts/ thinking/ practice/ feedback/ works/ prompts/ references/`，每个目录都有 `AGENTS.md`，并创建 `scripts/check-harness-consistency.sh` 和 hook 接入。不要把 harness 折叠进现有 `docs/` 目录。
+请严格参考 `https://github.com/deusyu/harness-engineering` 的仓库结构，为当前项目创建顶层 `concepts/ thinking/ practice/ .arccgz-harness/feedback/ works/ prompts/ references/`，每个目录都有 `AGENTS.md`，并创建 `.arccgz-harness/scripts/check-harness-consistency.sh` 和 hook 接入。不要把 harness 折叠进现有 `docs/` 目录。
 
 ## 效果评价
 
@@ -304,15 +304,15 @@ def ctf_current_docs(project_name: str, profile: str) -> dict[str, str]:
         else f"{project_name} 项目。"
     )
     return {
-        ".harness/reuse-decisions/.gitkeep": "",
-        ".harness/reuse-index/README.md": """# Local Reuse Index
+        "state/reuse-decisions/.gitkeep": "",
+        "state/reuse-index/README.md": """# Local Reuse Index
 
 This directory is user-local and gitignored.
 
 - `index.yaml` is the top-level route map.
 - Mirror source directories under this tree and place `README.md` files there as module-level and module-internal secondary indexes.
 """,
-        ".harness/reuse-index/index.yaml": """version: 1
+        "state/reuse-index/index.yaml": """version: 1
 entries: []
 """,
         "harness/policies/reuse-first.yaml": """version: 1
@@ -403,7 +403,7 @@ TBD
 
 - Frontend: `src/`, `app/`, `components/`, `features/`, `views/`, `composables/`, `api/`, `stores/`
 - Backend: `internal/`, `src/`, `app/`, `services/`, `handlers/`, `repositories/`, `ports/`, `jobs/`, `workers/`, `mappers/`, `readmodels/`, `migrations/`
-- Local index: `.harness/reuse-index/index.yaml`, mirrored `README.md` files under `.harness/reuse-index/`
+- Local index: `.arccgz-harness/state/reuse-index/index.yaml`, mirrored `README.md` files under `.arccgz-harness/state/reuse-index/`
 - Harness: `harness/policies/`
 
 ## Decision
@@ -415,7 +415,7 @@ TBD
 
 ## Notes
 
-This file stores current-task state only. Durable local reuse knowledge belongs in `.harness/reuse-index/`.
+This file stores current-task state only. Durable local reuse knowledge belongs in `.arccgz-harness/state/reuse-index/`.
 """,
         "harness/prompts/AGENTS.md": """# harness/prompts
 
@@ -423,7 +423,7 @@ Project prompt entrypoints live here.
 
 Shared reusable prompt bodies can live under `~/.agents/harness/prompts/`.
 Keep this directory for stable in-repo entrypoints, local parameters, and project-specific prompt supplements.
-Do not store one-off current task notes here. Use `.harness/` for current-task state.
+Do not store one-off current task notes here. Use `.arccgz-harness/state/` for current-task state.
 Do not keep one-off initialization prompts, historical migration prompts, or rules already moved into a global skill.
 """,
         "harness/prompts/harness-router.md": f"""# Harness Router

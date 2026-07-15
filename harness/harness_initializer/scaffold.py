@@ -9,6 +9,7 @@ import subprocess
 
 START = "BEGIN HARNESS ENGINEERING"
 END = "END HARNESS ENGINEERING"
+HARNESS_ROOT = ".arccgz-harness"
 WORKSPACE_AGENT_ENTRYPOINT_CHECK = Path.home() / "workspace" / "projects" / "scripts" / "check-agent-entrypoints.sh"
 AGENTS_SKILLS_DIR = Path.home() / ".agents" / "skills"
 CODEX_SKILLS_DIR = Path.home() / ".codex" / "skills"
@@ -33,6 +34,11 @@ IMPROVEMENT_STATUS_DIRS = [
     "rejected",
     "archived",
 ]
+
+
+def harness_dir(repo: Path) -> Path:
+    """Return the harness root directory inside the repo."""
+    return repo / HARNESS_ROOT
 
 
 def resolve_skill_dir(skill_name: str) -> Path:
@@ -64,15 +70,16 @@ def read_asset(relative: str) -> str:
 
 
 def ensure_documentation_scaffold(repo: Path) -> None:
+    root = harness_dir(repo)
     for directory in STANDARD_DOC_DIRS:
-        (repo / "docs" / directory).mkdir(parents=True, exist_ok=True)
+        (root / "docs" / directory).mkdir(parents=True, exist_ok=True)
     for directory in IMPROVEMENT_STATUS_DIRS:
-        (repo / "docs" / "improvements" / directory).mkdir(parents=True, exist_ok=True)
-    write(repo / "docs" / "documentation-rules.md", read_asset("documentation-rules.md"))
-    write(repo / "docs" / "README.md", read_asset("README.md"))
-    write(repo / "docs" / "improvements" / "README.md", read_asset("improvements/README.md"))
+        (root / "docs" / "improvements" / directory).mkdir(parents=True, exist_ok=True)
+    write_if_missing(root / "docs" / "documentation-rules.md", read_asset("documentation-rules.md"))
+    write_if_missing(root / "docs" / "README.md", read_asset("README.md"))
+    write_if_missing(root / "docs" / "improvements" / "README.md", read_asset("improvements/README.md"))
     write_if_missing(
-        repo / "docs" / "architecture" / "README.md",
+        root / "docs" / "architecture" / "README.md",
         """# Architecture Index
 
 This directory stores current system design, module boundaries, data flow, integration points, and long-lived technical constraints.
@@ -138,11 +145,11 @@ def insert_hook(path: Path) -> None:
     start = f"# {START}: pre-commit"
     end = f"# {END}: pre-commit"
     body = f"""{start}
-if [[ -x scripts/check-harness-consistency.sh ]]; then
-  bash scripts/check-harness-consistency.sh
+if [[ -x {HARNESS_ROOT}/scripts/check-harness-consistency.sh ]]; then
+  bash {HARNESS_ROOT}/scripts/check-harness-consistency.sh
 fi
-if [[ -x scripts/check-skill-sync-reminder.sh ]]; then
-  bash scripts/check-skill-sync-reminder.sh --staged
+if [[ -x {HARNESS_ROOT}/scripts/check-skill-sync-reminder.sh ]]; then
+  bash {HARNESS_ROOT}/scripts/check-skill-sync-reminder.sh --staged
 fi
 # {END}: pre-commit"""
     if start in text and end in text:
@@ -162,7 +169,7 @@ def insert_commit_msg_hook(path: Path) -> None:
     body = f"""{start}
 cd "$(git rev-parse --show-toplevel)"
 
-bash scripts/check-commit-message.sh "$1"
+bash {HARNESS_ROOT}/scripts/check-commit-message.sh "$1"
 # {END}: commit-msg"""
     if start in text and end in text:
         before, rest = text.split(start, 1)
@@ -186,41 +193,34 @@ def upsert_gitignore_block(text: str, kind: str, lines: list[str]) -> str:
     return text.rstrip() + "\n\n" + body + "\n"
 
 
+def _remove_gitignore_block(text: str, kind: str) -> str:
+    """Remove a managed block by kind, returning the cleaned text."""
+    start = f"# {START}: {kind}"
+    end = f"# {END}: {kind}"
+    if start in text and end in text:
+        before, rest = text.split(start, 1)
+        _, after = rest.split(end, 1)
+        cleaned = (before.rstrip() + "\n" + after.lstrip()).strip() + "\n"
+        return cleaned if cleaned != "\n" else ""
+    return text
+
+
 def add_gitignore_exceptions(repo: Path) -> None:
     path = repo / ".gitignore"
     text = path.read_text(encoding="utf-8") if path.exists() else ""
-    local_defaults = [
+
+    # Remove blocks from previous init versions so we can start fresh
+    text = _remove_gitignore_block(text, "local-artifacts")
+    text = _remove_gitignore_block(text, "allowlist")
+    text = _remove_gitignore_block(text, "harness-artifacts")
+
+    harness_ignore = [
+        f"/{HARNESS_ROOT}/",
         "/.claude/",
-        "/.playwright-cli/",
-        "/.tmp/",
-        "/.harness/reuse-index/",
-        "/.harness/runtime-runs/",
-        "/backups/",
-        "/tmp/",
-        "/TODO/",
+        "/.codex/",
+        "/.githooks/",
+        "/AGENTS.md",
+        "/CLAUDE.md",
     ]
-    additions = [
-        "!.harness/",
-        "!.harness/*.md",
-        "!harness/",
-        "!harness/**",
-        "!concepts/",
-        "!concepts/*.md",
-        "!thinking/",
-        "!thinking/*.md",
-        "!practice/",
-        "!practice/**",
-        "!feedback/",
-        "!feedback/*.md",
-        "!works/",
-        "!works/*.md",
-        "!prompts/",
-        "!prompts/*.md",
-        "!references/",
-        "!references/*.md",
-        "!docs/reviews/general/",
-        "!docs/reviews/general/*.md",
-    ]
-    text = upsert_gitignore_block(text, "local-artifacts", local_defaults)
-    text = upsert_gitignore_block(text, "allowlist", additions)
+    text = upsert_gitignore_block(text, "harness-artifacts", harness_ignore)
     path.write_text(text, encoding="utf-8")

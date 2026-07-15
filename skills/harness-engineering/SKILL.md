@@ -7,8 +7,6 @@ description: "Use when initializing or refactoring a repository into an AI-agent
 
 Use this skill to turn a repository into a navigable, enforceable harness for coding agents.
 
-Default to the current CTF harness shape in `/home/azhi/workspace/projects/ctf` as the local exploratory standard: root `AGENTS.md` as the entry map, `.harness/` for current-task scratch/state and local private reuse indexes, project `harness/` for reusable policies/templates/prompts/checks, `feedback/` for workflow lessons, and mechanical checks/hooks for drift control.
-
 Keep `deusyu/harness-engineering` as an important upstream reference, especially for repo-as-source-of-truth, progressive navigation, feedback capture, mechanical enforcement, and agent readability. Use strict top-level reference directories only when the user explicitly asks to follow the upstream structure.
 
 For brand-new project initialization, `harness-engineering` owns the harness subsystem itself. It should expose mechanical commands that a higher-level workflow or operator can call, but it does not own reusable frontend/backend code templates.
@@ -64,7 +62,7 @@ When the repo has harness/operator scripts, initialize a mechanical script-growt
 
 When the repo uses the local reuse index pattern, wire a non-blocking reminder into root `AGENTS.md`:
 
-- when implementation first forms a stable reuse pattern in a module, remind the operator to add `.harness/reuse-index/<source-path>/README.md`
+- when implementation first forms a stable reuse pattern in a module, remind the operator to add `.arccgz-harness/state/reuse-index/<source-path>/README.md`
 - when reuse structure stabilizes inside a module, remind the operator to add a deeper mirrored `README.md` for that subpath
 - keep this as an operator reminder only; do not make local private indexes a pre-commit blocker
 
@@ -90,7 +88,7 @@ bash /home/azhi/.agents/harness/init-project.sh "$PWD" --mode strict-reference
 
 `init-project.sh` is the preferred high-level bootstrap wrapper. It runs `harness-initializer.py`, then installs the requested workflow package by default, then runs the repo-local consistency check when present. The lower-level Python initializer remains the repair/debugging entry for harness-only operations.
 
-The initializer is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.harness/`, `.harness/reuse-decisions/`, optional local `.harness/reuse-index/`, `harness/policies/`, `harness/templates/`, `harness/prompts/`, `harness/checks/`, `feedback/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates top-level `concepts/`, `thinking/`, `practice/`, `feedback/`, `works/`, `prompts/`, `references/`, `scripts/check-architecture.sh`, `scripts/check-test-workflow.sh`, and a consistency check; in that layout, `concepts/` should be treated as a supplement to the root `AGENTS.md`, while the root `AGENTS.md` remains the project description and navigation entrypoint.
+The initializer is idempotent. In both modes it also ensures the repo root keeps `CLAUDE.md -> AGENTS.md`, unless an existing conflicting `CLAUDE.md` requires manual resolution. In default CTF-current mode it creates `.arccgz-harness/state/`, `.arccgz-harness/state/reuse-decisions/`, optional local `.arccgz-harness/state/reuse-index/`, `.arccgz-harness/harness/policies/`, `.arccgz-harness/harness/templates/`, `.arccgz-harness/harness/prompts/`, `.arccgz-harness/harness/checks/`, `.arccgz-harness/feedback/`, `.arccgz-harness/scripts/check-architecture.sh`, `.arccgz-harness/scripts/check-test-workflow.sh`, and a consistency check. In strict reference mode it creates `.arccgz-harness/concepts/`, `.arccgz-harness/thinking/`, `.arccgz-harness/practice/`, `.arccgz-harness/feedback/`, `.arccgz-harness/works/`, `.arccgz-harness/prompts/`, `.arccgz-harness/references/`, `.arccgz-harness/scripts/check-architecture.sh`, `.arccgz-harness/scripts/check-test-workflow.sh`, and a consistency check; in that layout, `concepts/` should be treated as a supplement to the root `AGENTS.md`, while the root `AGENTS.md` remains the project description and navigation entrypoint.
 
 ## Harness Shape
 
@@ -98,13 +96,13 @@ Keep the harness as a map, not a manual. In the current local standard:
 
 - `AGENTS.md`: repository navigation entry.
 - `CLAUDE.md -> AGENTS.md`: Claude/Codex auto-discovery entrypoint alias; keep it as a symlink, not a divergent copy.
-- `.harness/`: current-task state and short-lived execution evidence only.
-- `harness/policies/`: project-local mechanical policy inputs.
-- `harness/templates/`: project-local templates for repeated decisions.
-- `harness/prompts/`: stable in-repo prompt entrypoints, local parameters, and prompts that are still truly project-local. Shared prompt bodies can live under `~/.agents/harness/prompts/`. Do not keep one-off initialization prompts, historical migration prompts, or rules already moved into a global skill.
-- `harness/checks/`: deterministic guard scripts.
-- `.harness/reuse-index/`: user-local, gitignored reuse index. Keep `index.yaml` as the top-level route map and mirrored `README.md` files as module/module-internal secondary indexes.
-- `feedback/`: mistakes, corrections, workflow lessons, and reusable learning that has not yet been fully absorbed elsewhere.
+- `.arccgz-harness/state/`: current-task state and short-lived execution evidence only.
+- `.arccgz-harness/harness/policies/`: project-local mechanical policy inputs.
+- `.arccgz-harness/harness/templates/`: project-local templates for repeated decisions.
+- `.arccgz-harness/harness/prompts/`: stable in-repo prompt entrypoints, local parameters, and prompts that are still truly project-local. Shared prompt bodies can live under `~/.agents/harness/prompts/`. Do not keep one-off initialization prompts, historical migration prompts, or rules already moved into a global skill.
+- `.arccgz-harness/harness/checks/`: deterministic guard scripts.
+- `.arccgz-harness/state/reuse-index/`: user-local, gitignored reuse index. Keep `index.yaml` as the top-level route map and mirrored `README.md` files as module/module-internal secondary indexes.
+- `.arccgz-harness/feedback/`: mistakes, corrections, workflow lessons, and reusable learning that has not yet been fully absorbed elsewhere.
 - `scripts/check-harness-consistency.sh`: deterministic base harness guard against drift.
 - `scripts/check-agent-entrypoints.sh`: deterministic guard that requires `CLAUDE.md -> AGENTS.md` and any project-local Claude skill bridge to stay aligned.
 - `scripts/check-architecture.sh`: deterministic minimal architecture guard for docs/architecture routing and project-local architecture commands.

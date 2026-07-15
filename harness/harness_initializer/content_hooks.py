@@ -16,11 +16,11 @@ set -euo pipefail
 # 受保护的文件列表（相对于项目根）
 PROTECTED_PATHS=(
   "AGENTS.md"
-  "harness/policies/reuse-first.yaml"
-  "harness/policies/commit-message.json"
-  "harness/policies/project-patterns.yaml"
-  "harness/policies/script-layer-manifest.json"
-  "docs/文档规范.md"
+  ".arccgz-harness/harness/policies/reuse-first.yaml"
+  ".arccgz-harness/harness/policies/commit-message.json"
+  ".arccgz-harness/harness/policies/project-patterns.yaml"
+  ".arccgz-harness/harness/policies/script-layer-manifest.json"
+  ".arccgz-harness/docs/文档规范.md"
   ".agents/skills/*/SKILL.md"
 )
 
@@ -113,7 +113,7 @@ Why this matters:
 If you really need to modify this file:
 1. Confirm with the user that this change is intentional
 2. Explain why the policy needs to change
-3. Document the change in feedback/ or commit message
+3. Document the change in .arccgz-harness/feedback/ or commit message
 4. Use an allowed commit pattern:
    - chore(harness): update policy
    - docs(harness): fix policy typo
@@ -145,7 +145,7 @@ def codex_hooks_json() -> str:
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "bash harness/hooks/protect-core-files.sh",
+                            "command": "bash .arccgz-harness/harness/hooks/protect-core-files.sh",
                             "statusMessage": "Checking protected files"
                         }
                     ]
@@ -163,7 +163,7 @@ def claude_settings_hooks() -> str:
             "preToolUse": [
                 {
                     "tools": ["edit", "write"],
-                    "script": "bash harness/hooks/protect-core-files.sh"
+                    "script": "bash .arccgz-harness/harness/hooks/protect-core-files.sh"
                 }
             ]
         }
@@ -181,10 +181,10 @@ set -euo pipefail
 
 # AAR 检查清单
 AAR_CHECKLIST=(
-  "是否踩到新坑？需要记录到 Known Gotchas 或 feedback/"
-  "规则文件是否被意外修改？检查 AGENTS.md 和 harness/policies/"
+  "是否踩到新坑？需要记录到 Known Gotchas 或 .arccgz-harness/feedback/"
+  "规则文件是否被意外修改？检查 AGENTS.md 和 .arccgz-harness/harness/policies/"
   "测试是否都通过？运行相关测试命令"
-  "是否有新的架构决策需要记录到 docs/architecture/？"
+  "是否有新的架构决策需要记录到 .arccgz-harness/docs/architecture/？"
   "是否有可复用的模式需要提取到 skill 或 policy？"
   "是否有需要更新的文档？"
 )
@@ -214,9 +214,9 @@ detect_completion_signal() {
 
 # 检查当前是否有激活的 task gate
 check_active_task_gate() {
-  if [[ -x scripts/check-startup-gate.sh ]]; then
+  if [[ -x .arccgz-harness/scripts/check-startup-gate.sh ]]; then
     local active_slug
-    active_slug="$(bash scripts/check-startup-gate.sh --print-active-slug 2>/dev/null || true)"
+    active_slug="$(bash .arccgz-harness/scripts/check-startup-gate.sh --print-active-slug 2>/dev/null || true)"
     echo "$active_slug"
   fi
 }
@@ -254,8 +254,8 @@ done)
 <!-- 是否有规则文件被修改？如果是，说明原因和影响 -->
 
 - [ ] AGENTS.md
-- [ ] harness/policies/
-- [ ] docs/文档规范.md
+- [ ] .arccgz-harness/harness/policies/
+- [ ] .arccgz-harness/docs/文档规范.md
 - [ ] .agents/skills/*/SKILL.md
 
 ## 测试结果
@@ -272,7 +272,7 @@ done)
 
 ## 架构决策
 
-<!-- 是否有新的架构决策？需要记录到 docs/architecture/ 吗？ -->
+<!-- 是否有新的架构决策？需要记录到 .arccgz-harness/docs/architecture/ 吗？ -->
 
 ## 可复用模式
 
@@ -300,14 +300,14 @@ done)
 EOF_AAR
 }
 
-# 保存 AAR 到 feedback/
+# 保存 AAR 到 .arccgz-harness/feedback/
 save_aar() {
   local task_slug="$1"
   local aar_content="$2"
   local timestamp
   timestamp=$(date +%Y%m%d-%H%M%S)
 
-  local feedback_dir="feedback/aar"
+  local feedback_dir=".arccgz-harness/feedback/aar"
   mkdir -p "$feedback_dir"
 
   local aar_file="$feedback_dir/${timestamp}-${task_slug}.md"
@@ -351,7 +351,7 @@ main() {
   local aar_template
   aar_template=$(generate_aar_template "$active_task_slug")
 
-  # 保存 AAR 到 feedback/
+  # 保存 AAR 到 .arccgz-harness/feedback/
   local aar_file
   aar_file=$(save_aar "$active_task_slug" "$aar_template")
 
@@ -373,10 +373,10 @@ done)
 
 After completing the AAR:
 1. Update the AAR file with findings
-2. If there are new gotchas, consider adding them to harness/known-antipatterns/
+2. If there are new gotchas, consider adding them to .arccgz-harness/harness/known-antipatterns/
 3. If there are rule changes, document them
 4. Archive the task artifacts with:
-   bash harness/workflow-plugins/code-workflow/archive_task_artifacts.sh
+   bash .arccgz-harness/harness/workflow-plugins/code-workflow/archive_task_artifacts.sh
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF_NOTIFY
