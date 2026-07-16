@@ -6,7 +6,7 @@ from __future__ import annotations
 from .scaffold import HARNESS_ROOT
 
 
-def ctf_current_check_script() -> str:
+def current_check_script() -> str:
     return f"""#!/usr/bin/env bash
 set -euo pipefail
 

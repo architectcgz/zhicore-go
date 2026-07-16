@@ -5,17 +5,8 @@ from __future__ import annotations
 
 
 def strict_docs(project_name: str, profile: str) -> dict[str, str]:
-    ctf = profile == "ctf-platform"
-    project_line = (
-        "学校教学场景 CTF 平台：学生刷题、教师分析、管理员治理，以及 Jeopardy / AWD / 靶机实例 / 题解复盘。"
-        if ctf
-        else f"{project_name} 项目。"
-    )
-    risk_line = (
-        "重点关注 API 合同、后端 UTC/context 契约、前端路由命名空间、AWD 运行时、超大页面职责堆叠与验证闭环。"
-        if ctf
-        else "重点关注仓库事实源、规则漂移、验证闭环和 agent 可读性。"
-    )
+    project_line = f"{project_name} 项目。"
+    risk_line = "重点关注仓库事实源、规则漂移、验证闭环和 agent 可读性。"
     return {
         "concepts/AGENTS.md": """# concepts/ — AGENTS 补充说明
 
@@ -128,11 +119,11 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 需要验证的判断进入 `practice/`；出现踩坑进入 `.arccgz-harness/feedback/`。
 """,
-        "thinking/ctf-harness-boundary.md": f"""# CTF Harness Boundary
+        "thinking/harness-boundary.md": f"""# Harness Boundary
 
 ## 论点
 
-本项目严格采用参考 harness 的顶层目录形态，但业务事实源仍保留在 CTF 原有代码和文档中。
+本项目严格采用参考 harness 的顶层目录形态，但业务事实源仍保留在项目原有代码和文档中。
 
 ## 项目证据
 
@@ -140,7 +131,7 @@ Harness Engineering 在本仓库中的含义：人类维护约束、事实源、
 
 ## 判断
 
-Harness 层负责让 agent 找到事实源和反馈，不把所有 CTF 架构内容复制进 harness 目录。
+Harness 层负责让 agent 找到事实源和反馈，不把所有业务架构内容复制进 harness 目录。
 """,
         "practice/AGENTS.md": """# practice/ — 动手实践
 
@@ -148,14 +139,14 @@ Harness 层负责让 agent 找到事实源和反馈，不把所有 CTF 架构内
 
 ## 文件约定
 
-- 每个实验一个子目录，如 `practice/01-ctf-harness-initialization/`。
+- 每个实验一个子目录，如 `practice/01-harness-initialization/`。
 - 实验说明写清楚目标、方法、验证命令和结果。
 
 ## 下一步
 
 实践中的问题进入 `.arccgz-harness/feedback/`。
 """,
-        "practice/01-ctf-harness-initialization/README.md": f"""# CTF Harness Initialization
+        "practice/01-harness-initialization/README.md": f"""# Harness Initialization
 
 ## 目标
 
@@ -174,7 +165,7 @@ Harness 层负责让 agent 找到事实源和反馈，不把所有 CTF 架构内
 bash .arccgz-harness/scripts/check-harness-consistency.sh
 ```
 """,
-        "practice/01-ctf-harness-initialization/AGENTS.md": """# practice/01-ctf-harness-initialization
+        "practice/01-harness-initialization/AGENTS.md": """# practice/01-harness-initialization
 
 本实验只记录 harness 初始化，不承载业务代码。
 
@@ -198,7 +189,7 @@ bash .arccgz-harness/scripts/check-harness-consistency.sh
 
 ## 问题描述
 
-第一版初始化偏向适配现有 CTF 文档体系，使用了 `docs/harness/` 作为项目内索引层。
+第一版初始化偏向适配现有项目文档体系，使用了 `docs/harness/` 作为项目内索引层。
 
 ## 原因分析
 
@@ -221,9 +212,9 @@ bash .arccgz-harness/scripts/check-harness-consistency.sh
 - 每个作品一个文件或子目录。
 - 作品应该可以独立理解，不依赖当前会话。
 """,
-        "works/ctf-harness-map.md": """# CTF Harness Map
+        "works/harness-map.md": """# Harness Map
 
-这是 `ctf` 项目的 Harness Engineering 地图。
+这是项目的 Harness Engineering 地图。
 
 ## 结构
 
@@ -244,7 +235,7 @@ bash .arccgz-harness/scripts/check-harness-consistency.sh
 - 单条 Prompt：用途、提示词正文、效果评价。
 - Prompt 工作流：目标、步骤、链路、适用范围。
 """,
-        "prompts/ctf-harness-initialization.md": """# CTF Harness Initialization Prompt
+        "prompts/harness-initialization.md": """# Harness Initialization Prompt
 
 ## 用途
 
@@ -297,12 +288,8 @@ bash .arccgz-harness/scripts/check-harness-consistency.sh
     }
 
 
-def ctf_current_docs(project_name: str, profile: str) -> dict[str, str]:
-    project_line = (
-        "学校教学场景 CTF 平台，后续项目可按自身业务替换本段。"
-        if profile == "ctf-platform"
-        else f"{project_name} 项目。"
-    )
+def current_docs(project_name: str, profile: str) -> dict[str, str]:
+    project_line = f"{project_name} 项目。"
     return {
         "state/reuse-decisions/.gitkeep": "",
         "state/reuse-index/README.md": """# Local Reuse Index

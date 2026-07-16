@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .profile_ctf import configure_ctf_current
+from .profile_default import configure_current
 from .profile_strict import configure_strict_reference
 from .scaffold import (
     add_gitignore_exceptions,
@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo", default=".", help="Target repository root")
     parser.add_argument("--project-name", default=None)
     parser.add_argument("--profile", default="generic")
-    parser.add_argument("--mode", default="ctf-current", choices=["ctf-current", "strict-reference"])
+    parser.add_argument("--mode", default="default", choices=["default", "strict-reference"])
     return parser.parse_args()
 
 
@@ -34,7 +34,7 @@ def main() -> None:
     if args.mode == "strict-reference":
         message, hook_docs = configure_strict_reference(repo, project_name, args.profile)
     else:
-        message, hook_docs = configure_ctf_current(repo, project_name, args.profile)
+        message, hook_docs = configure_current(repo, project_name, args.profile)
     insert_hook(repo / ".githooks/pre-commit")
     insert_commit_msg_hook(repo / ".githooks/commit-msg")
     insert_or_replace(repo / ".githooks/README.md", "hook-docs", hook_docs)

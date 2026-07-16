@@ -4,13 +4,13 @@ set -euo pipefail
 usage() {
   cat <<'EOF' >&2
 Usage:
-  bash ~/.agents/harness/init-project.sh <repo-root> [--project-name <name>] [--mode <ctf-current|strict-reference>] [--workflow <name>] [--skip-workflow]
+  bash ~/.agents/harness/init-project.sh <repo-root> [--project-name <name>] [--mode <default|strict-reference>] [--workflow <name>] [--skip-workflow]
 
 Description:
   Initialize project-local harness scaffolding, then optionally install a shared workflow package.
 
 Defaults:
-  - mode: ctf-current
+  - mode: default
   - workflow: code-workflow
 EOF
 }
@@ -22,7 +22,7 @@ fi
 
 repo_root=""
 project_name=""
-mode="ctf-current"
+mode="default"
 workflow_name="code-workflow"
 skip_workflow=0
 
@@ -85,7 +85,7 @@ if [[ -z "$project_name" ]]; then
 fi
 
 case "$mode" in
-  ctf-current|strict-reference)
+  default|strict-reference)
     ;;
   *)
     echo "FAIL: unsupported mode: $mode" >&2

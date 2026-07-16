@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""CTF-current harness initializer profile."""
+"""Default harness initializer profile."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from .consistency_content import ctf_current_check_script
-from .docs_content import ctf_current_docs
+from .consistency_content import current_check_script
+from .docs_content import current_docs
 from .profile_common import quick_routing_shell, write_common_scaffold
 from .scaffold import HARNESS_ROOT, ensure_documentation_scaffold, harness_dir, insert_or_replace, write
 
 
-def configure_ctf_current(repo: Path, project_name: str, profile: str) -> tuple[str, str]:
+def configure_current(repo: Path, project_name: str, profile: str) -> tuple[str, str]:
     root = harness_dir(repo)
     ensure_documentation_scaffold(repo)
-    for relative, content in ctf_current_docs(project_name, profile).items():
+    for relative, content in current_docs(project_name, profile).items():
         write(root / relative, content)
-    write_common_scaffold(repo, profile, ctf_current_check_script())
+    write_common_scaffold(repo, profile, current_check_script())
     insert_or_replace(
         repo / "AGENTS.md",
         "root-navigation",
         f"""## Harness Engineering
 
-当前默认采用 CTF 探索版 harness 形态，并保留 `deusyu/harness-engineering` 的核心原则作为重要参考。
+当前采用通用的本地 harness 形态，并保留 `deusyu/harness-engineering` 的核心原则作为重要参考。
 
 | 路径 | 内容 | 说明 |
 |------|------|------|
@@ -72,8 +72,8 @@ def configure_ctf_current(repo: Path, project_name: str, profile: str) -> tuple[
     )
     hook_docs = f"""## Harness 检查
 
-- `pre-commit`：运行 `{HARNESS_ROOT}/scripts/check-harness-consistency.sh`，其中会继续执行 `{HARNESS_ROOT}/scripts/check-architecture.sh` 与 `{HARNESS_ROOT}/scripts/check-test-workflow.sh`，检查 CTF 探索版 harness 的目录、导航、本地私有 reuse 索引归属、最小架构守卫和测试工作流约束。
+- `pre-commit`：运行 `{HARNESS_ROOT}/scripts/check-harness-consistency.sh`，其中会继续执行 `{HARNESS_ROOT}/scripts/check-architecture.sh` 与 `{HARNESS_ROOT}/scripts/check-test-workflow.sh`，检查 harness 的目录、导航、本地私有 reuse 索引归属、最小架构守卫和测试工作流约束。
 - `pre-commit`：非阻塞运行 `{HARNESS_ROOT}/scripts/check-skill-sync-reminder.sh --staged`，提醒把跨项目规则上收全局 skill 或 shared harness。
 - `commit-msg`：运行 `{HARNESS_ROOT}/scripts/check-commit-message.sh`，由共享检查器读取 `{HARNESS_ROOT}/harness/policies/commit-message.json` 校验标题、正文和激活任务的 `Task:` 绑定。
 - 原有项目 hook 逻辑继续保留。"""
-    return "Initialized CTF-current harness", hook_docs
+    return "Initialized default harness", hook_docs

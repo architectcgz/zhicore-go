@@ -322,11 +322,10 @@ exit "$fail"
 
 
 def commit_message_policy_content(profile: str) -> str:
-    ctf = profile == "ctf-platform"
     examples = {
-        "fix": "fix(frontend): 修正拓扑页导出按钮禁用态" if ctf else "fix(api): 修正登录接口限流判断",
-        "refactor": "refactor(topology): 拆分画布工作区组件" if ctf else "refactor(harness): 拆分任务启动脚本",
-        "docs": "docs: 补齐提交信息约束说明" if ctf else "docs(workflow): 补齐提交规范说明",
+        "fix": "fix(api): 修正接口限流判断",
+        "refactor": "refactor(harness): 拆分任务启动脚本",
+        "docs": "docs(workflow): 补齐提交规范说明",
     }
     policy = {
         "allowed_types": [
