@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Handoff"
+  short_description: "Build evidence-backed understanding of unfamiliar codebases"
+  default_prompt: "Use $project-handoff from the repository root to map the system before implementation or handoff."
