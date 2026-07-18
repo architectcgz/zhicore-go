@@ -1,7 +1,8 @@
 ---
 name: code-reviewer
 description: "Use this agent when code has been committed by another agent or developer and needs to be reviewed for quality, correctness, and architectural consistency. This includes after feature implementation, bug fixes, refactoring, or any code changes that need a second pair of eyes before merging.\\n\\nExamples:\\n\\n- User: \"帮我 review 一下 zhicore-user 服务最近的提交\"\\n  Assistant: \"我来启动 code-reviewer agent 对 zhicore-user 服务的最近提交进行代码审查。\"\\n  (Use the Task tool to launch the code-reviewer agent to review the recent commits.)\\n\\n- Context: Another agent just finished implementing a feature and committed code.\\n  User: \"Codex 刚完成了评论模块的开发，帮我审查一下代码\"\\n  Assistant: \"好的，我用 code-reviewer agent 来审查评论模块的代码变更。\"\\n  (Use the Task tool to launch the code-reviewer agent to review the committed code.)\\n\\n- Context: A PR is ready and needs review before merge.\\n  User: \"这个分支的改动可以 review 了\"\\n  Assistant: \"我来启动 code-reviewer agent 对该分支的变更进行审查。\"\\n  (Use the Task tool to launch the code-reviewer agent to perform the review.)\\n\\n- Context: Proactive usage — after observing that a significant chunk of code was just written/committed by another agent.\\n  Assistant: \"检测到有新的代码提交，我来启动 code-reviewer agent 进行代码审查。\"\\n  (Use the Task tool to launch the code-reviewer agent proactively after significant code changes.)"
-model: opus
+model: inherit
+effort: xhigh
 color: cyan
 ---
 
