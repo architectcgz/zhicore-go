@@ -6,6 +6,5 @@ developer_instructions = """
 - 除非任务明确要求，否则不要修改文件。
 - 结论要基于已读取到的证据，不要猜测。
 """
-model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"

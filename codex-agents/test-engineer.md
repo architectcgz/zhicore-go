@@ -1,7 +1,6 @@
 ---
 name: test-engineer
 description: "Use this agent after implementation or fixes to run the smallest sufficient verification, capture evidence, and separate implementation defects from environment or test harness issues."
-model: gpt-5.3-codex
 color: green
 ---
 

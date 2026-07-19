@@ -1,7 +1,6 @@
 ---
 name: code-agent
 description: "Use this agent for general code implementation or clearly scoped review-driven fixes when the task does not need a specialized frontend or backend engineer."
-model: gpt-5.3-codex
 color: green
 ---
 

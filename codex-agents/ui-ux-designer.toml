@@ -1,6 +1,5 @@
 name = "ui-ux-designer"
 description = "Use this agent for UI/UX design, information architecture, interaction flow, visual hierarchy, and design review. It produces design direction or design specs, not implementation code."
-model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 nickname_candidates = ["Designer", "UX Designer"]

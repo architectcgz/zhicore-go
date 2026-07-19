@@ -6,6 +6,4 @@ developer_instructions = """
 - 除非用户明确要求，否则不要切换语言。
 - 先读上下文再行动，避免无依据猜测。
 """
-model = "gpt-5.4"
 model_reasoning_effort = "high"
-

@@ -1,6 +1,5 @@
 name = "go-backend-engineer"
 description = "Use this agent for Go backend implementation and Go backend review fixes: handlers, services, repositories, jobs, workers, context propagation, concurrency, database access, cache, queues, and runtime operations."
-model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 nickname_candidates = ["Go Backend", "Go Engineer"]

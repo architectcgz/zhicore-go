@@ -1,7 +1,6 @@
 ---
 name: go-backend-engineer
 description: "Use this agent for Go backend implementation and Go backend review fixes: handlers, services, repositories, jobs, workers, context propagation, concurrency, database access, cache, queues, and runtime operations."
-model: gpt-5.3-codex
 color: blue
 ---
 

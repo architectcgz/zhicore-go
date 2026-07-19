@@ -1,6 +1,5 @@
 name = "requirements-analyst"
 description = "Use this agent before implementation when requirements are vague, risky, cross-module, or likely to hide edge cases."
-model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 nickname_candidates = ["Analyst", "Requirements"]

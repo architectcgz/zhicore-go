@@ -1,7 +1,6 @@
 ---
 name: frontend-engineer
 description: "Use this agent for frontend implementation or frontend review fixes. It writes Vue components, route views, composables, styles, and focused frontend tests when needed."
-model: gpt-5.5
 color: blue
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: requirements-analyst
 description: "Use this agent before implementation when requirements are vague, risky, cross-module, or likely to hide edge cases."
-model: gpt-5.4
 color: blue
 ---
 

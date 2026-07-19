@@ -6,6 +6,4 @@ developer_instructions = """
 - 先阅读相关文件，再进行修改。
 - 保持最小改动，不要无故扩大范围。
 """
-model = "gpt-5.4"
 model_reasoning_effort = "high"
-

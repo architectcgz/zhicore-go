@@ -1,7 +1,6 @@
 ---
 name: architect-agent
 description: "Use this agent for codebase analysis before implementation. It reads code and configuration, maps module boundaries and call paths, identifies risks, and produces an executable minimal-change approach."
-model: gpt-5.4
 color: blue
 ---
 

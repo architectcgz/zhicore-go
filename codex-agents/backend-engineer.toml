@@ -1,6 +1,5 @@
 name = "backend-engineer"
 description = "Use this agent for language-neutral backend implementation and backend review fixes: APIs, services, persistence, cache, queues, jobs, concurrency, idempotency, integrations, and configuration."
-model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 nickname_candidates = ["Backend", "Backend Engineer"]

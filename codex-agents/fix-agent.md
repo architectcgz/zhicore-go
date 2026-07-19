@@ -1,7 +1,6 @@
 ---
 name: fix-agent
 description: "Use this agent only after explicit review, validation, runtime, or user-reported failures that need the smallest correct fix."
-model: gpt-5.3-codex
 color: orange
 ---
 

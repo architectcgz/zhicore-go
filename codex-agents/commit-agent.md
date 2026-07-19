@@ -1,7 +1,6 @@
 ---
 name: commit-agent
 description: "Use this agent to create a safe, scoped git commit for a completed task. It inspects git status and diffs, stages only task-related changes, writes a compliant commit message, and reports any remaining uncommitted files."
-model: gpt-5.4
 color: blue
 ---
 

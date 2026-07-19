@@ -1,7 +1,6 @@
 ---
 name: leader
 description: "Use this agent only for explicit multi-agent orchestration, compatibility workflows, or pipeline runner tasks that require staged delegation."
-model: gpt-5.4
 color: yellow
 ---
 

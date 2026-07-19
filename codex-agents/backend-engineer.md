@@ -1,7 +1,6 @@
 ---
 name: backend-engineer
 description: "Use this agent for language-neutral backend implementation and backend review fixes: APIs, services, persistence, cache, queues, jobs, concurrency, idempotency, integrations, and configuration."
-model: gpt-5.3-codex
 color: blue
 ---
 
