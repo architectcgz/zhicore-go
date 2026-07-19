@@ -1,0 +1,102 @@
+[
+  {
+    "id": "gorm_pgx_full_migration",
+    "title": "GORM + pgx 全面迁移",
+    "scenario": "所有 Go 服务当前由 sql.Open + lib/pq 创建数据库连接，repository、事务、outbox、readiness 和 timeout 都围绕 *sql.DB 编写。用户明确要求所有服务全面采用 GORM 推荐的 PostgreSQL 初始化方式，不保留旧默认数据访问路径。请写可执行 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["gorm\\.Open", "postgres\\.Open", "pgx", "runtime owner|运行时所有者", "repository", "transaction|事务", "outbox", "连接池|pool"],
+    "required_removal_patterns": ["sql\\.Open", "lib/pq", "旧.*(constructor|构造|初始化)|legacy.*(constructor|wiring)"],
+    "forbidden_patterns": ["保留.*lib/pq.*更安全", "只(替换|迁移).*repository", "driver migration is separate"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "redux_to_zustand",
+    "title": "Redux Toolkit 全面迁移到 Zustand",
+    "scenario": "React 项目使用 Redux Toolkit、Provider、middleware、selectors 和测试 fixture。用户要求所有状态管理全面采用 Zustand，删除 Redux 样板，不允许长期并存两套 runtime store。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["Zustand", "store", "middleware", "selector", "Provider|初始化", "测试"],
+    "required_removal_patterns": ["Redux", "Provider", "依赖|package"],
+    "forbidden_patterns": ["新代码.*Zustand.*旧代码.*Redux", "Redux.*继续.*runtime owner"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "jest_to_vitest",
+    "title": "Jest 全面迁移到 Vitest",
+    "scenario": "TypeScript monorepo 当前使用 Jest、ts-jest、setupFiles、custom environment、coverage 和 CI shard。用户要求完全切换到 Vitest，并删除 Jest 工具链。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["Vitest", "setup", "environment", "coverage", "CI", "shard|分片"],
+    "required_removal_patterns": ["Jest", "ts-jest", "配置|config", "依赖|package"],
+    "forbidden_patterns": ["保留 Jest.*兜底", "部分测试.*继续.*Jest"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "aws_sdk_v2_to_v3",
+    "title": "AWS SDK v2 全面迁移到 v3",
+    "scenario": "Node 服务使用 aws-sdk v2 的 S3、SQS、DynamoDB clients，包含全局 config、mock 和重试设置。用户要求全面迁移到模块化 AWS SDK v3，不保留 v2 runtime client。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["AWS SDK v3|@aws-sdk", "S3", "SQS", "DynamoDB", "client", "retry|重试", "mock|测试"],
+    "required_removal_patterns": ["aws-sdk", "v2", "全局.*config|global.*config"],
+    "forbidden_patterns": ["v2.*作为.*fallback", "保留.*v2 runtime"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "express_to_fastify",
+    "title": "Express 全面迁移到 Fastify",
+    "scenario": "Node API 当前由 Express 创建 server，依赖 middleware、error handler、request context、OpenAPI 和 integration tests。用户要求 Fastify 成为唯一生产 HTTP runtime。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["Fastify", "生产.*(入口|runtime)|runtime owner", "plugin", "error handler|错误处理", "request context|请求上下文", "OpenAPI", "integration|集成测试"],
+    "required_removal_patterns": ["Express", "middleware", "依赖|package"],
+    "forbidden_patterns": ["Fastify.*adapter.*Express", "底层.*Express"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "logrus_to_slog",
+    "title": "logrus 全面迁移到 slog",
+    "scenario": "Go 服务使用 logrus logger、hooks、formatter、context fields 和测试。用户要求 slog 成为唯一日志实现，不保留 logrus facade 的底层输出。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["slog", "handler", "context", "field|字段", "hook", "测试"],
+    "required_removal_patterns": ["logrus", "formatter|hook", "依赖|module"],
+    "forbidden_patterns": ["底层.*logrus", "slog facade.*logrus"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "mysql_to_postgresql",
+    "title": "MySQL 全面迁移到 PostgreSQL",
+    "scenario": "核心服务当前生产数据库是 MySQL。用户明确要求 PostgreSQL 成为唯一生产数据库，并要求计划包含数据迁移、校验、切换和可恢复方案。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["PostgreSQL", "schema", "数据迁移", "双写|增量同步|CDC|停机窗口", "校验|reconciliation", "切换|cutover", "回退|恢复"],
+    "required_removal_patterns": ["MySQL", "driver|驱动", "生产.*(配置|连接|路径)"],
+    "forbidden_patterns": ["长期双写", "MySQL.*永久.*fallback"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "compose_to_kubernetes",
+    "title": "Docker Compose 生产部署迁移到 Kubernetes",
+    "scenario": "生产当前通过 Docker Compose 部署，包含 service dependency、healthcheck、secret、volume 和滚动脚本。用户要求 Kubernetes 成为唯一生产编排入口；Compose 可仅保留本地开发用途。请写 implementation plan。",
+    "required_sections": ["目标状态", "实施步骤", "删除清单", "验证", "回退"],
+    "required_patterns": ["Kubernetes", "Deployment", "Service", "readiness|就绪", "liveness|存活", "Secret", "volume|PVC", "rollout|滚动"],
+    "required_removal_patterns": ["生产.*Compose|Compose.*生产", "部署脚本|production.*script"],
+    "forbidden_patterns": ["Compose.*继续.*生产.*owner", "Kubernetes.*套在.*Compose"],
+    "requires_exit_criteria": false
+  },
+  {
+    "id": "explicit_staged_gorm",
+    "title": "用户明确限定的分阶段 GORM 迁移",
+    "scenario": "用户明确要求第一期只迁移 repository API 到 GORM，必须暂时保留 lib/pq、sql.Open 和现有 runtime wiring；pgx 与初始化迁移属于第二期。第一期计划必须说明临时边界、禁止扩张项和第二期退出条件。请只写第一期 implementation plan。",
+    "required_sections": ["阶段边界", "实施步骤", "临时保留", "验证", "退出条件"],
+    "required_patterns": ["GORM", "repository", "临时", "lib/pq", "sql\\.Open", "第二期", "退出条件"],
+    "required_removal_patterns": [],
+    "forbidden_patterns": ["第一期.*删除.*lib/pq", "本期(同时|直接|一并).*迁移.*pgx", "必须一次完成"],
+    "requires_exit_criteria": true
+  },
+  {
+    "id": "ambiguous_gorm_adoption",
+    "title": "范围模糊的引入 GORM 请求",
+    "scenario": "用户只说：这个项目引入 GORM，减少数据库代码量。仓库同时存在 database/sql repository、手写 SQL、事务、outbox、健康检查和多个服务，但没有说明是试点、增量采用还是全面替换。请写 implementation plan；若范围会改变最终架构，必须显式列出待确认决策和不同答案的影响，不能擅自把它解释成全面迁移或仅加依赖。",
+    "required_sections": ["已知目标", "调研依据", "推荐方案", "待确认", "方案分支", "验证"],
+    "required_patterns": ["代码|仓库|现有实现", "官方|一手资料", "范围", "试点|增量", "全面", "runtime owner|运行时所有者", "旧路径", "推荐", "确认"],
+    "required_removal_patterns": [],
+    "forbidden_patterns": ["默认全面迁移", "只需添加.*GORM.*依赖"],
+    "requires_exit_criteria": false
+  }
+]
