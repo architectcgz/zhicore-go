@@ -36,6 +36,9 @@ Resolve the plan directory in this order:
    - The project explicitly defines a formal implementation plan location (e.g., via `<!-- FORMAL_IMPL_PLAN_DIR: docs/plan/impl-plan/ -->` marker in `AGENTS.md`, or explicit `formal_impl_plan_location` field)
    - The task is structural, cross-module, or requires formal review and task gate binding
    - The plan will be tracked through code-workflow with a task slug and startup gate
+   - Create a dedicated plan package under that location: `YYYY-MM-DD-<feature-name>/README.md`
+   - Do not add a new formal plan as a flat Markdown file directly under `docs/plan/impl-plan/`
+   - A single executable plan may contain only `README.md`; a parent program keeps numbered child plans beside its `README.md` inside the same package directory
 
 3. **Fallback for projects without explicit structure**: 
    - If the project has neither `docs/plan/exploratory/` nor a formal plan marker, fall back to `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md` for backward compatibility
@@ -44,15 +47,47 @@ Resolve the plan directory in this order:
 **Decision criteria:**
 
 Ask yourself: "Is this a formal, structural change that will go through code-workflow with task gates and formal review?"
-- **Yes** → Use project's formal plan location (typically `docs/plan/impl-plan/`)
+- **Yes** → Use a dedicated package under the project's formal plan location (typically `docs/plan/impl-plan/YYYY-MM-DD-<feature-name>/README.md`)
 - **No** → Use `docs/plan/exploratory/`
 - **Unsure** → Use `docs/plan/exploratory/` and mention that it can be promoted to formal plan if needed
 
-Always report the actual saved path. When using `docs/plan/exploratory/`, briefly note: "This is an exploratory plan. If it evolves into a formal implementation, it should be promoted to the project's formal plan directory."
+Always report the actual entry path. For a formal plan, report its package `README.md`; for a parent program, also list its child-plan paths. When using `docs/plan/exploratory/`, briefly note: "This is an exploratory plan. If it evolves into a formal implementation, it should be promoted to its own package under the project's formal plan directory."
 
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+
+## Plan Shape Gate
+
+Before writing detailed tasks, classify the artifact as either a single executable plan or a parent implementation program.
+
+Every formal plan owns one package directory. Use `README.md` as the stable entry point and keep child plans, plan-local references, diagrams, or review inputs inside that directory. Do not encode ownership only through repeated filename prefixes in the shared `impl-plan/` root.
+
+**Read `references/implementation-plan-structure.md` when any of these apply:**
+
+- multiple services, deployable modules, or independently testable subsystems;
+- a shared foundation followed by multiple adopters;
+- a pilot whose review can change later APIs, constructors, files, or validation strategy;
+- unresolved external branches, worktrees, contracts, or baselines;
+- multiple independent review or rollback boundaries;
+- a plan large enough that one executor would repeatedly reload unrelated context.
+
+Do not write a program-sized migration as one checkbox document. Create a compact parent program that owns target state, dependencies, status, and final convergence, then create executable child plans that own exact files, acceptance, steps, validation, commits, review, and handoff state.
+
+Before finalizing the shape, build the reference's delivery-boundary, artifact-ownership, constraint-activation, and acceptance-ownership maps. Consolidate repeated file/document edits unless an explicit, testable intermediate state requires them. Enable mechanical guards before the first risky adopter, using migration mode plus a shrinking allowlist when strict mode cannot pass immediately.
+
+## Research Before Boundary Questions
+
+Before freezing plan scope or asking the user to choose an implementation direction:
+
+1. Inspect the relevant repository code, config, tests, architecture docs, contracts, and recorded decisions.
+2. For unknown framework recommendations, current versions, compatibility, migration mechanics, or external product behavior, consult official primary sources and use Web Search when needed.
+3. Convert that evidence into a recommended approach plus viable alternatives and their target-state, risk, rollout, and maintenance impact.
+4. Ask only about boundaries that evidence cannot decide, such as product intent, acceptable downtime, risk tolerance, budget, or whether delivery must be staged.
+
+Do not ask the user researchable technical questions or present unexplained choices they may not understand. If a real decision blocks the plan, show the evidence and recommendation first, then ask one concrete boundary question. A plan based on an unresolved material boundary must mark it as pending instead of silently choosing or pretending the plan is executable.
+
+When the user requests research but may not yet have a precise problem definition, produce and validate a research-question brief before writing the implementation plan. Include the core tension, subquestions across relevant ownership layers and runtime scenarios, candidate decision models, intended official sources, and expected research outputs. Do not begin with a premature implementation recommendation whose underlying question the user has not confirmed.
 
 ## Testing Workflow Classification
 
@@ -91,6 +126,20 @@ If a source document says "HTTP server must configure ReadHeaderTimeout, ReadTim
 
 Plan reviewers must reject a plan when a touched surface only cites a broad document without expanding its applicable hard rules into per-slice acceptance criteria.
 
+## Target-State Completeness Gate
+
+For migrations, replacements, standardization, “use X everywhere”, or framework adoption, the plan MUST define:
+
+1. The final production initialization and primary call path.
+2. The final driver/provider and runtime/resource owner.
+3. Legacy imports, constructors, drivers, adapters, wrappers, config, tests, and dependencies that must disappear.
+4. Any retained legacy component and why it is a stable final-state boundary rather than a temporary compatibility seam.
+5. A search, architecture check, or behavioral verification proving the old default path is gone.
+
+The plan must include both positive acceptance (“the new path exists”) and negative acceptance (“the old default path no longer exists”). Reject plans that add a framework only at repository or call sites while production initialization, driver ownership, transactions, runtime wiring, or primary adapters remain on the legacy path without explicit user approval.
+
+Do not introduce unstated scope-narrowing non-goals such as “driver migration is separate”, “keep the old runtime owner for safety”, or “only replace query calls”. Every excluded adoption layer must come from an explicit user decision, a hard external constraint, or a documented stable boundary.
+
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
@@ -110,9 +159,9 @@ For pure UI / presentation slices:
 
 Every executable step must be represented by a checkbox. The executor is required to flip each checkbox from `- [ ]` to `- [x]` immediately after the step's expected result is reached, before continuing to later steps. Plans should make this easy by keeping steps small and objectively verifiable.
 
-## Plan Document Header
+## Executable Plan Document Header
 
-**Every plan MUST start with this semantic header, localized to the target project's documentation language:**
+**Every executable child plan MUST start with this semantic header, localized to the target project's documentation language. Parent programs use the parent template in `references/implementation-plan-structure.md`:**
 
 ```markdown
 # [Feature Name] Implementation Plan
@@ -204,18 +253,27 @@ Expected: PASS / visually confirms the requested layout
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD where applicable, frequent commits
 - Project documentation language always overrides this skill's English examples
+- Parent programs track phase status; child plans own executable checkboxes
+- Guards activate before the work they constrain, not only during final verification
+- Repeated file or document edits have one owner unless an explicit intermediate state requires otherwise
 
 ## Plan Review Loop
 
 After writing the complete plan:
 
 1. Run an explicit architecture-fit evaluation on the written plan before any implementation handoff. Check:
+   - whether the artifact is correctly classified as a single executable plan or parent program with child plans
    - whether the plan follows the target project's documentation language and does not leak English template labels into prose
    - whether the target architecture boundary is explicit
    - whether shared layers, owners, reuse points, and abstraction landing zones are named
    - whether the plan is only aligning output behavior while quietly deferring structural convergence
    - whether following the plan would predictably cause an immediate second-round redesign after "completion"
    - if structural convergence is intentionally deferred, whether it is captured as its own tracked task with completion criteria
+   - whether the plan reaches the user-selected target state instead of preserving legacy initialization, drivers, wrappers, or owners merely to minimize the diff
+   - whether positive and negative acceptance checks prove both adoption of the new path and removal of the old default path
+   - whether mechanical guards become effective before the first task that can violate them
+   - whether the same file, document, config owner, or active plan is modified by separated tasks without a necessary intermediate state
+   - whether pilot-dependent late tasks are refreshed after the pilot instead of freezing stale file-level assumptions
    If any answer is unclear, revise the plan first.
 2. Dispatch a single plan-document-reviewer subagent (see plan-document-reviewer-prompt.md) with precisely crafted review context — never your session history. This keeps the reviewer focused on the plan, not your thought process.
    - Provide: path to the plan document, path to spec document
