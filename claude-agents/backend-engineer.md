@@ -1,7 +1,7 @@
 ---
 name: backend-engineer
 description: "专业后端工程师 agent，精通 Go/Java 后端开发。负责实现后端服务代码、API 接口、数据库操作、缓存逻辑、消息队列集成等。在 leader agent 调度下工作，与 code-reviewer 形成迭代循环。\n\nExamples:\n\n- Context: Leader 分配后端功能开发任务\n  (Use the Task tool to launch the backend-engineer to implement the backend feature.)\n\n- Context: Code reviewer 发现后端代码问题需要修复\n  (Use the Task tool to launch the backend-engineer to fix the review issues.)\n\n- Context: 需要实现新的 API 接口或数据库操作\n  (Use the Task tool to launch the backend-engineer to implement the API/database logic.)"
-model: sonnet
+model: inherit
 color: blue
 ---
 

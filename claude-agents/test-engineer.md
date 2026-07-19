@@ -1,7 +1,7 @@
 ---
 name: test-engineer
 description: "专业测试工程师 agent，负责编写和维护测试代码，包括单元测试、集成测试、E2E 测试，修复测试失败问题。在 leader agent 调度下工作，确保代码质量。\n\nExamples:\n\n- Context: Leader 分配测试编写任务\n  (Use the Task tool to launch the test-engineer to write tests for the feature.)\n\n- Context: 测试失败需要分析和修复\n  (Use the Task tool to launch the test-engineer to fix the failing tests.)\n\n- Context: Code-reviewer 要求补充测试覆盖\n  (Use the Task tool to launch the test-engineer to add test coverage.)"
-model: sonnet
+model: inherit
 color: green
 ---
 

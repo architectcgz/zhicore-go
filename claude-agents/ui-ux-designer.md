@@ -1,7 +1,7 @@
 ---
 name: ui-ux-designer
 description: "Use this agent for UI/UX design tasks: page layout, component structure, interaction flow, Design System, visual hierarchy, and UX review. It produces design specs and guidelines, NOT implementation code.\n\nExamples:\n\n- User: \"设计一下后台管理的 Dashboard 页面\"\n  (Use the Task tool to launch the ui-ux-designer agent to produce the design spec.)\n\n- User: \"评论模块的交互流程需要优化\"\n  (Use the Task tool to launch the ui-ux-designer agent to redesign the interaction flow.)\n\n- Context: A new feature needs UI design before frontend implementation.\n  (Use the Task tool to launch the ui-ux-designer agent to create the design spec, then hand off to frontend-engineer for implementation.)"
-model: opus
+model: inherit
 color: magenta
 ---
 

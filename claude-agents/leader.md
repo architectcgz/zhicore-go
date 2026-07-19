@@ -1,7 +1,7 @@
 ---
 name: leader
 description: "Use this agent to coordinate multi-agent workflows for implementing features or fixing bugs. The leader breaks down requirements into tasks, orchestrates code-agent and code-reviewer in iterative cycles, and ensures all tasks are completed to quality standards.\n\nExamples:\n\n- User: \"实现用户评论功能\"\n  (Use the Task tool to launch the leader agent to coordinate the implementation.)\n\n- User: \"按照架构文档实现排行榜模块\"\n  (Use the Task tool to launch the leader agent to plan and coordinate the work.)\n\n- User: \"修复这几个 bug 并确保代码质量\"\n  (Use the Task tool to launch the leader agent to coordinate fixes and reviews.)"
-model: opus
+model: inherit
 color: yellow
 ---
 

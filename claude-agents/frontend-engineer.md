@@ -1,7 +1,7 @@
 ---
 name: frontend-engineer
 description: "Use this agent to implement frontend code based on UI/UX design specs. It writes Vue components, styles, and pages in a git worktree. Works with ui-ux-designer's design docs.\n\nExamples:\n\n- Context: ui-ux-designer produced a design spec for the dashboard page.\n  (Use the Task tool to launch the frontend-engineer to implement the design.)\n\n- Context: Leader assigns a frontend feature task with design doc reference.\n  (Use the Task tool to launch the frontend-engineer to build the feature.)\n\n- Context: Design QA found visual issues that need fixing.\n  (Use the Task tool to launch the frontend-engineer to fix the UI issues.)"
-model: sonnet
+model: inherit
 color: blue
 ---
 

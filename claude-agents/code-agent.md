@@ -1,7 +1,7 @@
 ---
 name: code-agent
 description: "Use this agent to implement code based on task requirements. It writes code, runs tests, and commits changes. Works in a git worktree for isolation.\n\nExamples:\n\n- Context: Leader agent assigns a coding task from the task list.\n  (Use the Task tool to launch the code-agent to implement the assigned task.)\n\n- Context: Code reviewer found issues that need fixing.\n  (Use the Task tool to launch the code-agent to fix the review issues.)\n\n- Context: A new feature needs to be implemented based on architecture docs.\n  (Use the Task tool to launch the code-agent to implement the feature.)"
-model: opus
+model: inherit
 color: green
 ---
 

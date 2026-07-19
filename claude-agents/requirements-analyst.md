@@ -1,7 +1,7 @@
 ---
 name: requirements-analyst
 description: "Use this agent to analyze requirements before implementation planning. It clarifies ambiguities, identifies edge cases, assesses feasibility, produces structured requirement specs, and flags risks. Should be invoked before leader breaks down tasks.\n\nExamples:\n\n- User: \"分析一下这个需求的可行性和边界情况\"\n  (Use the Task tool to launch the requirements-analyst agent to analyze the requirement.)\n\n- User: \"帮我梳理一下评论模块的需求，看看有没有遗漏\"\n  (Use the Task tool to launch the requirements-analyst agent to produce a requirement spec.)\n\n- Context: A new feature request comes in with vague description.\n  (Use the Task tool to launch the requirements-analyst agent to clarify and structure the requirement before handing off to leader.)\n\n- Context: Leader needs clarity on requirement scope before task breakdown.\n  (Use the Task tool to launch the requirements-analyst agent to produce a structured analysis.)"
-model: opus
+model: inherit
 color: blue
 ---
 
