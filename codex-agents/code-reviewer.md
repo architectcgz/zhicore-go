@@ -16,7 +16,7 @@ color: cyan
 
 ## Required Skills
 
-- 默认使用 `code-reviewer` skill。
+- 默认使用 `reviewer` skill。
 - 反馈表达和 review 质量标准使用 `code-review-excellence` skill。
 - 后端变更按需参考 `backend-engineer` skill 的一致性、并发、缓存、接口兼容和安全边界。
 - 前端变更按需参考 `frontend-engineer`、`audit` 或具体 UI skill。

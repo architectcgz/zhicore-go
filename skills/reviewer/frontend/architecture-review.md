@@ -20,7 +20,7 @@
 
 本文件是一段可以直接粘贴给模型使用的独立 prompt 模板，它自带 `P0 / P1 / P2` 分级和 10 分评分，只在“整段套用这个模板”时生效。
 
-当 review 由 `code-reviewer` 主体驱动、需要统一输出口径时，按下面的映射回到主体的 `Blocker / Major / Minor / Nit` 与 gate verdict，不要在同一份 review 里混用两套词：
+当 review 由 `reviewer` 主体驱动、需要统一输出口径时，按下面的映射回到主体的 `Blocker / Major / Minor / Nit` 与 gate verdict，不要在同一份 review 里混用两套词：
 
 - `P0` → `Blocker`
 - `P1` → `Major`

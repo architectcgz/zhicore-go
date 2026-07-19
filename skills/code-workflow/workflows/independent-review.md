@@ -21,7 +21,7 @@ For non-trivial work, after `completion-full` passes:
 1. Prepare a compact review handoff instead of reusing the whole implementation conversation.
 2. Spawn a separate `code-reviewer` agent with that handoff.
 3. Have the reviewer use:
-   - the `code-reviewer` skill
+   - the `reviewer` skill
    - the target repository's `AGENTS.md`
    - the relevant `docs/architecture/*`, contracts, and project-local review rules
 4. Include the implementation plan path, changed files or diff basis, and executed validation evidence.

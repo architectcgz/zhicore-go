@@ -53,7 +53,7 @@ def extract_skill_names(workflow_skill: str) -> List[str]:
     - 含 `<!-- FILL -->` 的占位行 → []（交给调用方豁免）
 
     注意：skill 名规范写在反引号里，优先整体提取反引号内容，绝不按连字符 `-` 拆分，
-    否则会把 `code-reviewer` 拆成 `reviewer`。
+    否则会把 `backend-engineer` 拆成 `engineer`。
     """
     # 占位行不含真实 skill
     if "FILL" in workflow_skill:

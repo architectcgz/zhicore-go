@@ -6,7 +6,7 @@ Use this template when dispatching a plan document reviewer subagent.
 
 **Dispatch after:** The complete plan is written.
 
-Before reviewing, read the shared `code-reviewer` reference `references/plan-reviewer.md`. Apply its delivery-boundary, constraint-activation, artifact-ownership, gate-evidence, and progressive-elaboration checks.
+Before reviewing, read the shared `reviewer` reference `references/plan-reviewer.md`. Apply its delivery-boundary, constraint-activation, artifact-ownership, gate-evidence, and progressive-elaboration checks.
 
 ```
 Task tool (general-purpose):

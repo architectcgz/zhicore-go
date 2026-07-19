@@ -62,7 +62,7 @@ Keep these project-local:
 - Use `grill-with-docs` immediately after the `superpowers` analysis pass, before the plan is considered ready.
 - Use `workflow-package-manager` when a repository needs the `code-workflow` package installed or checked.
 - Use `harness-engineering` when a repository needs the scaffold installed or repaired.
-- Use `code-reviewer` for the independent completion gate after `completion-full`.
+- Use `reviewer` for the independent completion gate after `completion-full`.
 
 ## Required behavior
 

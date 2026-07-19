@@ -9,7 +9,7 @@
 ### 全局共享 skill
 
 - **位置**：`~/.agents/skills/<skill-name>/`
-- **命名**：不带项目前缀（如 `code-reviewer`、`frontend-engineer`、`go-backend`）
+- **命名**：不带项目前缀（如 `reviewer`、`frontend-engineer`、`go-backend`）
 - **用途**：跨项目通用能力
 - **如何使用**：直接调用，Claude Code 自动发现
 

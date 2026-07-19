@@ -1,56 +1,58 @@
 ---
-name: code-reviewer
-description: Use when reviewing code changes, pull requests, patches, or implementation plans where correctness, regressions, architecture impact, security, test quality, and review communication all matter more than writing new code.
+name: reviewer
+description: Use when reviewing code changes, implementation plans, architecture or design documents, migrations, rollouts, or other engineering artifacts where correctness, risk, ownership, evidence, and approval readiness matter.
 ---
 
-# Code Reviewer
+# Reviewer
 
-Review for risk reduction, not for style theater.
+Review engineering artifacts for risk reduction, not for style theater.
 
 ## Use When
 
 - Reviewing a patch, pull request, commit range, or local diff
-- Checking whether an implementation is safe to merge
+- Reviewing an implementation plan, migration plan, rollout plan, refactor plan, architecture document, or design proposal
+- Checking whether an implementation is safe to merge or an artifact is safe to approve and execute
 - Looking for correctness bugs, regressions, security gaps, performance traps, or test blind spots
-- The user asks for review feedback, review comments, or a merge-readiness assessment
+- Looking for delivery-boundary, ownership, sequencing, evidence, rollback, or stale-detail gaps in non-code artifacts
+- The user asks for review feedback, review comments, merge readiness, approval readiness, or an execution-readiness assessment
 
 ## Do Not Use
 
 - Pure implementation work with no review objective
-- Broad brainstorming without a concrete diff, plan, or target to assess
+- Broad brainstorming without a concrete artifact, proposal, or target to assess
 
 ## Core Guardrails
 
 1. Start with correctness and regression risk before style or preference.
 2. Distinguish blocker findings from suggestions and explain why.
-3. Review the system impact, not just the changed lines in isolation.
+3. Review the system impact, not just changed lines or isolated prose.
 4. Treat security, permission, data integrity, and concurrency issues as first-class review concerns.
 5. Evaluate tests for coverage quality, not just test-file existence.
 6. Prefer automation for repetitive nits instead of recurring human comments.
 7. Separate verified findings from inference, and state assumptions when local evidence is incomplete.
 8. For leader or pipeline gated work, review the classification instead of redefining the policy: agree, recommend upgrade to non-trivial, or ask leader to decide when evidence is incomplete.
 9. For non-trivial review gates, return a concrete gate verdict and identify which findings are material before completion.
-10. Treat oversized files, mixed ownership, and responsibility pileups as review risks, not style nits, when they make future changes hard to reason about or test.
+10. Treat oversized artifacts, mixed ownership, and responsibility pileups as review risks, not style nits, when they make execution or future changes hard to reason about or validate.
 11. Review from a senior engineer's implementation perspective: ask whether the same requirement could be implemented with clearer ownership, simpler control flow, stronger contracts, smaller blast radius, and better long-term maintainability.
 12. Do not turn senior judgment into speculative rewrites. Recommend a more elegant implementation only when it reduces real risk, removes meaningful complexity, improves testability, or aligns better with existing project architecture.
-13. If the diff touches a file, component, service, or module that is already tracked as structural debt, oversized ownership, or required decomposition, unresolved debt in that touched surface is a material finding, not residual risk.
-14. Check for dead API surface: methods, wrappers, interface members, repository functions, ports, or compatibility paths with no clear owner and no production call path are review findings even if tests or string guards still reference them.
+13. For code reviews, if the diff touches a file, component, service, or module that is already tracked as structural debt, oversized ownership, or required decomposition, unresolved debt in that touched surface is a material finding, not residual risk.
+14. For code reviews, check for dead API surface: methods, wrappers, interface members, repository functions, ports, or compatibility paths with no clear owner and no production call path are review findings even if tests or string guards still reference them.
 
 ## Workflow
 
-1. Read the actual diff first. Before loading references, establish the review context: read module boundaries, existing contracts, recent architecture decisions, test coverage baseline, and any project-specific review requirements (AGENTS.md, CLAUDE.md, docs/architecture/). A checklist without context yields shallow findings.
-2. Load only the relevant reference files from `references/` based on what the diff touches.
-3. Identify the dominant risk area: correctness, architecture, security, test strategy, engineering standards, or review communication.
+1. Identify the review target, claimed intent, approval question, artifact type, and exact scope before loading checklists.
+2. Establish the evidence baseline from project rules, source requirements, architecture decisions, contracts, validation results, and surrounding owner documents. A checklist without context yields shallow findings.
+3. Load only the references relevant to the artifact and dominant risk: correctness, delivery structure, architecture, security, test strategy, operational readiness, engineering standards, or review communication.
 4. For implementation-plan, migration-plan, rollout-plan, or refactor-plan reviews, read `references/plan-reviewer.md` and build its delivery-boundary, constraint-activation, artifact-ownership, and gate-evidence matrices before giving a verdict.
-5. Check changed code in local context, not line-by-line in isolation.
+5. For code changes, read the actual diff and changed code in local context, not line-by-line in isolation.
 6. For frontend UI diffs that add or change visible copy, read `references/frontend-ui-copy-review.md`.
 7. For frontend architecture reviews, read `frontend/architecture-review.md`.
-8. Check whether the diff grows already oversized files, components, services, or functions in a way that increases ownership ambiguity, hides state flow, or makes tests weaker than the behavior.
-9. If the diff touches a known oversized or owner-mixed surface at all, apply Guardrail 13: explicitly decide whether the change closes that debt, and block the review if it does not.
+8. For code changes, check whether the diff grows already oversized files, components, services, or functions in a way that increases ownership ambiguity, hides state flow, or makes tests weaker than the behavior.
+9. If a code diff touches a known oversized or owner-mixed surface, apply Guardrail 13: explicitly decide whether the change closes that debt, and block the review if it does not.
 10. For frontend or backend diffs, load `references/technical-risk-checks.md` for the surface-specific scrutiny points (frontend: route views, SFCs, composables, stores, async handlers, lifecycle cleanup; backend: handlers, services, repositories, transactions, background work, config, integrations, DTO/API contracts).
-11. Ask "how would a senior maintainer implement this after reading the surrounding code?" Compare against the submitted diff for ownership, simplicity, error handling, contracts, tests, and future extension cost.
-12. Search for ownership and call-path drift. For changed or newly obsolete methods, use text search to distinguish production calls from tests, stubs, generated guards, and string-based architecture tests. If a method only has test/guard references and no production owner, flag it for removal.
-13. Write findings in priority order with impact, fix direction, and whether the finding blocks completion.
+11. Ask how a senior maintainer would produce the same outcome with clearer ownership, simpler control flow, stronger contracts, smaller blast radius, and better long-term maintainability. Compare that standard with the submitted artifact without inventing speculative rewrites.
+12. For code changes, search for ownership and call-path drift. Distinguish production calls from tests, stubs, generated guards, and string-based architecture tests; flag obsolete surfaces with no production owner.
+13. Write findings in priority order with impact, fix direction, and whether the finding blocks approval or completion.
 14. For material findings, state the expected re-review or re-validation evidence.
 15. Keep subjective preferences out of blocker comments unless they hide a real maintenance or correctness cost.
 16. For independent reviews that gate non-trivial work, archive the review result using the Review Archive policy below.
@@ -67,9 +69,9 @@ When this skill is invoked as the final review gate for `code-workflow`:
 6. Return a clear gate verdict and identify material findings that must be fixed before completion.
 7. Same-context review does not satisfy this gate; if you detect that the review is not independent, state that limitation explicitly.
 
-## Checklist Mode
+## Code Checklist Mode
 
-For complex or high-risk reviews, use the dimension-by-dimension checklist enforcer to prevent quality blind spots.
+For complex or high-risk code reviews, use the dimension-by-dimension checklist enforcer to prevent quality blind spots. For plan reviews, use the matrices in `references/plan-reviewer.md` instead.
 
 **Trigger conditions** (any of):
 - Review involves concurrency, resource management, API compatibility, or initialization logic
@@ -80,7 +82,7 @@ For complex or high-risk reviews, use the dimension-by-dimension checklist enfor
 **How to invoke**:
 Use the Workflow tool with `workflows/checklist-review.js`:
 ```javascript
-workflow({ scriptPath: '~/.agents/skills/code-reviewer/workflows/checklist-review.js', args: { diffSource: 'git diff HEAD~1' } })
+workflow({ scriptPath: '~/.agents/skills/reviewer/workflows/checklist-review.js', args: { diffSource: 'git diff HEAD~1' } })
 ```
 
 **What it does**:
@@ -163,8 +165,9 @@ Review archive files must include:
 - Classification check: agree with leader/pipeline, recommend upgrade, or needs leader decision.
 - Gate verdict for non-trivial work: pass, pass with minor issues, or blocked.
 - Material findings list with required fix and re-validation direction.
-- Code quality risks include ownership ambiguity, oversized files, weak decomposition, hidden state flow, insufficient tests for the new shape, and hard-to-review complexity.
-- Dead code risks include no-owner methods, unused compatibility wrappers, interface members with no production callers, and old fallback paths left behind after a replacement path lands.
+- For plans and design artifacts, include artifact classification, unresolved gates, constraint timing, owner ambiguity, stale-detail risk, and required approval evidence.
+- For code changes, include ownership ambiguity, oversized files, weak decomposition, hidden state flow, insufficient tests for the new shape, and hard-to-review complexity.
+- For code changes, include dead-code risks such as no-owner methods, unused compatibility wrappers, interface members with no production callers, and old fallback paths left behind after a replacement path lands.
 - Senior implementation assessment: whether the current approach is the simplest maintainable implementation for the requirement, and if not, the concrete lower-risk alternative.
 - Archive path for independent non-trivial review gates, or an explicit reason no archive was created.
 - If no material findings are discovered, say so explicitly and note residual risk, assumptions, or validation gaps.

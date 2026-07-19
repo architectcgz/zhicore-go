@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reviewer"
+  short_description: "Review engineering artifacts for risk and approval readiness"
+  default_prompt: "Use $reviewer to review this engineering artifact for correctness, ownership, risk, evidence quality, and approval readiness."

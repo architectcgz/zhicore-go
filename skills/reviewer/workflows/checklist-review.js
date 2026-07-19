@@ -9,7 +9,7 @@ export const meta = {
 }
 
 // Read checklist and target diff/files from args
-const checklistPath = args?.checklistPath || `${process.env.HOME}/.agents/skills/code-reviewer/review-checklist.yaml`
+const checklistPath = args?.checklistPath || `${process.env.HOME}/.agents/skills/reviewer/review-checklist.yaml`
 const diffSource = args?.diffSource || 'git diff --cached'  // default: staged changes
 const targetFiles = args?.files || []  // optional: specific files to review
 

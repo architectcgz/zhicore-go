@@ -15,7 +15,7 @@ Read this file when implementing or refactoring frontend code with `frontend-eng
 11. Validate loading, error, empty, and repeated-action behavior before closing the task.
 12. Audit direct event-bound async entry points before closing the task: form submit handlers, click handlers, emit handlers, composable methods passed to components, and polling callbacks are all rejection boundaries.
 13. Run the narrowest relevant tests available. If tests cannot be run, state that clearly and call out the highest-risk unverified paths.
-14. After implementation and initial verification, perform a separate review pass. For leader/pipeline-classified non-trivial frontend work, use `requesting-code-review` or `code-reviewer`. For smaller changes, explicitly switch into review mode yourself instead of stopping at "typecheck passed".
+14. After implementation and initial verification, perform a separate review pass. For leader/pipeline-classified non-trivial frontend work, use `requesting-code-review` or `reviewer`. For smaller changes, explicitly switch into review mode yourself instead of stopping at "typecheck passed".
 15. Fix review findings that materially affect interaction correctness, state ownership, component boundaries, regressions, or test coverage, then re-run the impacted verification.
 16. When a component mixes keyboard submit and pointer submit paths, inspect the template and handler together: check whether `@keyup.enter`, form submit, and action buttons can converge on the same async function, then verify the handler short-circuits while a request is already in flight.
 17. If a reusable frontend rule gap or repeated miss is found, record it with `improvement-tracker` instead of only mentioning it in the response.

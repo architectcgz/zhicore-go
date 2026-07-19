@@ -69,7 +69,7 @@ State the route briefly in commentary before substantial work.
 | Non-trivial implementation, refactor, migration, or cross-module docs/code change | `development-pipeline` first, then domain skills |
 | Backend code, API, config, DB, jobs, queues, concurrency | `backend-engineer` or language-specific backend skill |
 | Frontend implementation, Vue state, components, routes, async behavior | `frontend-engineer`; if broad UI request, use `frontend-task-router` |
-| Review a patch, plan, or implementation | `code-reviewer` |
+| Review a patch, plan, architecture document, or implementation | `reviewer` |
 | Validate completed work | `test-engineer` |
 | Create or update a skill | `skill-creator` |
 | Create or update reusable prompts or workflows | read the project prompt directory AGENTS file; update `harness/prompts/` or `prompts/` only when the prompt remains project-local and reusable |

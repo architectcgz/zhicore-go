@@ -44,7 +44,7 @@ Use this skill when the request involves one or more of the following:
 - work that benefits from spec and plan review before coding
 - a task that should be split into reviewable sub-tasks
 - changes that need integration validation, handoff notes, or disciplined branch finishing
-- changes that involve multiple supporting skills such as backend-engineer, frontend-engineer, test-master, code-reviewer, or runtime-ops-safety
+- changes that involve multiple supporting skills such as backend-engineer, frontend-engineer, test-master, reviewer, or runtime-ops-safety
 
 Do not use this skill for trivial copy edits or one-line fixes, purely exploratory discussion with no implementation intent, standalone code review requests, or emergency hotfixes that should use a shorter incident or runtime-safety flow.
 
@@ -112,7 +112,7 @@ Use this skill to orchestrate, then pull in the appropriate specialist skill for
 - service, API, cache, queue, consistency, or stateful backend work: `backend-engineer`
 - test strategy and validation matrix design: `test-master`
 - test execution and evidence capture: `test-engineer`
-- design review, risk review, or final code review: `code-reviewer`
+- design review, risk review, or final code review: `reviewer`
 - UI or UX review: `ui-ux-pro-max`
 - high-risk runtime, migration, or production-sensitive steps: `runtime-ops-safety`
 - incident-style follow-up or postmortem capture: `incident-capture`

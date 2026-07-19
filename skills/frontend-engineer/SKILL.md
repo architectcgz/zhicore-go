@@ -16,7 +16,7 @@ Act as a frontend engineering agent for frontend implementation, refactor, inter
 - Touching form state, props and emits contracts, `v-model`, or API-to-UI data shaping
 - Editing interaction behavior, loading and error states, or lifecycle-driven effects
 
-Do not use for pure visual art direction or page styling with no behavior or state changes. For audit-only work with no implementation or frontend design decision, prefer `audit` or `code-reviewer`.
+Do not use for pure visual art direction or page styling with no behavior or state changes. For audit-only work with no implementation or frontend design decision, prefer `audit` or `reviewer`.
 
 ## Always Read
 

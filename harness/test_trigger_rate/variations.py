@@ -23,12 +23,15 @@ TASK_VARIATIONS = {
         "写个前端页面",
         "做个 UI 组件",
     ],
-    "Code review": [
+    "Review": [
         "帮我 review 一下",
         "审查代码",
         "看看这个代码有没有问题",
         "做个 code review",
         "检查一下代码质量",
+        "评审实施计划",
+        "审查架构设计文档",
+        "检查迁移和 rollout 方案",
     ],
     "Bug fix (Backend)": [
         "修个后端 bug",

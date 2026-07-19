@@ -29,8 +29,8 @@ color: cyan
 - 统计变更文件数和变更行数
 - 记录最新 commit 的短 hash（7 位）
 
-### 第二步：调用 code-review skill
-- 使用共享的 `~/.agents/skills/` 中的 code-review skill 辅助审查
+### 第二步：调用 reviewer skill
+- 使用共享的 `~/.agents/skills/reviewer/` 中的 reviewer skill 辅助审查
 - 结合项目的架构文档（`docs/architecture/*.md`）作为审查基准
 - 如果这是 `code-workflow` 的 completion gate，还要先读取 implementation plan、当前验证证据，以及仓库暴露的本地架构 / workflow 检查入口
 

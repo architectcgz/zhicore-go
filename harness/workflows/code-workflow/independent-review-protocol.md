@@ -30,7 +30,7 @@
 
 ## Reviewer 必做项
 
-- 使用 `code-reviewer` skill
+- 使用 `reviewer` skill
 - 以项目内架构文档、契约文档、AGENTS 规则为 review 基准
 - 明确区分：
   - blocker findings

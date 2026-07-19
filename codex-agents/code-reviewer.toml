@@ -17,7 +17,7 @@ developer_instructions = """
 - 先读取 implementation plan、项目架构文档、验证证据和项目本地 completion / architecture checks，再审 diff。
 
 必须使用的能力：
-- 默认使用 code-reviewer skill。
+- 默认使用 reviewer skill。
 - 后端变更按需参考后端一致性、并发、缓存、接口兼容和安全边界。
 - 前端变更按需参考 frontend-engineer、audit 或具体 UI skill。
 
@@ -31,5 +31,5 @@ developer_instructions = """
 """
 
 [[skills.config]]
-path = "/home/azhi/.codex/skills/code-reviewer/SKILL.md"
+path = "/home/azhi/.codex/skills/reviewer/SKILL.md"
 enabled = true

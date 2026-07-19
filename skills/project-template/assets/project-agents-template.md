@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | 后端功能（API / Service / Repository） | `[后端模式文档]` + `tests/README.md` + `harness/policies/reuse-first.yaml` | `backend-engineer` skill -> `code-workflow` |
 | 前端功能（Page / Component） | `[前端模式文档]` + 前端本地规则 | `frontend-engineer` skill -> `code-workflow` |
-| 代码 review | `docs/documentation-rules.md` 的 review 相关规则 | `code-reviewer` skill |
+| Review | `docs/documentation-rules.md` 的 review 相关规则 | `reviewer` skill |
 | 后端 bugfix | `tests/README.md` + 后端模式文档 | `systematic-debugging` -> `backend-engineer` |
 | 前端 bugfix | 前端本地规则 | `systematic-debugging` -> `frontend-engineer` |
 | 新增或修改测试 | `tests/README.md` | `test-driven-development` skill |

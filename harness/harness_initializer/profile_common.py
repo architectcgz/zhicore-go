@@ -74,7 +74,7 @@ def quick_routing_shell() -> str:
 |-----------|---------------|------------------|
 | Backend feature | <!-- FILL: backend patterns + tests/README --> | <!-- FILL: backend skill --> + `code-workflow` |
 | Frontend feature | <!-- FILL: frontend rules --> | <!-- FILL: frontend skill --> + `code-workflow` |
-| Code review | <!-- FILL: review 规范 --> | `code-reviewer` |
+| Review | <!-- FILL: review 规范 --> | `reviewer` |
 | Bug fix | <!-- FILL: 相关 rules/tests --> | `systematic-debugging` |
 | Add/Edit test | <!-- FILL: tests/README --> | `test-driven-development` |
 | Architecture change | `{HARNESS_ROOT}/docs/architecture/` | `brainstorming` then `writing-plans` |
