@@ -46,6 +46,7 @@ Do not ask about reversible implementation details, style choices already implie
    - List the decisions that materially affect the result.
    - Resolve prerequisite decisions before dependent ones.
    - Skip decisions that are reversible, local, or already implied by the codebase.
+   - When the user selects a framework, ORM, driver, state library, runtime platform, or architecture, map the complete adoption depth before narrowing the scope.
 
 3. **Interrogate the uncertain parts**
    - Ask only the next most important unresolved question.
@@ -66,14 +67,36 @@ Do not ask about reversible implementation details, style choices already implie
    - For high-risk, broad, or user-requested design work, write a short plan or spec before implementation.
    - Do not route pure UI polish directly into `test-driven-development` unless the user explicitly asks for test-first work or the change includes behavior that can be specified with failing tests.
 
+## Framework Adoption Depth
+
+When the user says “全面采用”“全部迁移”“统一使用”“替换掉”“按推荐方式” or equivalent, inspect and resolve the full target surface:
+
+- initialization and factory;
+- underlying driver/provider;
+- configuration, pool/resource lifecycle, startup, health, and shutdown;
+- runtime/composition wiring;
+- repository/client/store APIs;
+- transactions, errors, retries, and cancellation semantics;
+- observability and security boundaries;
+- tests, mocks, fixtures, and mechanical checks;
+- legacy dependencies, wrappers, adapters, and configuration to remove.
+
+State both the final production path and the old default path that must disappear. Do not silently interpret framework adoption as only replacing call-site APIs. Do not invent scope-narrowing non-goals such as retaining the old driver or runtime owner unless repository facts require it or the user explicitly accepts the staged boundary.
+
 ## Question Format
+
+Ask only after repository inspection and any needed official-document/Web research. Separate researchable technical facts from boundaries only the user can decide, and give an evidence-backed recommendation before requesting a decision. If the user is unlikely to know the technology, explain the tradeoff in plain language instead of presenting unexplained framework choices.
+
+If the user may not yet have a precise problem statement, pause before deep research and present a research-question brief for validation. It should name the core tension, decompose the mechanisms/layers/scenarios to compare, list plausible decision models without prematurely choosing one, state which primary sources will be checked, and describe the concrete output the research will produce. This framing question is valid because it tests whether the agent is solving the right problem; it must not ask the user to supply researchable technical answers.
 
 Use this shape when a question is needed:
 
 ```text
 这里卡在一个会影响实现方向的选择：<decision>。
 
-我的推荐是 <recommended answer>，因为 <reason>。
+我查到的事实是 <repository and official-source evidence>。
+
+我的推荐是 <recommended answer>，因为 <reason and impact>。备选方案是 <alternative and cost>。
 
 你希望按这个方向走吗？
 ```
@@ -97,6 +120,7 @@ When enough is known, present a concise design:
 - **目标**: what user-visible or developer-visible outcome changes.
 - **边界**: what is in scope and what is intentionally left out.
 - **方案**: the main implementation direction and affected modules.
+- **目标状态**: the final production initialization/call path, required legacy removals, and any explicitly retained stable boundaries.
 - **风险**: important failure modes, compatibility concerns, or unclear assumptions.
 - **验证**: the smallest sufficient checks.
 
@@ -111,6 +135,6 @@ Do not write a formal spec, create a docs file, commit a design document, or run
 
 - Prefer evidence from the repository over user interrogation.
 - Prefer the smallest coherent change over broad redesign.
-- Prefer project conventions over generic best practices.
+- Prefer project conventions over generic best practices unless the user explicitly selected a new target architecture and those conventions are the migration source.
 - Be direct about weak requirements, hidden risks, and missing acceptance criteria.
 - Keep momentum: once the design is good enough for the task, implement.

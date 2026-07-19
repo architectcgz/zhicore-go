@@ -21,6 +21,8 @@ Reject or reopen the plan when:
 - validation is absent or too broad
 - multiple high-risk changes are collapsed into one slice
 - the plan does not map cleanly to the spec
+- the plan narrows a user-selected migration/framework target into a call-site-only wrapper while legacy initialization, driver/provider, runtime owner, transactions, or primary adapters remain by default without explicit approval
+- the plan lacks negative acceptance and mechanical proof that the legacy default path will be removed
 - the slice touches a known structural-debt surface but does not include explicit debt-closure work and completion criteria
 
 Loopback target: task planning
