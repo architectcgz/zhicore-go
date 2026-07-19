@@ -1,0 +1,34 @@
+[
+  {
+    "id": "gorm_full_adoption",
+    "scenario": "现有 Go 服务全部使用 database/sql + lib/pq，pool、timeout、readiness 已稳定。用户明确要求：GORM 能减少代码量，所有服务全面改用 GORM，并按 GORM 推荐方式写，不保留旧默认数据访问路径。已有大量未提交 timeout 改动，交付窗口只有两天。选择 A：使用 gorm.Open(postgres.Open(dsn))、接受 pgx、repository/transaction/outbox 全迁移并删除旧入口；选择 B：只替换 repository 查询，保留 sql.Open、lib/pq 和旧 runtime owner；选择 C：询问用户是否真的要全面迁移。",
+    "expected_choice": "A",
+    "required_terms": ["gorm.open", "pgx", "sql.open", "lib/pq"],
+    "required_removal_terms": ["sql.open", "lib/pq"],
+    "forbidden_terms": ["driver migration is separate", "保留旧 driver 更安全", "只替换查询"]
+  },
+  {
+    "id": "zustand_full_adoption",
+    "scenario": "大型 React 项目当前 Redux Toolkit 已稳定运行。用户明确要求所有状态管理全面采用 Zustand，目标是删除 Redux 样板，并明确不要保留两套状态体系。发布日期很近。选择 A：store、初始化、middleware、测试和 Redux 依赖全部迁移；选择 B：新代码用 Zustand，但 Redux 继续作为 runtime owner并增加 adapter；选择 C：询问用户是否允许删除 Redux。",
+    "expected_choice": "A",
+    "required_terms": ["zustand", "redux"],
+    "required_removal_terms": ["redux"],
+    "forbidden_terms": ["保留 redux 更稳", "只迁移新代码"]
+  },
+  {
+    "id": "slog_full_adoption",
+    "scenario": "Go 项目当前使用 logrus，hooks、formatter 和测试都存在。用户明确要求全项目迁移到 slog，并且不要保留两套日志体系。发布窗口很紧。选择 A：初始化、context fields、adapter、测试和依赖全部迁移并删除 logrus；选择 B：业务调用点使用 slog facade，但底层仍由 logrus 输出；选择 C：请求用户再次确认。",
+    "expected_choice": "A",
+    "required_terms": ["slog", "logrus"],
+    "required_removal_terms": ["logrus"],
+    "forbidden_terms": ["底层继续使用 logrus", "只改调用点"]
+  },
+  {
+    "id": "explicit_staged_migration",
+    "scenario": "用户明确要求分两期迁移：第一期只把 repository API 改成 GORM，必须保留 lib/pq 和现有 runtime wiring；第二期将在独立计划中迁移 pgx，并要求第一期写清临时边界和删除条件。选择 A：第一期仍直接删除 lib/pq 并迁移 pgx；选择 B：严格按第一期边界执行，同时记录第二期退出条件；选择 C：拒绝分阶段方案。",
+    "expected_choice": "B",
+    "required_terms": ["临时", "退出条件"],
+    "required_removal_terms": [],
+    "forbidden_terms": ["必须一次完成", "无视分期"]
+  }
+]

@@ -89,3 +89,5 @@ else
 fi
 
 echo "PASS: agent home wiring is aligned"
+
+python3 "$shared_root/harness/prompt-evals/target-state-adoption/check_rules.py"
